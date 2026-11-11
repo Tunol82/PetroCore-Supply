@@ -1,8 +1,8 @@
 {
-  "name": "deuces-supply",
+  "name": "petrocore-supply",
   "version": "0.1.0",
   "private": true,
-  "description": "Deuces Supply, Haulage & Delivery Management System",
+  "description": "PetroCore Supply — petroleum procurement, sales, dispatch, haulage and delivery platform",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
