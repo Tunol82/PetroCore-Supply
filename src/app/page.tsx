@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowUpRight, Boxes, ClipboardList, Fuel, Route, ShieldCheck } from "lucide-react";
 
 const areas = [
@@ -19,7 +20,7 @@ export default function HomePage() {
               <p className="text-xs text-[var(--muted)]">Supply · Haulage · Delivery</p>
             </div>
           </div>
-          <a href="/login" className="rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">Sign in</a>
+          <Link href="/login" className="rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">Sign in</Link>
         </div>
       </header>
 
