@@ -1,6 +1,8 @@
-# Project documentation
+# PetroCore Supply — Project Documentation
 
 Keep the approved product and engineering specifications version-controlled here.
+
+Product naming is fixed: **PetroCore Supply** is the application. **Deuces** is a tenant using the application, not an alternative product name.
 
 Recommended folders:
 - `prd/` — Product Requirements Document
