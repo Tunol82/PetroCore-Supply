@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/shared/lib/supabase/client";
+import { signInSchema } from "@/modules/auth/validation";
 
 export function SignInForm() {
   const router = useRouter();
@@ -16,12 +17,16 @@ export function SignInForm() {
     setError(null);
     setIsSubmitting(true);
 
+    const validation = signInSchema.safeParse({ email, password });
+    if (!validation.success) {
+      setError("Enter a valid email address and password.");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      const { error: signInError } = await supabase.auth.signInWithPassword(validation.data);
 
       if (signInError) {
         setError("We could not sign you in with those details. Check your email and password, then try again.");
