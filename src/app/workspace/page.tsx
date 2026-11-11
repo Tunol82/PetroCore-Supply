@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 import { createClient } from "@/shared/lib/supabase/server";
 import { signOut } from "./actions";
 
