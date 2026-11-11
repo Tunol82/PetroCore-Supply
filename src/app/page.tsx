@@ -19,7 +19,7 @@ export default function HomePage() {
               <p className="text-xs text-[var(--muted)]">Supply · Haulage · Delivery</p>
             </div>
           </div>
-          <span className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-medium text-[var(--muted)]">Foundation workspace</span>
+          <a href="/login" className="rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">Sign in</a>
         </div>
       </header>
 
