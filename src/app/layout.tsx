@@ -2,11 +2,19 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Deuces Supply | Operations",
-  description: "Petroleum supply, haulage and delivery operations workspace.",
+  title: {
+    default: "PetroCore Supply",
+    template: "%s | PetroCore Supply",
+  },
+  description:
+    "Petroleum procurement, sales, dispatch, haulage and delivery operations platform.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
       <body>{children}</body>
