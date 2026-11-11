@@ -1,12 +1,16 @@
-# Deuces Supply, Haulage & Delivery Management System
+# PetroCore Supply
 
 A multi-tenant operations platform for petroleum procurement, sales, dispatch, haulage, delivery, and operational finance in Nigeria.
+
+## Product and tenant naming
+
+**PetroCore Supply** is the approved product and application name. **Deuces** is a tenant (customer/company account) operating within the platform; it is not the product name. The application must support multiple independent tenants, each with its own users, business records, configuration and access boundaries.
 
 ## Project status
 
 **Foundation scaffold — no operational modules or production database schema have been implemented yet.**
 
-This repository is the application source for Deuces Supply. It is independent of PetroCore Operations, with a planned future integration boundary. The initial architecture uses a modular monolith and PostgreSQL.
+This repository is the application source for PetroCore Supply. It is a separate product from PetroCore Operations, with a planned future integration boundary. The initial architecture uses a modular monolith and PostgreSQL.
 
 ## Technology foundation
 
