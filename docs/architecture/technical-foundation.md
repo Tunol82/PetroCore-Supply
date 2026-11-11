@@ -1,11 +1,12 @@
-# Deuces Supply — Technical Foundation
+# PetroCore Supply — Technical Foundation
 
-## Approved architectural direction
+## Product identity and tenancy
 
-- Product: Deuces Supply, Haulage & Delivery Management System.
-- Independence: a separate application from PetroCore Operations, with a future integration boundary.
+- Product: PetroCore Supply.
+- Tenant example: Deuces is one tenant/customer company using PetroCore Supply; it is not the product name.
+- The platform is multi-tenant. Tenant-owned data, users, settings, permissions and operational records must remain isolated.
+- Independence: a separate application from PetroCore Operations, with a planned future integration boundary.
 - Data platform: shared PostgreSQL platform initially, with separate application schemas and clear ownership boundaries.
-- Tenancy: multi-tenant from day one.
 - Application style: modular monolith; avoid premature microservices.
 - Web: Next.js App Router, React and TypeScript.
 - UI: Tailwind CSS with shadcn/ui-compatible primitives and accessible interaction patterns.
@@ -24,7 +25,7 @@ Offline work is provisional until server validation succeeds. A pending offline 
 
 ## Tenant security
 
-Tenant isolation must be enforced through PostgreSQL RLS and trusted server-side identity resolution. Every tenant-owned table must have a deliberate tenant ownership strategy, appropriate indexes and cross-tenant access tests. Never rely on hiding records in the UI.
+Tenant isolation must be enforced through PostgreSQL RLS and trusted server-side identity resolution. Every tenant-owned table must have a deliberate tenant ownership strategy, appropriate indexes and cross-tenant access tests. Never rely on hiding records in the UI. The tenant context must come from authenticated, trusted membership—not an arbitrary tenant identifier supplied by the browser.
 
 ## Database implementation gate
 
@@ -34,6 +35,8 @@ The initial scaffold intentionally contains no business schema or seed business 
 
 ## User experience principles
 
+- The product shell and navigation use the PetroCore Supply brand.
+- Tenant-specific identity (for example, Deuces) may appear within the authenticated tenant workspace where appropriate; it must not replace the product identity.
 - Design for fast, clear daily operations, not a generic admin template.
 - Make the next action and current status obvious.
 - Use plain language, consistent forms, validation and helpful empty states.
