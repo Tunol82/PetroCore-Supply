@@ -13,9 +13,9 @@ export default function HomePage() {
       <header className="border-b border-[var(--line)] bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand)] text-sm font-bold text-white">D</div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand)] text-sm font-bold text-white">P</div>
             <div>
-              <p className="text-sm font-bold tracking-tight">DEUCES SUPPLY</p>
+              <p className="text-sm font-bold tracking-tight">PETROCORE SUPPLY</p>
               <p className="text-xs text-[var(--muted)]">Supply · Haulage · Delivery</p>
             </div>
           </div>
@@ -69,7 +69,7 @@ export default function HomePage() {
         </section>
 
         <footer className="mt-12 border-t border-[var(--line)] pt-5 text-xs text-[var(--muted)]">
-          Deuces Supply · Initial application scaffold · No production database connected
+          PetroCore Supply · Initial application scaffold · No production database connected
         </footer>
       </div>
     </main>
