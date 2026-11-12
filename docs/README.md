@@ -15,6 +15,7 @@ Only approved, current versions should be treated as implementation authority. D
 
 
 ## Database specifications
+- [Database v1.2 Reconciliation Report](database/database-v1.2-reconciliation-report.md) — table-by-table mapping, changes, unresolved decisions, safeguards and migration gate.
 
 - [Consolidated Database Dictionary v1.2 — Implementation Specification](database/consolidated-database-dictionary-v1.2.md) — controlled implementation review draft; source wording retained, with repository product/tenant naming clarified.
 
