@@ -14,6 +14,10 @@ Recommended folders:
 Only approved, current versions should be treated as implementation authority. Do not silently resolve open business decisions in code.
 
 
+## Database specifications
+
+- [Consolidated Database Dictionary v1.2 — Implementation Specification](database/consolidated-database-dictionary-v1.2.md) — controlled implementation review draft; source wording retained, with repository product/tenant naming clarified.
+
 ## Active implementation notes
 
 - [Milestone 1 — Authentication, Tenant Management & Access Control](implementation/milestone-1-auth-tenant-access.md)
