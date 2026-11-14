@@ -13,14 +13,15 @@ Recommended folders:
 
 Only approved, current versions should be treated as implementation authority. Do not silently resolve open business decisions in code.
 
+## AI agent handover
+
+- [AI Agent Handover](AI_HANDOVER.md) — current repository state, approved architecture and business decisions, blockers, source documents and instructions for OpenCode/other coding agents. Read this first when resuming development.
 
 ## Database specifications
 - [Database v1.2 Reconciliation Report](database/database-v1.2-reconciliation-report.md) — table-by-table mapping, changes, unresolved decisions, safeguards and migration gate.
-
 - [Consolidated Database Dictionary v1.2 — Implementation Specification](database/consolidated-database-dictionary-v1.2.md) — controlled implementation review draft; source wording retained, with repository product/tenant naming clarified.
 
 ## Active implementation notes
-
 - [Milestone 1 — Authentication, Tenant Management & Access Control](implementation/milestone-1-auth-tenant-access.md)
 
 The milestone document defines the scope and release gate. It does not replace the approved source specifications or authorise business-schema migrations.
