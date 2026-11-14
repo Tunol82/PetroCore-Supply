@@ -302,6 +302,32 @@ Additional schema decisions revealed by the ERD reconciliation:
 5. All tenant-owned records resolve to exactly one organisation, either directly or through an enforced parent.
 6. Client-supplied organisation IDs cannot override the authenticated user's tenant context.
 
+### D-003 — Platform-level Super Admin identity
+
+**Status:** Approved by product owner in the project conversation.
+
+**Decision:**
+- Super Admin accounts are platform-level identities, separate from ordinary tenant user accounts.
+- A Super Admin does not belong to a tenant by default.
+- A Super Admin may enter a tenant context only through the privileged, audited tenant-switching process defined in D-001.
+- Super Admin access must not be implemented by making the account an ordinary member of every tenant.
+
+**Implementation consequences:**
+- Keep platform-level Super Admin authorization distinct from tenant roles and permissions.
+- Tenant-scoped application requests must continue to enforce the selected tenant context and ordinary tenant isolation.
+- The privileged switch must validate the Super Admin's platform authority on the server for each switch; a client-supplied tenant ID alone is never authority.
+- Record the acting Super Admin, source context (if any), destination organisation, timestamp and relevant session/request identifier in the audit trail.
+- Provide a clear way to exit the tenant context and return to the platform-level context.
+- Define and test the exact privilege model, session handling, MFA requirements and emergency-access procedure during the security design; this approval does not itself specify those implementation details.
+
+**Acceptance tests to add:**
+1. A Super Admin account can exist without an ordinary tenant membership.
+2. An ordinary tenant role cannot grant platform-level Super Admin authority.
+3. A Super Admin cannot access tenant data merely by changing a client-side tenant identifier; the privileged server-side switch must first be authorised.
+4. Every successful tenant-context entry and exit is auditable.
+5. Revoked or unauthorised platform privileges prevent tenant switching even if a previous tenant context remains in the client.
+6. Ordinary users cannot invoke or inherit the platform-level switching capability.
+
 ---
 
 ## 10. Recommended migration sequence
