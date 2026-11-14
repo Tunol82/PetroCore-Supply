@@ -257,7 +257,7 @@ Additional schema decisions revealed by the ERD reconciliation:
 21. Cost allocation model: exact destination FK(s) and how procurement_cost_components reconcile to inventory and direct fulfilment allocations.
 22. Transporter invoice header: whether trip_id remains nullable for backward compatibility and how invoice items become authoritative.
 23. Payment event model: exact relationship among financial_transactions, payment_records, payment_channels and reversals.
-24. Tenant and location ownership: required organisation_id/location_id coverage, global master data exceptions and RLS policy model.
+24. Tenant and location ownership: required organisation_id/location_id coverage and RLS policy model; global reference catalogs and tenant-specific custom values are governed by D-005.
 
 ## 9. Approved decision log
 
@@ -355,6 +355,35 @@ Additional schema decisions revealed by the ERD reconciliation:
 6. Super Admin access follows the separate privileged path and is audited.
 
 ---
+
+### D-005 — Platform-wide reference data and tenant-owned operational data
+
+**Status:** Approved by product owner in the project conversation.
+
+**Decision:**
+- Maintain platform-owned global reference catalogs for stable, standardised reference values used across tenants, such as units of measurement, product categories and standard system classifications.
+- Global reference records are centrally governed. Tenant users may read and reference them but may not directly alter the canonical platform records.
+- Where a tenant needs a value that is genuinely business-specific, support a tenant-owned custom value without changing or overriding the shared canonical record.
+- Operational and commercial records remain tenant-owned. This includes each tenant's product/SKU records and product specifications where tenant-defined, as well as supplier and customer records, prices, stock, procurement, sales, payments and other transactions.
+- Sharing a standard category or unit does not make the product, supplier, customer, inventory or transaction that references it globally visible.
+
+**Implementation consequences:**
+- Give platform reference catalogs an explicit platform-level ownership/scope, distinct from organisation-owned records. Do not represent global reference data as belonging to an arbitrary tenant.
+- Define stable codes and clear display labels for global reference values. Where units of measurement are involved, define the measurement dimension and conversion semantics explicitly; do not assume petroleum volume, temperature or density conversion rules without a separately approved standard.
+- Tenant-owned records that reference a global catalog must still enforce tenant ownership and RLS on the tenant-owned record.
+- Tenant custom values must be scoped to their organisation and must not silently shadow or mutate a global canonical value. Define deterministic selection and uniqueness rules during field-level dictionary design.
+- Restrict creation, amendment, deactivation and versioning of global reference values to authorised platform administrators. Preserve audit history and avoid changing the meaning of a reference value already used by posted transactions.
+- This is a logical data-governance decision, not approval of exact table names, columns, seed values, conversion factors or migration SQL.
+
+**Acceptance tests to add:**
+1. Tenant users can read permitted global reference values but cannot create, update or delete platform-owned canonical values.
+2. A tenant cannot see or modify another tenant's custom reference values.
+3. A tenant-owned product, supplier, customer, price, stock record or transaction remains isolated even when it references a shared global category or unit.
+4. A tenant-specific custom value does not alter the shared canonical value or another tenant's view.
+5. A global reference value cannot be silently redefined in a way that changes the interpretation of previously posted transactions.
+6. Platform-level changes to global reference catalogs are authorised and audited.
+7. Unit conversions are unavailable unless the relevant dimension and conversion rule have been explicitly defined and approved.
+
 
 ---
 
