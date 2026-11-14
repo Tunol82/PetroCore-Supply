@@ -248,7 +248,7 @@ The v1.2 specification lists the following as unresolved; none should be invente
 
 Additional schema decisions revealed by the ERD reconciliation:
 
-15. Tenant root: business_settings or organisations; and whether users can belong to multiple tenants.
+15. Tenant root: business_settings or organisations; ordinary-user membership is resolved (one tenant per user, no tenant switching). The Super Admin exception is recorded in the approved-decision log below; the canonical tenant-root table remains open.
 16. Canonical naming: purchase_orders vs procurement_orders; business_locations vs locations; sales_credit_notes vs credit_notes; payment_records vs payments; trip_delivery_records vs deliveries.
 17. Quantity model: current-value columns only or columns plus immutable measurement event history.
 18. Delivery confirmation: field-level acknowledgement/evidence or separate confirmation event table.
@@ -259,7 +259,37 @@ Additional schema decisions revealed by the ERD reconciliation:
 23. Payment event model: exact relationship among financial_transactions, payment_records, payment_channels and reversals.
 24. Tenant and location ownership: required organisation_id/location_id coverage, global master data exceptions and RLS policy model.
 
-## 9. Recommended migration sequence
+## 9. Approved decision log
+
+### D-001 — Tenant identity and tenant switching
+
+**Status:** Approved by product owner in the project conversation.
+
+**Decision:**
+- Every tenant has its own unique identity.
+- An ordinary user account is associated with one tenant only.
+- Ordinary users cannot switch, select or assume another tenant context.
+- Only a Super Admin may switch between tenants.
+
+**Implementation consequences:**
+- Model ordinary-user tenant membership as single-tenant. Enforce this in database constraints and trusted server-side authorization, not only in the user interface.
+- Treat Super Admin cross-tenant access as a separate privileged access path. Do not grant it by adding ordinary users to multiple tenant memberships.
+- Require explicit Super Admin authorization for every tenant-context switch.
+- Record each Super Admin tenant switch in an append-only audit trail, including the acting administrator, source tenant, destination tenant and timestamp. This audit detail is an implementation safeguard derived from the approved privileged-switch rule.
+- Tenant-owned data remains tenant-isolated by default. Super Admin access must be explicit and must not weaken ordinary tenant RLS policies.
+- The decision does not yet settle whether `business_settings` or a new `organisations` table is the canonical tenant root; that remains open for schema reconciliation.
+
+**Acceptance tests to add:**
+1. An ordinary user cannot be assigned to a second tenant.
+2. An ordinary user cannot access another tenant by changing a tenant ID in a request, URL, payload or local client state.
+3. An ordinary user has no tenant-switch control or switch endpoint permission.
+4. A non-Super Admin cannot invoke the privileged tenant-switch path.
+5. An authorised Super Admin can switch tenant context only through the privileged path, and each switch is recorded in the audit trail.
+6. Super Admin tenant switching does not expose cross-tenant data to ordinary users or bypass location restrictions within the selected tenant.
+
+---
+
+## 10. Recommended migration sequence
 
 This is the safe sequence, subject to approval and actual database inspection:
 
@@ -275,7 +305,7 @@ This is the safe sequence, subject to approval and actual database inspection:
 
 Never drop or rename existing tables as an early migration step. Use additive migrations, backfill, reconciliation queries, dual-read only where necessary, cutover validation, and a later deprecation migration after sign-off.
 
-## 10. Implementation gate
+## 11. Implementation gate
 
 **No production SQL or schema migration is authorised by this reconciliation report.**
 
