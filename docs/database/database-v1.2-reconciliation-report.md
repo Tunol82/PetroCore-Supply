@@ -328,6 +328,34 @@ Additional schema decisions revealed by the ERD reconciliation:
 5. Revoked or unauthorised platform privileges prevent tenant switching even if a previous tenant context remains in the client.
 6. Ordinary users cannot invoke or inherit the platform-level switching capability.
 
+### D-004 — Tenant-scoped location access
+
+**Status:** Approved by product owner in the project conversation.
+
+**Decision:**
+- An ordinary user may be granted access to multiple locations, but every such location must belong to that user's single tenant.
+- Location access is explicitly granted; it is not automatically inherited from tenant membership.
+- Tenant-wide access is a separate, explicit permission and is not the default for ordinary users.
+- Super Admin access remains separate and is governed by the platform-level privileged switching process in D-003.
+
+**Implementation consequences:**
+- Keep tenant membership and location grants as distinct authorization concepts.
+- Enforce that a location grant cannot reference a location owned by another tenant.
+- Resolve the effective permissions server-side and enforce them in database RLS policies as well as application services.
+- A user with access to several locations must still be unable to access unassigned locations in the same tenant unless they also hold the explicit tenant-wide permission.
+- Do not infer a user's location grants from their role name or from a client-supplied location identifier.
+- The exact permission key/name and table constraints remain subject to field-level dictionary review and live-schema inspection.
+
+**Acceptance tests to add:**
+1. A user can be granted access to more than one location within their tenant.
+2. A user cannot receive a location grant for a location owned by another tenant.
+3. A user cannot access an unassigned location by changing a URL, request payload or client-side state.
+4. Tenant-wide access is denied unless the explicit tenant-wide permission is present.
+5. A tenant role alone does not silently grant tenant-wide location access.
+6. Super Admin access follows the separate privileged path and is audited.
+
+---
+
 ---
 
 ## 10. Recommended migration sequence
