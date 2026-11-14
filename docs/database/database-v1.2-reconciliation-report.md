@@ -39,7 +39,7 @@ The ERD is a logical design, not a complete field-level replacement for the dict
 
 | ERD v1.2 concept/entity | v1.1 dictionary entity | v1.2 amendment position | Reconciliation recommendation |
 |---|---|---|---|
-| organisations | business_settings | No explicit rename amendment | Decide whether business_settings is the tenant/organisation record or whether a separate organisations table is required. Do not create both as competing tenant masters. |
+| organisations | business_settings | Product owner approved a separate organisations tenant master; business_settings remains tenant configuration | Add organisations as the authoritative tenant identity. Keep business_settings as a one-to-one tenant configuration record; do not use it as a competing tenant master. |
 | users | profiles + Supabase Auth identity | Supabase Auth is the authentication standard | Keep Auth identity separate from tenant profile/membership. Define the exact user-to-organisation membership relationship. |
 | locations | business_locations | No explicit rename amendment | Retain business_locations as the canonical v1.1 name unless a controlled rename is approved. |
 | roles | roles | Retain | Keep one role master. |
@@ -50,7 +50,7 @@ The ERD is a logical design, not a complete field-level replacement for the dict
 | approval_rules / approval_requests | approval_records | ERD separates rule definition from individual approval request | Extend the approval model to distinguish reusable rules from transaction-specific requests and decisions. Preserve historical approval records during migration. |
 | audit_logs | audit_logs | Retain | Make posted transaction and access audit history append-only through ordinary application paths. |
 
-**Critical tenant decision:** The ERD uses organisations while v1.1 describes business settings and business locations. The final schema must explicitly establish which record is the tenant root and how every tenant-owned row references it. Location access must be scoped inside that tenant. A user must never gain cross-tenant access merely by supplying an organisation or location ID from the client.
+**Critical tenant rule:** `organisations` is the authoritative tenant root. `business_settings` stores configurable business preferences and settings for an organisation and must not become a second tenant identity. Every tenant-owned row must reference its organisation, directly or through a validated parent relationship. Location access is scoped inside that organisation. A user must never gain cross-tenant access merely by supplying an organisation or location ID from the client.
 
 ### 3.2 Suppliers, products and procurement
 
@@ -248,7 +248,7 @@ The v1.2 specification lists the following as unresolved; none should be invente
 
 Additional schema decisions revealed by the ERD reconciliation:
 
-15. Tenant root: business_settings or organisations; ordinary-user membership is resolved (one tenant per user, no tenant switching). The Super Admin exception is recorded in the approved-decision log below; the canonical tenant-root table remains open.
+15. Tenant root and membership: `organisations` is approved as the tenant root; ordinary-user membership is one tenant per user, with no tenant switching. Only Super Admins may switch tenant context through the audited privileged path.
 16. Canonical naming: purchase_orders vs procurement_orders; business_locations vs locations; sales_credit_notes vs credit_notes; payment_records vs payments; trip_delivery_records vs deliveries.
 17. Quantity model: current-value columns only or columns plus immutable measurement event history.
 18. Delivery confirmation: field-level acknowledgement/evidence or separate confirmation event table.
@@ -289,7 +289,52 @@ Additional schema decisions revealed by the ERD reconciliation:
 
 ---
 
-## 10. Recommended migration sequence
+## 10. Approved decision log
+
+### D-001 — Tenant identity and tenant switching
+
+**Status:** Approved by product owner in the project conversation.
+
+**Decision:**
+- Every tenant has its own unique identity.
+- An ordinary user account is associated with one tenant only.
+- Ordinary users cannot switch, select or assume another tenant context.
+- Only a Super Admin may switch between tenants.
+
+**Implementation consequences:**
+- Model ordinary-user tenant membership as single-tenant. Enforce this in database constraints and trusted server-side authorization, not only in the user interface.
+- Treat Super Admin cross-tenant access as a separate privileged access path. Do not grant it by adding ordinary users to multiple tenant memberships.
+- Require explicit Super Admin authorization for every tenant-context switch.
+- Record each Super Admin tenant switch in an append-only audit trail, including the acting administrator, source tenant, destination tenant and timestamp.
+- Tenant-owned data remains tenant-isolated by default. Super Admin access must be explicit and must not weaken ordinary tenant RLS policies.
+
+### D-002 — Canonical tenant master and business settings
+
+**Status:** Approved by product owner in the project conversation.
+
+**Decision:**
+- Create/use `organisations` as the single authoritative tenant identity/master table.
+- Retain `business_settings` for configurable business preferences and settings belonging to an organisation.
+- `business_settings` must not act as a competing tenant master.
+
+**Implementation consequences:**
+- Each tenant-owned business setting must belong to exactly one organisation.
+- The intended relationship is one organisation to one business_settings record, subject to inspection of the v1.1 field definitions and existing data before choosing the exact key/constraint.
+- Tenant-owned operational records must reference `organisations` directly or inherit tenant ownership only through a rigorously enforced parent relationship.
+- `business_locations` remains the existing v1.1 location entity for now; each location must be owned by exactly one organisation.
+- This approval establishes the logical model, not exact SQL column names, nullability, unique constraints or migration operations. Those require field-level dictionary review and live-schema inspection.
+
+**Acceptance tests to add:**
+1. Every active tenant has one unique `organisations` identity.
+2. A tenant cannot have multiple competing `business_settings` records if the approved one-to-one model is confirmed against the v1.1 definition.
+3. A business_settings record cannot be associated with a different tenant's organisation.
+4. A business_location cannot be accessed or assigned across organisation boundaries.
+5. All tenant-owned records resolve to exactly one organisation, either directly or through an enforced parent.
+6. Client-supplied organisation IDs cannot override the authenticated user's tenant context.
+
+---
+
+## 11. Recommended migration sequence
 
 This is the safe sequence, subject to approval and actual database inspection:
 
@@ -305,7 +350,7 @@ This is the safe sequence, subject to approval and actual database inspection:
 
 Never drop or rename existing tables as an early migration step. Use additive migrations, backfill, reconciliation queries, dual-read only where necessary, cutover validation, and a later deprecation migration after sign-off.
 
-## 11. Implementation gate
+## 12. Implementation gate
 
 **No production SQL or schema migration is authorised by this reconciliation report.**
 
