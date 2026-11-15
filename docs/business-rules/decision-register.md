@@ -117,15 +117,18 @@ These are tracked in the Migration 1 checklist and the non-production Supabase p
 
 | Field | Detail |
 |---|---|
-| Status | **Proposed** — design supplied 2026-11-15; not approved |
+| Status | **Approved** — 2026-11-15 |
 | Question | How should platform Super Admin identity, tenant switching, privilege scope, session lifetime and audit work, given D-003? |
-| Proposal | Separate `platform_admins` table keyed by `auth.users.id` (no tenant membership); server-side `platform_tenant_sessions` with a 30-minute expiry and a signed httpOnly cookie; MFA AAL2 mandatory; read-only tenant access through a server-side service-role client explicitly scoped to the session tenant; append-only `platform_audit_logs` for entry, exit, denial and expiry; existing tenant RLS untouched. |
+| Decision | Separate `platform_admins` table keyed by `auth.users.id`, with no tenant membership. Server-side `platform_tenant_sessions` with a 30-minute expiry and a signed httpOnly cookie scoped to `/platform`. MFA AAL2 required by default. Read-only tenant access through a server-side service-role client explicitly scoped to the session tenant. Append-only `platform_audit_logs` for entry, exit, denial and expiry. Existing tenant RLS unchanged. |
 | Why it matters | Super Admin can read every tenant. Modelled as ordinary membership it would silently weaken tenant isolation and D-001. |
-| Options | (a) Table + server-side switch session (proposed). (b) Supabase custom claims. (c) Environment allowlist. |
+| Options | (a) Table + server-side switch session (approved). (b) Supabase custom claims. (c) Environment allowlist. |
 | Consequences | (a) strongest audit and revocation, but introduces a service-role code path. (b) fewer moving parts, but claims are harder to revoke and audit. (c) simplest, but not auditable per action. |
 | Blocks | Any cross-tenant support capability and the platform admin UI. |
-| Approval needed | Identity source, MFA requirement, read-only scope, session length, platform audit visibility, acceptance of service-role usage. |
-| Detail | `docs/database/platform-admin-proposal.md`; draft SQL `supabase/migrations-draft/0004_platform_admin.sql` (not applied). |
+| Approved by | Product owner (Tunde Oladeji) |
+| Approved on | 2026-11-15 |
+| Basis | Owner approved all six DR-26 points in the project conversation. |
+| Conditions | MFA required by default; read-only v1; 30-minute expiry; platform audit visible only to platform admins; service-role key server-only and never in the browser. Any write capability requires a new decision. |
+| Detail | `docs/database/platform-admin-proposal.md`; migration `0004_platform_admin`; acceptance tests PA-001 to PA-012. |
 
 ## 4. Business decisions still open
 

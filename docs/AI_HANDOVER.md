@@ -99,6 +99,7 @@ Implemented in the scaffold:
 - Tenant resolution in `/workspace`: verified tenant, access-pending and workspace-error states.
 - Tenant administration at `/workspace/access`: member list with roles, role assignment/revocation, location grant creation/revocation, server-side permission checks and audit triggers on every access change.
 - Recent access activity on the same page for holders of `audit.view`, read from the append-only audit log.
+- Platform administration at `/platform`: platform admins only, MFA-gated by default, read-only tenant view, 30-minute switch sessions and an append-only platform audit trail.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
@@ -139,10 +140,10 @@ Do not guess these or encode irreversible assumptions:
 - Approvals: **resolved for Milestone 1 (DR-20)** — deferred to the finance milestone; access administration is audited.
 - Documents/evidence: required document types, ownership, retention, versioning, access, evidence validation and polymorphic-link safeguards. Still open; Part 2 defines the tables but not the policy.
 - Liabilities and payment controls: supplier/transporter liability creation, invoice matching, payment verification, allocation, reversals and derived AP/AR reconciliation. Still open.
-- Canonical physical schema: exact table/column names, field types, nullability, FKs, uniqueness, delete policy, indexes, RLS, triggers, transaction boundaries and migration strategy are now drafted in `docs/database/migration-1-physical-proposal.md` and `supabase/migrations-draft/0001_tenant_access_core.sql`. Ownership is resolved (DR-24: direct `organisation_id`).
-- Migration basis is resolved: the product is **greenfield** (DR-25). No v1.1 database exists, so there is no legacy inspection or backfill; confirm the target project is empty before the first migration.
+- Canonical physical schema: the tenant/access schema is applied (`20261115000100`), with RPC wrappers (`...0200`), access-audit triggers (`...0300`) and platform admin (`...0400`). Ownership is resolved (DR-24: direct `organisation_id`).
+- Migration basis is resolved: the product is **greenfield** (DR-25). No v1.1 database exists, so there is no legacy inspection or backfill.
 
-The tenant/access foundation is now applied and tested against a non-production project. Remaining work is feature and security design, not environment setup. The reconciliation report's implementation gate remains binding for production: **no production deployment until sign-off is recorded and the operational modules are implemented against the approved rules.**
+Milestone 1 is complete and applied to the non-production project. The remaining decisions above belong to Milestone 2 and later. The reconciliation report's implementation gate remains binding for production: **no production deployment until the operational modules are implemented against the approved rules.**
 
 ## 9. Recommended next steps for the coding agent
 
@@ -154,7 +155,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
 6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
-7. **Next:** DR-26 (platform Super Admin and tenant switching) is documented and has a non-applied draft migration. Obtain approval, apply it to the non-production project, and run PA-001 to PA-012 before building the `/platform` UI. Everything else in Milestone 1 is implemented and verified.
+7. **Milestone 1 is complete.** Next: an MFA enrolment screen (the platform switch requires AAL2, but enrolment is not yet in the app), a platform audit viewer, then Milestone 2 (procurement) once the remaining business rules are approved.
 8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
@@ -182,7 +183,9 @@ Approval state:
 - v1.1 baseline provenance and the field-level amendments are approved. ERD approval applies to the reconstruction; re-verify if the original artefact is produced.
 - v1.1 Part 2 (sections 12-25) was supplied on 2026-11-15 and appended to Appendix A, closing the platform-control gap.
 - Migration `20261115000100_tenant_access_core` was applied to the non-production project on 2026-11-15. Isolation tests T-001–T-014 passed and browser sign-in resolved the tenant correctly.
+- **DR-26 approved and implemented:** migration `20261115000400_platform_admin` adds platform admins, switch sessions and platform audit. PA-001–PA-012 passed. Platform access is read-only and MFA-gated by default.
+- The single non-production platform admin is bootstrapped with `mfa_required = true`; the happy-path test temporarily disabled it and restored it. MFA enrolment is not yet built into the app, so platform switching currently requires an AAL2 session obtained elsewhere.
 
-Remaining Milestone 1 work: tenant administration UI (memberships, roles, location grants), a second-user/no-membership Playwright test, and the Super Admin switching design (D-003). No Milestone 1 design decision remains open.
+Milestone 1 is complete: authentication, tenant resolution, access administration, audit visibility, second-tenant isolation, the no-membership state and platform support switching are implemented and verified. Remaining follow-ups are the MFA enrolment UI, a platform audit viewer, and Milestone 2 business-rule approvals.
 
 No **production** database has been touched. `main` and StationOs remain untouched; PR #1 remains draft.

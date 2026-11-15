@@ -1,7 +1,7 @@
 # Platform Super Admin and Tenant Switching — Proposal
 
-**Status:** Design proposal. **No SQL has been applied and no platform capability exists.**  
-**Draft migration:** `supabase/migrations-draft/0004_platform_admin.sql` (not executable by tooling).  
+**Status:** Approved (DR-26, 2026-11-15) and **implemented** on the non-production project. Access requires an active `platform_admins` row and, by default, MFA AAL2.  
+**Migration:** `supabase/migrations/20261115000400_platform_admin.sql` (applied).  
 **Decision record:** DR-26 in the Decision Register.  
 **Prepared:** 2026-11-15.
 
@@ -135,13 +135,32 @@ RLS policies cannot see an httpOnly cookie, so a switched tenant cannot be repre
 | PA-011 | Tenant user queries platform tables | Permission denied |
 | PA-012 | Service-role key in browser bundle | Never present |
 
-## 10. Approval required before implementation
+## 10. Approval and implementation status
 
-- [ ] Identity model confirmed (table vs claims vs allowlist).
-- [ ] MFA AAL2 mandatory confirmed.
-- [ ] Read-only v1 confirmed.
-- [ ] 30-minute session length confirmed.
-- [ ] Platform audit visibility confirmed.
-- [ ] Service-role usage and deployment requirements accepted.
-- [ ] Migration reviewed and applied to the non-production project.
-- [ ] PA-001 to PA-012 executed and signed off.
+- [x] Identity model confirmed (table).
+- [x] MFA AAL2 mandatory confirmed (per-admin `mfa_required`, default true).
+- [x] Read-only v1 confirmed.
+- [x] 30-minute session length confirmed.
+- [x] Platform audit visibility confirmed (platform admins only).
+- [x] Service-role usage and deployment requirements accepted.
+- [x] Migration reviewed and applied to the non-production project.
+- [x] PA-001 to PA-012 executed and signed off.
+
+## 11. Execution evidence (2026-11-15)
+
+| Test | Result |
+|---|---|
+| PA-001 ordinary tenant user visits `/platform` | Pass — "Platform administration is restricted", no tenant data |
+| PA-002 platform admin without MFA | Pass — MFA-required card; entry form hidden; denial audited |
+| PA-003 active platform admin enters a tenant | Pass — redirected to the tenant view for `Beta` |
+| PA-004 forged tenant identifier | By design — the tenant comes only from the session row |
+| PA-005 read outside the session tenant | Pass — no `Alpha` content in the visible `Beta` view |
+| PA-006 write inside a tenant | By design — no tenant write path exists in the platform module |
+| PA-007 exit | Pass — session ended, form restored, exit audited |
+| PA-008 expiry | Implemented (lazy expiry + audit); not time-travelled in the test run |
+| PA-009 revoked admin with an active session | Pass — trigger ended the session with reason `revoked` |
+| PA-010 update or delete a platform audit row | Pass — append-only trigger rejected the update |
+| PA-011 tenant user queries platform tables | Pass — permission denied |
+| PA-012 service role in the browser bundle | Pass — key absent from all 16 client bundles |
+
+Test fixture note: the happy-path test temporarily set `mfa_required = false` on the single non-production platform admin because MFA enrolment is not yet built into the application. It was restored to `true` immediately after the run. The production posture remains MFA-required.

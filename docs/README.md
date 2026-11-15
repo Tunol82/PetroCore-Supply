@@ -24,7 +24,7 @@ Only approved, current versions should be treated as implementation authority. D
 - [Consolidated Database Dictionary v1.2 — Implementation Specification](database/consolidated-database-dictionary-v1.2.md) — controlled implementation review draft; source wording retained, with repository product/tenant naming clarified.
 - [Migration 1 — Tenant & Access Foundation: Reconciliation Checklist](database/migration-1-tenant-access-checklist.md) — entities, invariants, RLS questions and acceptance tests to close before any tenant/access SQL is written.
 - [Migration 1 — Tenant & Access Physical Proposal](database/migration-1-physical-proposal.md) — proposed tables, ownership, RLS and candidate permission keys; draft SQL lives in `supabase/migrations-draft/` and is not applied.
-- [Platform Super Admin and Tenant Switching — Proposal](database/platform-admin-proposal.md) — identity, switch session, MFA, read-only scope, audit and acceptance tests; awaiting DR-26 approval.
+- [Platform Super Admin and Tenant Switching](database/platform-admin-proposal.md) — implemented: platform identity, MFA-gated read-only switch sessions, audit and PA-001 to PA-012 results.
 
 ## Business rules and decisions
 

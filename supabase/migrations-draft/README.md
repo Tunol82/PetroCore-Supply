@@ -18,12 +18,13 @@ cannot apply it by accident.
 
 ## Current drafts
 
-| Draft | Scope | Blocked by |
-|---|---|---|
-| `0004_platform_admin.sql` | Platform admin identity, switch sessions, platform audit, RLS deny-by-default | DR-26 approval and PA-001 to PA-012 |
+None.
 
 ## Promoted
 
 | Migration | Scope | State |
 |---|---|---|
-| `20261115000100_tenant_access_core.sql` | Organisations, settings, locations, profiles, roles, permissions, role permissions, user roles, location access, audit log, RLS | Applied to the non-production project on 2026-11-15; isolation tests passed |
+| `20261115000100_tenant_access_core.sql` | Organisations, settings, locations, profiles, roles, permissions, role permissions, user roles, location access, audit log, RLS | Applied 2026-11-15; T-001 to T-014 passed |
+| `20261115000200_tenant_access_rpc.sql` | Public RPC wrappers for permission and tenant checks | Applied 2026-11-15 |
+| `20261115000300_access_audit_triggers.sql` | Audit triggers on role assignments and location grants | Applied 2026-11-15 |
+| `20261115000400_platform_admin.sql` | Platform admins, switch sessions, platform audit | Applied 2026-11-15; PA-001 to PA-012 passed |
