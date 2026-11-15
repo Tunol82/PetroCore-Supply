@@ -66,6 +66,12 @@ export default async function PlatformPage() {
           <p className="mt-1 text-sm text-[var(--muted)]">
             Signed in as {context.email || "a platform administrator"}. Access is read-only and fully audited.
           </p>
+          <Link
+            href="/platform/audit"
+            className="mt-3 inline-block text-sm font-semibold text-[var(--brand)]"
+          >
+            View platform audit trail
+          </Link>
         </section>
 
         {session ? (

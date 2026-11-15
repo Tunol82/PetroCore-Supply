@@ -100,6 +100,7 @@ Implemented in the scaffold:
 - Tenant administration at `/workspace/access`: member list with roles, role assignment/revocation, location grant creation/revocation, server-side permission checks and audit triggers on every access change.
 - Recent access activity on the same page for holders of `audit.view`, read from the append-only audit log.
 - Platform administration at `/platform`: platform admins only, MFA-gated by default, read-only tenant view, 30-minute switch sessions and an append-only platform audit trail.
+- Platform audit viewer at `/platform/audit`: newest 50 platform events with action, administrator, tenant, reason and timestamp; platform admins only.
 - Account security at `/account/security`: TOTP enrollment, verification to AAL2 and factor removal. Removing the last factor ends the session so an elevated AAL2 claim cannot persist.
 
 Current verification snapshot (2026-11-15):
@@ -156,7 +157,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
 6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
-7. **Milestone 1 is complete.** Next: a platform audit viewer, then Milestone 2 (procurement) once the remaining business rules are approved. MFA enrolment is available at `/account/security`.
+7. **Milestone 1 is complete.** Next: Milestone 2 (procurement) once the remaining measurement, tolerance, discrepancy and pricing rules are approved. MFA enrolment is at `/account/security`; platform audit is at `/platform/audit`.
 8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
