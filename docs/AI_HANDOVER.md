@@ -111,7 +111,9 @@ Local development and review work now happens on `chore/verification-and-ci-hard
 2. `docs/database/database-v1.2-reconciliation-report.md` — entity-by-entity reconciliation, approved logical decisions, unresolved design questions and migration gate.
 3. `docs/database/consolidated-database-dictionary-v1.2.md` — controlled implementation review draft; preserve unaffected v1.1 definitions and explicit v1.2 amendments.
 4. `docs/implementation/milestone-1-auth-tenant-access.md` — Milestone 1 scope and acceptance/release criteria.
-5. `docs/README.md` and root `README.md`.
+5. `docs/database/migration-1-tenant-access-checklist.md` — the questions to close before tenant/access SQL exists.
+6. `docs/implementation/non-production-supabase-plan.md` — provisioning and verification plan; not executed.
+7. `docs/README.md` and root `README.md`.
 
 The dictionary is a controlled review draft, not final physical-schema approval. The ERD, full v1.1 dictionary, v1.2 amendments, Business Rules & Financial Logic Specification and Technical Blueprint must be reconciled together.
 
@@ -140,7 +142,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 1. ~~Inspect the full repository and current PR head; preserve any user changes.~~ Done 2026-11-15.
 2. ~~Run `npm install`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` and the Playwright suite locally; fix any failures and report exactly what ran.~~ Done 2026-11-15; see Section 6. Playwright now runs in CI.
 3. Review the scaffold for accessibility, error handling, session handling and Next.js/Supabase SSR correctness. Add tests where needed. **Partially done:** signed-in `/login` redirect, unconfigured-Supabase state, per-field validation with accessible errors and focus handling are implemented and covered by tests. Remaining: an explicit no-active-membership state, which needs the approved membership schema.
-4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Not started.**
+4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Not started.**
 6. After the physical schema is approved, implement additive migrations, RLS policies and cross-tenant/cross-location tests before any operational modules.
 7. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.

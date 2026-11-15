@@ -20,8 +20,10 @@ Only approved, current versions should be treated as implementation authority. D
 ## Database specifications
 - [Database v1.2 Reconciliation Report](database/database-v1.2-reconciliation-report.md) — table-by-table mapping, changes, unresolved decisions, safeguards and migration gate.
 - [Consolidated Database Dictionary v1.2 — Implementation Specification](database/consolidated-database-dictionary-v1.2.md) — controlled implementation review draft; source wording retained, with repository product/tenant naming clarified.
+- [Migration 1 — Tenant & Access Foundation: Reconciliation Checklist](database/migration-1-tenant-access-checklist.md) — entities, invariants, RLS questions and acceptance tests to close before any tenant/access SQL is written.
 
 ## Active implementation notes
 - [Milestone 1 — Authentication, Tenant Management & Access Control](implementation/milestone-1-auth-tenant-access.md)
+- [Non-Production Supabase Setup Plan](implementation/non-production-supabase-plan.md) — provisioning, verification and backup/restore steps; plan only, nothing executed.
 
 The milestone document defines the scope and release gate. It does not replace the approved source specifications or authorise business-schema migrations.
