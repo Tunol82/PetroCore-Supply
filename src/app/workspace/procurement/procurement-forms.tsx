@@ -7,6 +7,7 @@ import {
   createProduct,
   createPurchaseOrder,
   createSupplier,
+  createSupplierProduct,
   recordBatch,
   type ProcurementActionState,
 } from "./actions";
@@ -413,6 +414,49 @@ export function BatchForm({
       <Feedback state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Recording…" : "Record batch"}
+      </button>
+    </form>
+  );
+}
+
+export function SupplierProductForm({
+  suppliers,
+  products,
+}: {
+  suppliers: Option[];
+  products: Option[];
+}) {
+  const [state, formAction, pending] = useActionState(createSupplierProduct, initialState);
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <label htmlFor="sp-supplier" className={labelClass}>Supplier</label>
+          <select id="sp-supplier" name="supplierId" required className={fieldClass} defaultValue="">
+            <option value="" disabled>Select a supplier</option>
+            {suppliers.map((supplier) => (
+              <option key={supplier.id} value={supplier.id}>{supplier.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="sp-product" className={labelClass}>Product</label>
+          <select id="sp-product" name="productId" required className={fieldClass} defaultValue="">
+            <option value="" disabled>Select a product</option>
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>{product.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="sp-code" className={labelClass}>Supplier product code</label>
+          <input id="sp-code" name="supplierProductCode" className={fieldClass} />
+        </div>
+      </div>
+      <Feedback state={state} />
+      <button type="submit" className={buttonClass} disabled={pending}>
+        {pending ? "Saving…" : "Link product to supplier"}
       </button>
     </form>
   );

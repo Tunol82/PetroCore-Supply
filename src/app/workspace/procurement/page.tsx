@@ -4,7 +4,7 @@ import { signOut } from "@/app/workspace/actions";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
-import { BatchForm, DepotForm, ProductForm, PurchaseOrderForm, PurchaseOrderItemForm, SupplierForm } from "./procurement-forms";
+import { BatchForm, DepotForm, ProductForm, PurchaseOrderForm, PurchaseOrderItemForm, SupplierForm, SupplierProductForm } from "./procurement-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +46,14 @@ type PurchaseOrderItem = {
   agreed_unit_price: number;
   discount_amount: number;
   line_total: number;
+};
+
+type SupplierProduct = {
+  id: string;
+  supplier_id: string;
+  product_id: string;
+  supplier_product_code: string | null;
+  status: string;
 };
 
 function formatQuantity(value: number | null) {
@@ -105,6 +113,7 @@ export default async function ProcurementPage() {
     batchesResult,
     ordersResult,
     orderItemsResult,
+    supplierProductsResult,
   ] = await Promise.all([
     supabase.from("suppliers").select("id, supplier_code, name, status").order("name"),
     supabase.from("supplier_depots").select("id, supplier_id, depot_code, name").order("name"),
@@ -130,6 +139,11 @@ export default async function ProcurementPage() {
       .from("purchase_order_items")
       .select("id, purchase_order_id, product_id, ordered_quantity, agreed_unit_price, discount_amount, line_total")
       .order("created_at", { ascending: true }),
+    supabase
+      .from("supplier_products")
+      .select("id, supplier_id, product_id, supplier_product_code, status")
+      .order("created_at", { ascending: false })
+      .limit(30),
   ]);
 
   const queryError =
@@ -139,7 +153,8 @@ export default async function ProcurementPage() {
     locationsResult.error ??
     batchesResult.error ??
     ordersResult.error ??
-    orderItemsResult.error;
+    orderItemsResult.error ??
+    supplierProductsResult.error;
 
   if (queryError) {
     return (
@@ -163,6 +178,7 @@ export default async function ProcurementPage() {
   const batches = (batchesResult.data ?? []) as Batch[];
   const orders = (ordersResult.data ?? []) as PurchaseOrder[];
   const orderItems = (orderItemsResult.data ?? []) as PurchaseOrderItem[];
+  const supplierProducts = (supplierProductsResult.data ?? []) as SupplierProduct[];
 
   const supplierById = new Map(suppliers.map((supplier) => [supplier.id, supplier]));
   const depotById = new Map(depots.map((depot) => [depot.id, depot]));
@@ -435,6 +451,36 @@ export default async function ProcurementPage() {
           ) : null}
         </section>
 
+        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold">Supplier pricing</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Products each supplier can supply. Agreed prices are recorded on purchase-order lines.
+          </p>
+          <div className="mt-3 divide-y divide-[var(--line)]">
+            {supplierProducts.map((link) => (
+              <div key={link.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
+                <div>
+                  <p className="text-sm font-medium">
+                    {supplierById.get(link.supplier_id)?.name ?? "Unknown supplier"} ·{" "}
+                    {productById.get(link.product_id)?.product_name ?? "Unknown product"}
+                  </p>
+                  <p className="text-xs text-[var(--muted)]">
+                    {link.supplier_product_code ?? "No supplier product code"} · {link.status}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {supplierProducts.length === 0 ? (
+              <p className="py-2 text-sm text-[var(--muted)]">No supplier product links.</p>
+            ) : null}
+          </div>
+          {canManage ? (
+            <div className="mt-4 border-t border-[var(--line)] pt-4">
+              <SupplierProductForm suppliers={supplierOptions} products={productOptions} />
+            </div>
+          ) : null}
+        </section>
+
         <p className="mt-8 text-xs leading-6 text-[var(--muted)]">
           Every record is tenant-scoped and enforced by Row Level Security. Procurement batches are append-only and
           audited. Tolerances, temperature correction and variance assessment remain pending business decisions.
@@ -457,6 +503,12 @@ function Header() {
         </div>
       </div>
       <div className="flex items-center gap-2">
+        <Link
+          href="/workspace/procurement/costs"
+          className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
+        >
+          Costs
+        </Link>
         <Link
           href="/workspace"
           className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"

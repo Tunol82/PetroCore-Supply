@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   batchSchema,
+  costCategorySchema,
+  costComponentSchema,
   depotSchema,
   productSchema,
   purchaseOrderItemSchema,
   purchaseOrderSchema,
+  supplierProductSchema,
   supplierSchema,
 } from "./validation";
 
@@ -153,5 +156,59 @@ describe("batch purchase-order linkage", () => {
     expect(
       batchSchema.safeParse({ ...base, purchaseOrderItemId: "not-a-uuid" }).success,
     ).toBe(false);
+  });
+});
+
+describe("supplierProductSchema", () => {
+  it("accepts a supplier-product link", () => {
+    expect(
+      supplierProductSchema.parse({ supplierId, productId, supplierProductCode: "SP-1" }),
+    ).toMatchObject({ supplierProductCode: "SP-1" });
+  });
+
+  it("rejects a missing product", () => {
+    expect(supplierProductSchema.safeParse({ supplierId, productId: "" }).success).toBe(false);
+  });
+});
+
+describe("costCategorySchema", () => {
+  it("accepts a landed-cost category", () => {
+    expect(
+      costCategorySchema.parse({
+        categoryName: "Inbound haulage",
+        categoryType: "inbound_transport",
+        allocationMethod: "per_litre",
+      }).categoryType,
+    ).toBe("inbound_transport");
+  });
+
+  it("rejects an unknown category type", () => {
+    expect(
+      costCategorySchema.safeParse({
+        categoryName: "Other",
+        categoryType: "marketing",
+        allocationMethod: "fixed",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("costComponentSchema", () => {
+  const base = {
+    procurementBatchId: supplierId,
+    costCategoryId: depotId,
+    amount: "125000.50",
+  };
+
+  it("coerces the amount", () => {
+    expect(costComponentSchema.parse(base).amount).toBe(125000.5);
+  });
+
+  it("rejects a zero amount", () => {
+    expect(costComponentSchema.safeParse({ ...base, amount: "0" }).success).toBe(false);
+  });
+
+  it("accepts an optional supplier", () => {
+    expect(costComponentSchema.safeParse({ ...base, supplierId: "" }).success).toBe(true);
   });
 });

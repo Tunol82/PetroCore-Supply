@@ -5,10 +5,13 @@ import { createClient } from "@/shared/lib/supabase/server";
 import { getCurrentTenant, type CurrentTenant } from "@/modules/tenant/current-tenant";
 import {
   batchSchema,
+  costCategorySchema,
+  costComponentSchema,
   depotSchema,
   productSchema,
   purchaseOrderItemSchema,
   purchaseOrderSchema,
+  supplierProductSchema,
   supplierSchema,
 } from "@/modules/procurement/validation";
 
@@ -367,4 +370,116 @@ export async function recordBatch(  _previous: ProcurementActionState,
 
   revalidatePath("/workspace/procurement");
   return { error: null, success: "Procurement batch recorded." };
+}
+
+export async function createSupplierProduct(
+  _previous: ProcurementActionState,
+  formData: FormData,
+): Promise<ProcurementActionState> {
+  const parsed = supplierProductSchema.safeParse({
+    supplierId: formData.get("supplierId"),
+    productId: formData.get("productId"),
+    supplierProductCode: formData.get("supplierProductCode"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: insertError } = await context.supabase.from("supplier_products").insert({
+    organisation_id: context.tenant.organisationId,
+    supplier_id: parsed.data.supplierId,
+    product_id: parsed.data.productId,
+    supplier_product_code: textOrNull(parsed.data.supplierProductCode),
+  });
+
+  if (insertError) {
+    return {
+      error:
+        insertError.code === "23505"
+          ? "That supplier already supplies this product."
+          : "The supplier product could not be saved.",
+      success: null,
+    };
+  }
+
+  revalidatePath("/workspace/procurement");
+  return { error: null, success: "Supplier product saved." };
+}
+
+export async function createCostCategory(
+  _previous: ProcurementActionState,
+  formData: FormData,
+): Promise<ProcurementActionState> {
+  const parsed = costCategorySchema.safeParse({
+    categoryName: formData.get("categoryName"),
+    categoryType: formData.get("categoryType"),
+    allocationMethod: formData.get("allocationMethod"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: insertError } = await context.supabase.from("cost_categories").insert({
+    organisation_id: context.tenant.organisationId,
+    category_name: parsed.data.categoryName,
+    category_type: parsed.data.categoryType,
+    landed_cost_inclusion: formData.get("landedCostInclusion") === "on",
+    allocation_method: parsed.data.allocationMethod,
+    requires_approval: formData.get("requiresApproval") === "on",
+    requires_evidence: formData.get("requiresEvidence") === "on",
+  });
+
+  if (insertError) {
+    return { error: duplicateMessage(insertError, "That cost category"), success: null };
+  }
+
+  revalidatePath("/workspace/procurement/costs");
+  return { error: null, success: "Cost category saved." };
+}
+
+export async function recordCostComponent(
+  _previous: ProcurementActionState,
+  formData: FormData,
+): Promise<ProcurementActionState> {
+  const parsed = costComponentSchema.safeParse({
+    procurementBatchId: formData.get("procurementBatchId"),
+    costCategoryId: formData.get("costCategoryId"),
+    description: formData.get("description"),
+    amount: formData.get("amount"),
+    supplierId: formData.get("supplierId"),
+    referenceNumber: formData.get("referenceNumber"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: insertError } = await context.supabase.from("procurement_cost_components").insert({
+    organisation_id: context.tenant.organisationId,
+    procurement_batch_id: parsed.data.procurementBatchId,
+    cost_category_id: parsed.data.costCategoryId,
+    description: textOrNull(parsed.data.description),
+    amount: parsed.data.amount,
+    supplier_id: textOrNull(parsed.data.supplierId),
+    reference_number: textOrNull(parsed.data.referenceNumber),
+    recorded_by: context.tenant.profileId,
+  });
+
+  if (insertError) {
+    return { error: "The cost component could not be recorded.", success: null };
+  }
+
+  revalidatePath("/workspace/procurement/costs");
+  return { error: null, success: "Cost component recorded." };
 }

@@ -108,9 +108,55 @@ export const purchaseOrderItemSchema = z.object({
   ),
 });
 
+export const COST_CATEGORY_TYPES = [
+  "acquisition",
+  "inbound_transport",
+  "handling",
+  "inspection",
+  "documentation",
+  "security",
+  "other",
+] as const;
+
+export const ALLOCATION_METHODS = [
+  "per_litre",
+  "percentage",
+  "fixed",
+  "product_value",
+  "manual",
+] as const;
+
+export const supplierProductSchema = z.object({
+  supplierId: uuid("Select a supplier."),
+  productId: uuid("Select a product."),
+  supplierProductCode: optionalText(60),
+});
+
+export const costCategorySchema = z.object({
+  categoryName: z.string().trim().min(2, "Enter the category name.").max(120),
+  categoryType: z.enum(COST_CATEGORY_TYPES),
+  allocationMethod: z.enum(ALLOCATION_METHODS),
+});
+
+export const costComponentSchema = z.object({
+  procurementBatchId: uuid("Select a procurement batch."),
+  costCategoryId: uuid("Select a cost category."),
+  description: optionalText(500),
+  amount: z.coerce.number().positive("Cost amount must be greater than zero."),
+  supplierId: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .refine((value) => !value || UUID_PATTERN.test(value), "Select a supplier."),
+  referenceNumber: optionalText(100),
+});
+
 export type SupplierInput = z.infer<typeof supplierSchema>;
 export type DepotInput = z.infer<typeof depotSchema>;
 export type ProductInput = z.infer<typeof productSchema>;
 export type BatchInput = z.infer<typeof batchSchema>;
 export type PurchaseOrderInput = z.infer<typeof purchaseOrderSchema>;
 export type PurchaseOrderItemInput = z.infer<typeof purchaseOrderItemSchema>;
+export type SupplierProductInput = z.infer<typeof supplierProductSchema>;
+export type CostCategoryInput = z.infer<typeof costCategorySchema>;
+export type CostComponentInput = z.infer<typeof costComponentSchema>;
