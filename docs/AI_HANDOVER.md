@@ -98,12 +98,12 @@ Implemented in the scaffold:
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
-- A local verification pass was completed on Windows against Node 24.16.0 / npm 11.13.0: `npm install`, `npm run lint`, `npm run typecheck`, `npm test` (6 tests) and `npm run build` all passed, and `npm run test:e2e` passed 6 Playwright tests.
-- The end-to-end suite currently covers only the unconfigured state; `playwright.config.ts` blanks the Supabase variables for determinism until an approved test project and tenant fixtures exist.
-- This does **not** establish that a configured Supabase project, tenant membership, RLS, production database or business transactions work.
-- Supabase environment values are not configured/verified in this handover.
-- No production business tables or SQL migrations have been created.
-- No procurement, inventory, sales, dispatch, delivery or finance transaction flows have been implemented.
+- A local verification pass was completed on Windows against Node 24.16.0 / npm 11.13.0: `npm run lint`, `npm run typecheck`, `npm test` (11 tests) and `npm run build` all passed, and `npm run test:e2e` passed 6 Playwright tests.
+- The end-to-end suite covers the unconfigured, signed-out and validation states; `playwright.config.ts` blanks the Supabase variables so it stays deterministic.
+- A non-production Supabase project now exists. Migration `20261115000100_tenant_access_core` was applied on 2026-11-15 and the tenant-isolation tests passed (see the Migration 1 physical proposal §9).
+- Live browser sign-in was verified: `/workspace` resolved the organisation `Alpha` (`ORG-A`) from the authenticated membership, with no console errors.
+- Local Supabase values live in `.env.local`, which is git-ignored. No credentials are committed.
+- No **production** database has been touched. No procurement, inventory, sales, dispatch, delivery or finance transaction flows have been implemented.
 - No code has been merged into `main`; PR #1 remains draft.
 
 Local development and review work now happens on `chore/verification-and-ci-hardening`, branched from `chore/initial-project-scaffold`.
@@ -137,7 +137,7 @@ Do not guess these or encode irreversible assumptions:
 - Canonical physical schema: exact table/column names, field types, nullability, FKs, uniqueness, delete policy, indexes, RLS, triggers, transaction boundaries and migration strategy are now drafted in `docs/database/migration-1-physical-proposal.md` and `supabase/migrations-draft/0001_tenant_access_core.sql`. Ownership is resolved (DR-24: direct `organisation_id`).
 - Migration basis is resolved: the product is **greenfield** (DR-25). No v1.1 database exists, so there is no legacy inspection or backfill; confirm the target project is empty before the first migration.
 
-The remaining blocking item is environmental: no Supabase project exists and the draft migration has not been executed or tested. The reconciliation report's implementation gate remains binding for production: **no production SQL until the field-level dictionary and ERD are reconciled, the tenant/access migration is tested in an empty non-production project, and sign-off is recorded.**
+The tenant/access foundation is now applied and tested against a non-production project. Remaining work is feature and security design, not environment setup. The reconciliation report's implementation gate remains binding for production: **no production deployment until sign-off is recorded and the operational modules are implemented against the approved rules.**
 
 ## 9. Recommended next steps for the coding agent
 
@@ -145,11 +145,12 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 
 1. ~~Inspect the full repository and current PR head; preserve any user changes.~~ Done 2026-11-15.
 2. ~~Run `npm install`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` and the Playwright suite locally; fix any failures and report exactly what ran.~~ Done 2026-11-15; see Section 6. Playwright now runs in CI.
-3. Review the scaffold for accessibility, error handling, session handling and Next.js/Supabase SSR correctness. Add tests where needed. **Partially done:** signed-in `/login` redirect, unconfigured-Supabase state, per-field validation with accessible errors and focus handling are implemented and covered by tests. Remaining: an explicit no-active-membership state, which needs the approved membership schema.
+3. Review the scaffold for accessibility, error handling, session handling and Next.js/Supabase SSR correctness. Add tests where needed. **Done 2026-11-15:** signed-in `/login` redirect, unconfigured-Supabase state, per-field validation with accessible errors, focus handling, loading, error boundary, and the access-pending state are implemented.
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
-5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. DR-16 and DR-25 are now approved; DR-10, DR-20 and DR-24 remain Open.
-6. Resolve DR-10 (location model), DR-24 (ownership/RLS) and, if approvals are in scope, DR-20. Then review `supabase/migrations-draft/0001_tenant_access_core.sql` against `docs/database/migration-1-physical-proposal.md`, provision an empty non-production project, apply the draft and run the RLS plus cross-tenant/cross-location tests before any operational module.
-7. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
+5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
+6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
+7. **Next:** build tenant administration on top of the applied schema — list memberships, assign roles, grant and revoke location access — using server actions and the existing RLS policies. Add Playwright coverage for a second user and a no-membership user. Then design Super Admin switching (D-003) before any cross-tenant capability.
+8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
 
@@ -175,8 +176,8 @@ Approval state:
 - The five permission keys (`organisation.manage`, `users.manage`, `locations.manage`, `locations.view_all`, `audit.view`) are approved.
 - v1.1 baseline provenance and the field-level amendments are approved. ERD approval applies to the reconstruction; re-verify if the original artefact is produced.
 - v1.1 Part 2 (sections 12-25) was supplied on 2026-11-15 and appended to Appendix A, closing the platform-control gap.
-- A schema draft now exists at `supabase/migrations-draft/0001_tenant_access_core.sql`. It is **not** in `supabase/migrations/`, has not been executed, and must not be applied until the checklist in `docs/database/migration-1-physical-proposal.md` is signed.
+- Migration `20261115000100_tenant_access_core` was applied to the non-production project on 2026-11-15. Isolation tests T-001–T-014 passed and browser sign-in resolved the tenant correctly.
 
-Remaining gate: environment and execution. Provision an empty non-production Supabase project, apply the draft there, run T-001, T-004, T-008 and T-012, then record sign-off. No Milestone 1 design decision remains open.
+Remaining Milestone 1 work: tenant administration UI (memberships, roles, location grants), a second-user/no-membership Playwright test, and the Super Admin switching design (D-003). No Milestone 1 design decision remains open.
 
-No migration has been applied. `main` and StationOs remain untouched; PR #1 remains draft.
+No **production** database has been touched. `main` and StationOs remain untouched; PR #1 remains draft.

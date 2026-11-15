@@ -7,25 +7,21 @@ cannot apply it by accident.
 ## Rules
 
 1. Nothing here may be moved to `supabase/migrations/` until the Decision
-   Register records approval of DR-10, DR-20 and DR-24 and the physical
-   definitions are signed off.
+   Register records the relevant approvals and the physical definitions are
+   signed off.
 2. A non-production Supabase project must exist and be confirmed **empty**
-   before the first migration is applied (DR-25 greenfield).
+   before the first migration is applied.
 3. Every migration must be reviewed against the field-level dictionary and the
-   ERD, and must carry RLS tests before sign-off.
+   ERD, and must carry RLS tests before promotion.
 4. No draft here may be treated as the source of truth. The dictionary and ERD
    are authoritative.
 
 ## Current drafts
 
-| Draft | Scope | Blocked by |
+None.
+
+## Promoted
+
+| Migration | Scope | State |
 |---|---|---|
-| `0001_tenant_access_core.sql` | Organisations, settings, locations, profiles, roles, permissions, role permissions, user roles, location access, audit log, RLS | Execution and test sign-off in an empty non-production project |
-
-## Later migrations
-
-The remaining v1.1 Part 2 platform tables are defined in the dictionary but are
-not in this draft: documents, document links and requirements, reporting, data
-imports, notifications, document number sequences, offline devices and sync,
-and idempotency records. They belong to later migrations and must not be added
-to the tenant/access migration.
+| `20261115000100_tenant_access_core.sql` | Organisations, settings, locations, profiles, roles, permissions, role permissions, user roles, location access, audit log, RLS | Applied to the non-production project on 2026-11-15; isolation tests passed |

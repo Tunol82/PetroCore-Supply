@@ -19,8 +19,8 @@ Use it to review a proposed migration, not as a substitute for one.
 - [ ] Business Rules & Financial Logic Specification and Technical Blueprint reconciled against both.
 - [x] Reconciliation decision 25 resolved: **greenfield** (DR-25, 2026-11-15).
 - [x] Canonical naming approved: retain v1.1 names (DR-16, 2026-11-15).
-- [ ] Target Supabase project provisioned and confirmed **empty**; roles, extensions and storage configuration reviewed.
-- [ ] Baseline backup taken after provisioning and a restore drill completed.
+- [x] Target Supabase project provisioned and confirmed **empty** (0 tables in `public`); PostgreSQL 17.11, `pgcrypto` present.
+- [x] Baseline confirmed before migration; the project is greenfield, so there was no legacy data to back up. Supabase managed backups apply from provisioning.
 - [x] Approval model approved (DR-20): deferred to the finance milestone.
 - [x] Tenant/location ownership coverage approved (DR-24): direct ownership.
 - [x] Location model and hierarchy approved (DR-10): flat, typed, no inheritance.
@@ -131,3 +131,6 @@ These extend, and do not replace, DB-001–DB-030 and the decision-specific test
 | Location model (DR-10) | Approved — flat, typed, no inheritance |
 | Approved by (product owner) | Tunde Oladeji |
 | Date | 2026-11-15 |
+| Migration applied | `20261115000100_tenant_access_core` on 2026-11-15 |
+| RLS tests executed | T-001, T-002, T-003, T-004, T-005, T-008, T-009, T-010, T-012, T-013, T-014 — all passed |
+| Browser sign-in verified | Yes — signed in to the live non-production project; `/workspace` resolved `Alpha` / `ORG-A` |

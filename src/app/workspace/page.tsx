@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
+import { getCurrentTenant } from "@/modules/tenant/current-tenant";
 import { signOut } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,27 @@ function Brand() {
         <p className="text-xs text-[var(--muted)]">Secure workspace</p>
       </div>
     </div>
+  );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="min-h-screen px-5 py-12">
+      <div className="mx-auto max-w-3xl">
+        <header className="flex items-center justify-between border-b border-[var(--line)] pb-5">
+          <Brand />
+          <form action={signOut}>
+            <button
+              className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
+              type="submit"
+            >
+              Sign out
+            </button>
+          </form>
+        </header>
+        {children}
+      </div>
+    </main>
   );
 }
 
@@ -58,33 +80,80 @@ export default async function WorkspacePage() {
     redirect("/login");
   }
 
-  return (
-    <main className="min-h-screen px-5 py-12">
-      <div className="mx-auto max-w-3xl">
-        <header className="flex items-center justify-between border-b border-[var(--line)] pb-5">
-          <Brand />
-          <form action={signOut}>
-            <button className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50" type="submit">
-              Sign out
-            </button>
-          </form>
-        </header>
+  const { tenant, error: tenantError } = await getCurrentTenant(supabase, data.user.id);
 
+  if (tenantError) {
+    return (
+      <Shell>
         <section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm sm:p-9">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand)]">Authentication verified</p>
-          <h1 className="mt-3 text-2xl font-semibold tracking-tight">Your secure session is active.</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Workspace unavailable</p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight">We could not confirm your workspace access.</h1>
           <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-            You are signed in as <span className="font-medium text-[var(--ink)]">{data.user.email ?? "an authenticated user"}</span>.
-            Company membership and tenant access will be resolved here after the approved tenant schema and row-level security policies are implemented.
+            No tenant data has been displayed. Try again, or ask your administrator to confirm your membership.
           </p>
-          <div className="mt-7 rounded-xl bg-[var(--brand-soft)] p-4">
-            <p className="text-sm font-semibold text-[var(--brand)]">Tenant access setup is the next step</p>
-            <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-              No tenant has been assumed or selected. PetroCore Supply will only open a company workspace after confirming your active membership and permissions on the server.
+        </section>
+      </Shell>
+    );
+  }
+
+  if (!tenant) {
+    return (
+      <Shell>
+        <section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm sm:p-9">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Access pending</p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight">Your account is not linked to a company yet.</h1>
+          <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+            You are signed in as{" "}
+            <span className="font-medium text-[var(--ink)]">{data.user.email ?? "an authenticated user"}</span>, but no
+            active company membership was found. Ask your company administrator to approve your access.
+          </p>
+        </section>
+      </Shell>
+    );
+  }
+
+  const { count: locationCount } = await supabase
+    .from("business_locations")
+    .select("id", { count: "exact", head: true });
+
+  return (
+    <Shell>
+      <section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm sm:p-9">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand)]">Tenant verified</p>
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight">{tenant.organisationName}</h1>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              {tenant.organisationCode} · Petrocore Supply workspace
             </p>
           </div>
-        </section>
-      </div>
-    </main>
+          <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">Active</span>
+        </div>
+
+        <dl className="mt-8 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-xl border border-[var(--line)] p-4">
+            <dt className="text-xs font-medium text-[var(--muted)]">Signed in as</dt>
+            <dd className="mt-1 text-sm font-semibold">{tenant.fullName}</dd>
+            <dd className="truncate text-xs text-[var(--muted)]">{tenant.email}</dd>
+          </div>
+          <div className="rounded-xl border border-[var(--line)] p-4">
+            <dt className="text-xs font-medium text-[var(--muted)]">Locations visible</dt>
+            <dd className="mt-1 text-2xl font-semibold">{locationCount ?? 0}</dd>
+          </div>
+          <div className="rounded-xl border border-[var(--line)] p-4">
+            <dt className="text-xs font-medium text-[var(--muted)]">Tenant reference</dt>
+            <dd className="mt-1 text-sm font-semibold">{tenant.organisationCode}</dd>
+          </div>
+        </dl>
+
+        <div className="mt-7 rounded-xl bg-[var(--brand-soft)] p-4">
+          <p className="text-sm font-semibold text-[var(--brand)]">Access is enforced by the database</p>
+          <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+            This workspace was resolved from your authenticated membership, not from a tenant identifier in the
+            browser. Row Level Security limits every query to {tenant.organisationName}.
+          </p>
+        </div>
+      </section>
+    </Shell>
   );
 }

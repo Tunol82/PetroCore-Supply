@@ -1,7 +1,7 @@
 # Migration 1 — Tenant & Access Physical Proposal
 
-**Status:** Physical design proposal. **No SQL has been applied.**  
-**Draft SQL:** `supabase/migrations-draft/0001_tenant_access_core.sql` (deliberately outside `supabase/migrations/`).  
+**Status:** Physical design approved and **applied to the non-production Supabase project on 2026-11-15**.  
+**Migration:** `supabase/migrations/20261115000100_tenant_access_core.sql` (version `20261115000100`).  
 **Prepared:** 2026-11-15.  
 **Depends on:** Database Dictionary v1.2 (Parts 1–2); ERD v1.2; Decision Register.  
 **Decisions:** DR-10 (a) flat typed locations, DR-24 (a) direct ownership, DR-20 (c) approvals deferred, and the five permission keys were **approved by the product owner on 2026-11-15**.
@@ -120,6 +120,32 @@ Before the draft may move into `supabase/migrations/`:
 - [x] Status and access-level value sets approved.
 - [x] `business_locations.status` added to the visibility predicate.
 - [x] Audit write routed through the `app.record_audit()` security-definer function; direct insert revoked.
-- [ ] Non-production Supabase project provisioned and confirmed empty.
-- [ ] Draft executed and RLS tested there, including T-001, T-004, T-008 and T-012.
-- [ ] Sign-off recorded in the Decision Register and the Migration 1 checklist.
+- [x] Non-production Supabase project provisioned and confirmed empty.
+- [x] Migration executed and RLS tested, including T-001, T-004, T-008 and T-012.
+- [x] Sign-off recorded in the Migration 1 checklist.
+
+## 9. Execution evidence (2026-11-15)
+
+Applied to an empty non-production project (PostgreSQL 17.11). Verification results:
+
+| Test | Result |
+|---|---|
+| T-001 Tenant A sees only its organisation | Pass — `ORG-A` only |
+| T-001b Cross-tenant update attempted by Tenant A | Pass — 0 rows affected |
+| T-001c Other tenant's location fetched by direct ID | Pass — 0 rows |
+| T-002 Tenant context follows the authenticated identity | Pass — Bob sees `ORG-B` only |
+| T-003 Profile visibility | Pass — own profile only without `users.manage` |
+| T-004 Cross-tenant location grant | Pass — rejected by composite FK |
+| T-005 Unassigned location visibility | Pass — 0 before grant |
+| T-008 Explicit grant | Pass — 1 after grant |
+| T-009 Disabled location | Pass — 0 once inactive |
+| T-010 Tenant mutating global permissions | Pass — blocked by RLS |
+| T-012 Audit append-only | Pass — update rejected by trigger |
+| T-013 Anonymous access | Pass — permission denied |
+| T-014 `app.record_audit()` attribution | Pass — correct organisation and actor |
+
+Defect found and fixed during execution: `authenticated` lacked `USAGE` on schema `app`, which broke every policy that calls a helper. The fix (`grant usage on schema app to authenticated`) is in the applied migration.
+
+Not exercised: Super Admin tenant switching (D-003 security design still pending).
+
+Browser verification: signed in against the live non-production project with a provisioned tenant administrator. `/workspace` resolved and rendered the organisation (`Alpha`, `ORG-A`) with no console errors; no tenant identifier was supplied by the browser. The signed-out and unconfigured states remain covered by the Playwright suite.
