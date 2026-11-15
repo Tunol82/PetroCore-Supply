@@ -8,6 +8,19 @@
 **Baseline:** Detailed Database Dictionary v1.1 and Consolidated Database Dictionary v1.2  
 **Related:** Database v1.2 Reconciliation Report; Decision Register; proposed field-level Dictionary v1.2.
 
+## Document control
+
+| Field | Value |
+|---|---|
+| Document | ERD v1.2 Logical Proposal (reconstructed) |
+| Version | Review revision 2 |
+| Status | Product-owner review draft. **Not approved.** |
+| Owner | Product owner (Tunde Oladeji) |
+| Prepared | 2026-11-15 |
+| Repository branch | `docs/database-v1.2-review-proposal` |
+| Approval required | Comparison with the original ERD v1.2 artefact, then owner sign-off |
+| Change record | See §8 Amendment log. |
+
 ## 1. Source and limitation
 
 The original owner-supplied ERD v1.2 artefact was not located in the current repository or accessible Library material during preparation. This diagram is therefore a **reconstructed logical proposal**, not a claim that the original ERD has been reproduced exactly.
@@ -141,6 +154,7 @@ erDiagram
 - A purchase order and its lines represent a supplier commitment; neither creates inventory.
 - A procurement batch preserves supplier, loaded and received quantities independently.
 - A procurement batch may be linked to a sales order line for direct supply; the v1.2 `sales_order_item_id` field is a proposed addition.
+- The diagram shows at most one inventory batch per procurement batch for readability. Whether a single procurement batch may be split into multiple inventory batches is unresolved and must be confirmed when the physical model is reviewed.
 - Warehouse path: procurement batch → verified inventory batch → reservation → posted issue/FIFO → trip loading → delivery.
 - Direct path: procurement batch → direct loading allocation → delivery; no inventory batch or inventory issue is created.
 - The old `trip_loading_batch_allocations` source split must not be implemented destructively. The dedicated direct table is a v1.2 amendment, subject to migration reconciliation.
@@ -201,3 +215,10 @@ The ERD may move from proposal to approved logical design only after:
 6. The product owner records approval date, selected option and conditions in the Decision Register.
 
 **No SQL or migration is authorised by this proposal.**
+
+## 8. Amendment log
+
+| Revision | Date | Change | Author |
+|---|---|---|---|
+| 1 | 2026-11-15 | Initial reconstructed logical ERD proposal. | Repository review |
+| 2 | 2026-11-15 | Added document control and approval requirement; noted that the procurement-batch to inventory-batch cardinality is unresolved; added this log. | Repository review |

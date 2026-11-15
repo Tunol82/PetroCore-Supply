@@ -12,11 +12,33 @@
 **Product:** PetroCore Supply  
 **Tenant example:** Deuces is a tenant/customer organisation, not the product name.
 
+## Document control
+
+| Field | Value |
+|---|---|
+| Document | Consolidated Field-Level Database Dictionary v1.2 (Proposal) |
+| Version | 1.2 proposal — review revision 2 |
+| Status | Product-owner review draft. **Not approved for SQL.** |
+| Owner | Product owner (Tunde Oladeji) |
+| Prepared | 2026-11-15 |
+| Repository branch | `docs/database-v1.2-review-proposal` |
+| Relationship to other documents | Consolidates the v1.1 baseline in Appendix A with the v1.2 amendment specification. Does not replace the ERD, Technical Blueprint, PRD or Business Rules & Financial Logic Specification. |
+| Change record | See §8 Amendment log. |
+
+| Approval step | Approved by | Date | Version approved |
+|---|---|---|---|
+| v1.1 baseline provenance confirmed | _pending_ | _pending_ | _pending_ |
+| Field-level v1.2 amendments | _pending_ | _pending_ | _pending_ |
+| ERD comparison completed | _pending_ | _pending_ | _pending_ |
+| Authorised for migration drafting | _pending_ | _pending_ | _pending_ |
+
 ## 0. Read this before using the document
 
 This is a **consolidated review proposal**, not an approved physical schema and not permission to create SQL or migrations.
 
-The detailed v1.1 field-level dictionary was available and is reproduced below as the unchanged baseline. The v1.2 amendment material is added after it. Existing v1.1 fields are not silently removed or renamed.
+The detailed v1.1 field-level dictionary supplied to the project is reproduced below as the baseline. Its field definitions are retained without alteration; only heading levels and transport formatting were normalised in this presentation.
+
+**Provenance must be confirmed.** The version, date and completeness of the v1.1 baseline have not been verified against an owner-signed original. Before this document is used as an approval baseline, the product owner must confirm it matches the authoritative Detailed Database Dictionary v1.1. If it does not, the appendix must be replaced rather than amended, and any already-approved v1.2 amendment re-checked against the corrected baseline.
 
 The original ERD v1.2 source artefact was **not located in the current repository or the accessible Library material during this preparation**. The companion ERD file is therefore a reconstructed logical proposal based on the v1.1 dictionary, the repository reconciliation report and the v1.2 amendment specification. It must be compared against the original owner-supplied ERD before final approval.
 
@@ -176,7 +198,7 @@ Rules retained from v1.2:
 | `created_at` | TIMESTAMPTZ | Yes | Creation timestamp |
 | `created_by` | UUID | Yes | User |
 
-**Open validation:** whether exactly one of `cost_component_id` and `expense_record_id` is required; whether both may be present in any approved case; allowed allocation methods; version supersession; and accounting recognition. DR-05, DR-06 and DR-21 remain open. Do not implement a generic polymorphic target.
+**Open validation:** three source references are optional — `cost_component_id`, `expense_record_id` and `cost_category_id`. Whether exactly one source is required, which combinations are permitted, whether `cost_category_id` is always required as a classification, what allocation methods are allowed, how versions supersede earlier allocations, and how the cost is recognised remain undecided under DR-05, DR-06 and DR-21. Do not implement an XOR constraint, a polymorphic target or a default source rule until that decision is recorded. If a rule is later approved, it must be enforced by constraint or trusted service, not only by the UI.
 
 ### 3.8 `transporter_invoice_items` — new multi-trip invoice detail
 
@@ -199,7 +221,7 @@ A transporter invoice may cover multiple trips. Invoice item totals must reconci
 
 The v1.1 dictionary contains `approval_records`; the ERD/reconciliation material refers to `approval_rules` and `approval_requests`.
 
-No physical field definitions are proposed for `approval_rules` or `approval_requests) in this draft because the owner has not decided whether Milestone 1 needs a full rule/request/decision split, a single record model or deferred approvals.
+No physical field definitions are proposed for `approval_rules` or `approval_requests` in this draft because the owner has not decided whether Milestone 1 needs a full rule/request/decision split, a single record model or deferred approvals.
 
 Do not create both models in parallel. Preserve existing approval history if a future migration is approved. Define separation of duties, approver eligibility, delegation, escalation, rejection, resubmission and audit history before implementation.
 
@@ -411,15 +433,26 @@ The approved logical decisions D-001 to D-005 remain in force. This draft does n
 
 **Until these steps are approved, do not generate SQL, migrations, seeds, triggers or RLS policies.**
 
+## 8. Amendment log
+
+| Revision | Date | Change | Author |
+|---|---|---|---|
+| 1 | 2026-11-15 | Initial consolidated proposal: v1.1 baseline plus v1.2 amendments, decision markers and ownership inventory. | Repository review |
+| 2 | 2026-11-15 | Added document control and approval block; made v1.1 provenance and verification requirements explicit; clarified that all three direct-fulfilment cost sources remain undecided; corrected §3.9 formatting; normalised appendix heading levels and removed pasted transport brackets; added this log. | Repository review |
+
 ---
 
 # Appendix A — Detailed Database Dictionary v1.1 baseline (retained verbatim)
 
-The following is the complete v1.1 field-level dictionary retrieved from the project Library. Its original definitions are retained as the baseline. Apply only the explicit, approved v1.2 amendments above.
+**Provenance:** supplied to the project as the Detailed Database Dictionary v1.1 (Revised Review Draft). Field definitions are reproduced without alteration; heading levels and transport formatting are normalised, the pasted transport brackets are removed, and the two separate title lines are combined into one heading.
 
+**Reading note:** the v1.1 text was written for a single-business deployment, so it refers to "Deuces" and "the business" in the singular. Under D-001 and D-002 every such record is tenant-scoped: read "the business" as "the tenant" and "Deuces" as the example tenant. This note is editorial and does not change any v1.1 field definition.
 
-[# DEUCES SUPPLY, HAULAGE & DELIVERY MANAGEMENT SYSTEM
-## Detailed Database Dictionary v1.1
+**Verification required:** confirm this appendix against the authoritative v1.1 document before approval. The presence of a field here does not approve it for the v1.2 physical schema.
+
+## Deuces Supply, Haulage & Delivery Management System — Detailed Database Dictionary v1.1
+
+Retained from the supplied v1.1 document. The definitions below are the baseline; apply only the explicit, approved v1.2 amendments above.
 
 **Document status:** Technical Design – Revised Review Draft  
 **Version:** 1.1  
@@ -435,7 +468,7 @@ The following is the complete v1.1 field-level dictionary retrieved from the pro
 
 ---
 
-# 1. Purpose and scope
+### 1. Purpose and scope
 
 This document defines the revised proposed database structure for the Deuces Supply, Haulage & Delivery Management System.
 
@@ -452,7 +485,7 @@ It is intended to guide:
 
 This is a technical design specification, not executable SQL. Database migrations must not be generated until the remaining critical business rules have been confirmed and the related project documents have passed a consistency review.
 
-## 1.1 Key v1.1 improvements
+#### 1.1 Key v1.1 improvements
 
 The following improvements distinguish this revision from v1.0:
 
@@ -476,9 +509,9 @@ The following improvements distinguish this revision from v1.0:
 
 ---
 
-# 2. Database standards
+### 2. Database standards
 
-## 2.1 Data types
+#### 2.1 Data types
 
 | Data type | Usage |
 |---|---|
@@ -500,7 +533,7 @@ All monetary and quantity calculations must use exact numeric arithmetic. Floati
 
 Quantity precision remains subject to final confirmation of the applicable petroleum measurement and operational standards.
 
-## 2.2 Standard database conventions
+#### 2.2 Standard database conventions
 
 - Every primary key uses UUID.
 - Business records use unique human-readable references where appropriate.
@@ -515,7 +548,7 @@ Quantity precision remains subject to final confirmation of the applicable petro
 - Historical records must remain traceable after master records are deactivated.
 - Time values are stored consistently using `TIMESTAMPTZ`; the configured business timezone is used for display and business-date interpretation.
 
-## 2.3 Business entity and location model
+#### 2.3 Business entity and location model
 
 The initial implementation supports one Deuces business entity with multiple operating locations.
 
@@ -527,7 +560,7 @@ The design should avoid unnecessary multi-company complexity at launch, but shou
 
 Supplier-owned depots are represented separately by `supplier_depots`. A supplier depot must not automatically be treated as a Deuces-owned inventory location.
 
-## 2.4 Status conventions
+#### 2.4 Status conventions
 
 Statuses must be controlled using PostgreSQL enums or validated reference values.
 
@@ -535,7 +568,7 @@ Unrestricted status text is not acceptable for important business workflows.
 
 A status transition must be validated by the application service and, where appropriate, by database constraints or triggers.
 
-## 2.5 Deletion and historical preservation
+#### 2.5 Deletion and historical preservation
 
 - Financial and inventory records must not be physically deleted through ordinary application operations.
 - Posted records must be corrected using reversal or adjustment transactions.
@@ -546,9 +579,9 @@ A status transition must be validated by the application service and, where appr
 
 ---
 
-# 3. Organisation, locations and user management
+### 3. Organisation, locations and user management
 
-## 3.1 business_settings
+#### 3.1 business_settings
 
 Stores the primary business configuration.
 
@@ -570,7 +603,7 @@ Stores the primary business configuration.
 
 Constraint: initial currency must be NGN. Multi-currency transactions are outside the initial release.
 
-## 3.2 business_locations
+#### 3.2 business_locations
 
 Represents Deuces operating locations and future storage facilities.
 
@@ -590,7 +623,7 @@ Represents Deuces operating locations and future storage facilities.
 
 A location must not be treated as a storage facility unless `is_storage_location` is enabled and the relevant storage controls are configured.
 
-## 3.3 profiles
+#### 3.3 profiles
 
 Connects authenticated users to their business profiles.
 
@@ -614,7 +647,7 @@ Constraints:
 - A deactivated user cannot access the application.
 - Historical records created by the user must remain intact.
 
-## 3.4 roles
+#### 3.4 roles
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -624,7 +657,7 @@ Constraints:
 | is_system_role | BOOLEAN | Yes | Protected system role |
 | created_at | TIMESTAMPTZ | Yes | Creation timestamp |
 
-## 3.5 permissions
+#### 3.5 permissions
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -642,7 +675,7 @@ Examples:
 - `reports.view`
 - `locations.manage`
 
-## 3.6 role_permissions
+#### 3.6 role_permissions
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -652,7 +685,7 @@ Examples:
 
 Unique constraint: `(role_id, permission_id)`.
 
-## 3.7 user_roles
+#### 3.7 user_roles
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -664,7 +697,7 @@ Unique constraint: `(role_id, permission_id)`.
 
 A user may hold multiple authorised roles.
 
-## 3.8 user_location_access
+#### 3.8 user_location_access
 
 Controls location-level access.
 
@@ -682,7 +715,7 @@ Unique constraint: `(user_id, location_id, access_level)`.
 
 Authorised management users may have company-wide visibility. Location restrictions must be enforced through application permissions and Supabase Row Level Security.
 
-## 3.9 approval_records
+#### 3.9 approval_records
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -703,9 +736,9 @@ The application must enforce approval thresholds, separation of duties, delegate
 
 ---
 
-# 4. Supplier, product and procurement management
+### 4. Supplier, product and procurement management
 
-## 4.1 suppliers
+#### 4.1 suppliers
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -722,7 +755,7 @@ The application must enforce approval thresholds, separation of duties, delegate
 | created_at | TIMESTAMPTZ | Yes | Creation timestamp |
 | updated_at | TIMESTAMPTZ | Yes | Last update |
 
-## 4.2 supplier_depots
+#### 4.2 supplier_depots
 
 Represents depots owned or operated by suppliers or other product sources.
 
@@ -741,7 +774,7 @@ Represents depots owned or operated by suppliers or other product sources.
 
 A supplier may operate or use multiple depots.
 
-## 4.3 supplier_depot_bays
+#### 4.3 supplier_depot_bays
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -750,7 +783,7 @@ A supplier may operate or use multiple depots.
 | bay_name | VARCHAR(100) | Yes | Loading bay |
 | status | VARCHAR(20) | Yes | Active or inactive |
 
-## 4.4 products
+#### 4.4 products
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -767,7 +800,7 @@ A supplier may operate or use multiple depots.
 
 Initial products include PMS, AGO and DPK. Future products must be configurable.
 
-## 4.5 supplier_products
+#### 4.5 supplier_products
 
 Links suppliers to products they can supply.
 
@@ -781,7 +814,7 @@ Links suppliers to products they can supply.
 
 Unique constraint: `(supplier_id, product_id)`.
 
-## 4.6 purchase_orders
+#### 4.6 purchase_orders
 
 Represents the supplier purchasing commitment. It does not itself create inventory.
 
@@ -804,7 +837,7 @@ Represents the supplier purchasing commitment. It does not itself create invento
 
 A purchase order may be associated with a confirmed customer order. Future speculative procurement may be supported without requiring a sales order.
 
-## 4.7 purchase_order_items
+#### 4.7 purchase_order_items
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -819,7 +852,7 @@ A purchase order may be associated with a confirmed customer order. Future specu
 
 Quantity must be greater than zero. Prices and discounts must be validated.
 
-## 4.8 procurement_batches
+#### 4.8 procurement_batches
 
 Represents a specific supplier procurement and loading event.
 
@@ -862,9 +895,9 @@ Rules:
 
 ---
 
-# 5. Landed cost management
+### 5. Landed cost management
 
-## 5.1 cost_categories
+#### 5.1 cost_categories
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -881,7 +914,7 @@ Rules:
 
 Cost category configuration must have effective dates and an audit history. General administration expenses must not automatically become landed cost.
 
-## 5.2 procurement_cost_components
+#### 5.2 procurement_cost_components
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -902,7 +935,7 @@ Inbound procurement transportation belongs here only where configured as a lande
 
 The acquisition cost must not be counted twice.
 
-## 5.3 cost_allocations
+#### 5.3 cost_allocations
 
 Allocates approved cost components to inventory batches or other supported cost targets.
 
@@ -922,7 +955,7 @@ Allocation totals must reconcile to the source component amount, subject to docu
 
 For direct-to-customer procurement, cost allocation must be linked to the relevant procurement and sales fulfilment records without creating warehouse inventory.
 
-## 5.4 procurement_cost_adjustments
+#### 5.4 procurement_cost_adjustments
 
 Records subsequent approved changes to procurement cost.
 
@@ -942,7 +975,7 @@ Records subsequent approved changes to procurement cost.
 
 An adjustment must not silently rewrite the original landed cost.
 
-## 5.5 inventory_cost_adjustments
+#### 5.5 inventory_cost_adjustments
 
 Tracks the effect of an approved landed-cost adjustment on existing stock and previously issued product.
 
@@ -961,9 +994,9 @@ The treatment must be approved and auditable. The original posted cost and previ
 
 ---
 
-# 6. Inventory management
+### 6. Inventory management
 
-## 6.1 inventory_batches
+#### 6.1 inventory_batches
 
 Represents product physically received into a Deuces-controlled storage location.
 
@@ -984,7 +1017,7 @@ It is not created for direct-to-customer fulfilment.
 
 The source procurement batch must have `fulfilment_type = storage receipt`.
 
-## 6.2 inventory_reservations
+#### 6.2 inventory_reservations
 
 Represents stock reserved for an approved sales order without physically issuing it.
 
@@ -1002,7 +1035,7 @@ Represents stock reserved for an approved sales order without physically issuing
 
 Reservations must not reduce physical on-hand inventory. They reduce available-to-promise inventory.
 
-## 6.3 inventory_reservation_items
+#### 6.3 inventory_reservation_items
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1017,7 +1050,7 @@ Reservations must not reduce physical on-hand inventory. They reduce available-t
 
 The system must prevent total active reservations from exceeding the available quantity of a batch.
 
-## 6.4 inventory_issues
+#### 6.4 inventory_issues
 
 Represents an authorised actual stock issue or dispatch from Deuces-controlled storage.
 
@@ -1035,7 +1068,7 @@ Represents an authorised actual stock issue or dispatch from Deuces-controlled s
 
 Only a posted issue reduces physical inventory.
 
-## 6.5 inventory_movements
+#### 6.5 inventory_movements
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1056,7 +1089,7 @@ A movement cannot have both incoming and outgoing quantities greater than zero. 
 
 Movements are append-only through normal application operations.
 
-## 6.6 fifo_allocations
+#### 6.6 fifo_allocations
 
 FIFO allocations must be attached to actual posted inventory issues, not merely to order reservations.
 
@@ -1079,7 +1112,7 @@ Rules:
 - Corrections use reversal or compensating allocations.
 - Reservations alone do not create FIFO cost-of-sales records.
 
-## 6.7 inventory_adjustments
+#### 6.7 inventory_adjustments
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1096,7 +1129,7 @@ Rules:
 
 An adjustment must produce an appropriate inventory movement when posted.
 
-## 6.8 stock_transfers
+#### 6.8 stock_transfers
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1109,7 +1142,7 @@ An adjustment must produce an appropriate inventory movement when posted.
 | created_by | UUID | Yes | User |
 | approved_by | UUID | No | Approver |
 
-## 6.9 stock_transfer_items
+#### 6.9 stock_transfer_items
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1124,9 +1157,9 @@ Transfers must preserve the originating inventory batch and its cost. Transfer m
 
 ---
 
-# 7. Customers, pricing and sales
+### 7. Customers, pricing and sales
 
-## 7.1 customers
+#### 7.1 customers
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1146,7 +1179,7 @@ Transfers must preserve the originating inventory batch and its cost. Transfer m
 
 Credit availability must be calculated from validated balances and commitments, not maintained as an unverified manually edited number.
 
-## 7.2 customer_locations
+#### 7.2 customer_locations
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1158,7 +1191,7 @@ Credit availability must be calculated from validated balances and commitments, 
 | phone | VARCHAR(30) | No | Contact phone |
 | status | VARCHAR(20) | Yes | Active or inactive |
 
-## 7.3 product_selling_prices
+#### 7.3 product_selling_prices
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1171,7 +1204,7 @@ Credit availability must be calculated from validated balances and commitments, 
 | created_by | UUID | Yes | User |
 | created_at | TIMESTAMPTZ | Yes | Creation timestamp |
 
-## 7.4 customer_product_prices
+#### 7.4 customer_product_prices
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1186,7 +1219,7 @@ Credit availability must be calculated from validated balances and commitments, 
 
 Overlapping active price periods must be prevented unless an explicit priority rule exists.
 
-## 7.5 pricing_rules
+#### 7.5 pricing_rules
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1199,7 +1232,7 @@ Overlapping active price periods must be prevented unless an explicit priority r
 | effective_to | TIMESTAMPTZ | No | End date |
 | created_by | UUID | Yes | User |
 
-## 7.6 sales_orders
+#### 7.6 sales_orders
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1221,7 +1254,7 @@ Overlapping active price periods must be prevented unless an explicit priority r
 
 Order source, representative, agreed price and terms must remain historically traceable.
 
-## 7.7 sales_order_items
+#### 7.7 sales_order_items
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1238,7 +1271,7 @@ Order source, representative, agreed price and terms must remain historically tr
 
 Confirmed selling prices must not change when current price lists change.
 
-## 7.8 pricing_approvals
+#### 7.8 pricing_approvals
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1253,7 +1286,7 @@ Confirmed selling prices must not change when current price lists change.
 | status | VARCHAR(20) | Yes | Pending, approved or rejected |
 | created_at | TIMESTAMPTZ | Yes | Creation timestamp |
 
-## 7.9 sales_invoices
+#### 7.9 sales_invoices
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1271,7 +1304,7 @@ Confirmed selling prices must not change when current price lists change.
 
 Invoice creation must follow the configured invoice trigger. Partial delivery and partial invoicing must be supported.
 
-## 7.10 sales_invoice_items
+#### 7.10 sales_invoice_items
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1287,7 +1320,7 @@ Invoice creation must follow the configured invoice trigger. Partial delivery an
 
 The system must prevent invoicing more than the eligible unbilled quantity unless an authorised adjustment workflow applies.
 
-## 7.11 sales_credit_notes
+#### 7.11 sales_credit_notes
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1305,7 +1338,7 @@ The system must prevent invoicing more than the eligible unbilled quantity unles
 
 Credit notes must reference the original invoice and preserve its history.
 
-## 7.12 sales_credit_note_items
+#### 7.12 sales_credit_note_items
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1316,7 +1349,7 @@ Credit notes must reference the original invoice and preserve its history.
 | amount | NUMERIC(18,2) | Yes | Credit amount |
 | reason | TEXT | No | Line-level explanation |
 
-## 7.13 customer_credit_reviews
+#### 7.13 customer_credit_reviews
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1334,9 +1367,9 @@ Credit limit changes must be auditable. Exceptions to credit controls require au
 
 ---
 
-# 8. Profitability and cost snapshots
+### 8. Profitability and cost snapshots
 
-## 8.1 sales_profitability_snapshots
+#### 8.1 sales_profitability_snapshots
 
 Stores versioned profitability calculations at sales order item level.
 
@@ -1364,7 +1397,7 @@ Unique constraint: `(sales_order_item_id, snapshot_version)`.
 
 Historical snapshots must not be overwritten when actual costs become available.
 
-## 8.2 trip_profitability_snapshots
+#### 8.2 trip_profitability_snapshots
 
 Stores trip-level profitability.
 
@@ -1385,7 +1418,7 @@ Stores trip-level profitability.
 
 The system must not double-count inbound procurement transport and outbound delivery haulage.
 
-## 8.3 profitability_snapshot_allocations
+#### 8.3 profitability_snapshot_allocations
 
 Explains how shared trip costs are allocated to order items.
 
@@ -1402,9 +1435,9 @@ The sum of allocations must reconcile to the source trip cost, subject to docume
 
 ---
 
-# 9. Transporter, driver and employee management
+### 9. Transporter, driver and employee management
 
-## 9.1 transporters
+#### 9.1 transporters
 
 Represents third-party haulage providers.
 
@@ -1421,7 +1454,7 @@ Represents third-party haulage providers.
 | status | VARCHAR(20) | Yes | Active or inactive |
 | created_at | TIMESTAMPTZ | Yes | Creation timestamp |
 
-## 9.2 transporter_contracts
+#### 9.2 transporter_contracts
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1436,7 +1469,7 @@ Represents third-party haulage providers.
 | approved_by | UUID | No | Approver |
 | created_at | TIMESTAMPTZ | Yes | Creation timestamp |
 
-## 9.3 transporter_rate_cards
+#### 9.3 transporter_rate_cards
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1455,7 +1488,7 @@ Represents third-party haulage providers.
 | effective_to | DATE | No | End date |
 | status | VARCHAR(20) | Yes | Active or inactive |
 
-## 9.4 transporter_invoices
+#### 9.4 transporter_invoices
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1473,7 +1506,7 @@ Represents third-party haulage providers.
 
 Transporter invoices and payments must reconcile with the approved haulage cost and trip records.
 
-## 9.5 employees
+#### 9.5 employees
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1487,7 +1520,7 @@ Transporter invoices and payments must reconcile with the approved haulage cost 
 | employment_date | DATE | No | Start date |
 | exit_date | DATE | No | Exit date |
 
-## 9.6 drivers
+#### 9.6 drivers
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1504,7 +1537,7 @@ Transporter invoices and payments must reconcile with the approved haulage cost 
 
 A driver is a separate operational record. A third-party driver must not automatically be treated as a Deuces employee.
 
-## 9.7 driver_documents
+#### 9.7 driver_documents
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1515,7 +1548,7 @@ A driver is a separate operational record. A third-party driver must not automat
 | expiry_date | DATE | No | Expiry |
 | file_path | TEXT | No | Storage reference |
 
-## 9.8 driver_compensation_profiles
+#### 9.8 driver_compensation_profiles
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1533,7 +1566,7 @@ This table applies only where Deuces has an actual compensation obligation to th
 
 For third-party transporter drivers, compensation is normally included in the transporter's agreed haulage fee. No automatic Deuces salary or allowance obligation should be created.
 
-## 9.9 driver_compensation_history
+#### 9.9 driver_compensation_history
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1546,7 +1579,7 @@ For third-party transporter drivers, compensation is normally included in the tr
 | effective_to | DATE | No | End date |
 | approved_by | UUID | No | Approver |
 
-## 9.10 driver_salary_records
+#### 9.10 driver_salary_records
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1562,7 +1595,7 @@ For third-party transporter drivers, compensation is normally included in the tr
 
 Unique constraint: `(driver_id, payroll_period_start, payroll_period_end)` unless a controlled adjustment process is used.
 
-## 9.11 driver_trip_allowances
+#### 9.11 driver_trip_allowances
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1575,7 +1608,7 @@ Unique constraint: `(driver_id, payroll_period_start, payroll_period_end)` unles
 
 Unique constraint: `(driver_id, trip_id)` for a standard single allowance.
 
-## 9.12 driver_advances
+#### 9.12 driver_advances
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1586,7 +1619,7 @@ Unique constraint: `(driver_id, trip_id)` for a standard single allowance.
 | purpose | TEXT | Yes | Purpose |
 | status | VARCHAR(20) | Yes | Outstanding, partially retired, retired or cancelled |
 
-## 9.13 driver_expense_retirements
+#### 9.13 driver_expense_retirements
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1602,9 +1635,9 @@ Multiple retirement records may be allowed against one advance. Cumulative spend
 
 ---
 
-# 10. Fleet management
+### 10. Fleet management
 
-## 10.1 trucks
+#### 10.1 trucks
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1622,7 +1655,7 @@ Multiple retirement records may be allowed against one advance. Cumulative spend
 
 Third-party trucks must be linked to their transporter where known. Company-owned fleet records may be expanded with asset and depreciation functionality later.
 
-## 10.2 truck_ownership_history
+#### 10.2 truck_ownership_history
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1633,7 +1666,7 @@ Third-party trucks must be linked to their transporter where known. Company-owne
 | effective_from | DATE | Yes | Start |
 | effective_to | DATE | No | End |
 
-## 10.3 truck_compartments
+#### 10.3 truck_compartments
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1646,7 +1679,7 @@ Third-party trucks must be linked to their transporter where known. Company-owne
 
 Unique constraint: `(truck_id, compartment_number)`.
 
-## 10.4 compartment_calibrations
+#### 10.4 compartment_calibrations
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1657,7 +1690,7 @@ Unique constraint: `(truck_id, compartment_number)`.
 | expiry_date | DATE | No | Expiry |
 | file_path | TEXT | No | Certificate storage |
 
-## 10.5 compartment_seals
+#### 10.5 compartment_seals
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1668,7 +1701,7 @@ Unique constraint: `(truck_id, compartment_number)`.
 | removed_at | TIMESTAMPTZ | No | Removal |
 | removal_reason | TEXT | No | Reason |
 
-## 10.6 truck_documents
+#### 10.6 truck_documents
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1680,7 +1713,7 @@ Unique constraint: `(truck_id, compartment_number)`.
 | expiry_date | DATE | No | Expiry |
 | file_path | TEXT | No | Storage reference |
 
-## 10.7 truck_assignments
+#### 10.7 truck_assignments
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1690,7 +1723,7 @@ Unique constraint: `(truck_id, compartment_number)`.
 | assigned_from | TIMESTAMPTZ | Yes | Assignment start |
 | assigned_to | TIMESTAMPTZ | No | Assignment end |
 
-## 10.8 truck_maintenance_history
+#### 10.8 truck_maintenance_history
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1704,7 +1737,7 @@ Unique constraint: `(truck_id, compartment_number)`.
 | service_date | DATE | Yes | Service date |
 | next_service_date | DATE | No | Next service |
 
-## 10.9 truck_fuel_logs
+#### 10.9 truck_fuel_logs
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1717,7 +1750,7 @@ Unique constraint: `(truck_id, compartment_number)`.
 | recorded_at | TIMESTAMPTZ | Yes | Record time |
 | evidence_path | TEXT | No | Receipt |
 
-## 10.10 truck_odometer_logs
+#### 10.10 truck_odometer_logs
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1727,7 +1760,7 @@ Unique constraint: `(truck_id, compartment_number)`.
 | recorded_at | TIMESTAMPTZ | Yes | Timestamp |
 | source | VARCHAR(40) | Yes | Inspection, trip or service |
 
-## 10.11 truck_tyre_records
+#### 10.11 truck_tyre_records
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1742,7 +1775,7 @@ Unique constraint: `(truck_id, compartment_number)`.
 | mileage_at_removal | NUMERIC(18,2) | No | Odometer |
 | removal_reason | TEXT | No | Reason |
 
-## 10.12 truck_parts_records
+#### 10.12 truck_parts_records
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1756,9 +1789,9 @@ Unique constraint: `(truck_id, compartment_number)`.
 
 ---
 
-# 11. Trip, dispatch and delivery
+### 11. Trip, dispatch and delivery
 
-## 11.1 trips
+#### 11.1 trips
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1776,7 +1809,7 @@ Unique constraint: `(truck_id, compartment_number)`.
 
 The trip origin and destination must support supplier depot to customer, supplier depot to storage, and storage to customer journeys.
 
-## 11.2 trip_assignments
+#### 11.2 trip_assignments
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1793,7 +1826,7 @@ A trip must have one designated primary truck and driver before loading. Histori
 
 Dispatch selects the transporter manually. The system may show rate, capacity, availability, reliability and performance information but must not automatically assign a transporter.
 
-## 11.3 trip_sales_orders
+#### 11.3 trip_sales_orders
 
 Connects sales orders to trips.
 
@@ -1807,7 +1840,7 @@ Connects sales orders to trips.
 
 Unique constraint: `(trip_id, sales_order_id)` where one trip-order relationship is intended.
 
-## 11.4 trip_sales_order_items
+#### 11.4 trip_sales_order_items
 
 Allocates individual order lines to trips.
 
@@ -1824,7 +1857,7 @@ This table is essential for partial fulfilment and multiple products. A sales or
 
 The sum of active assignments must not exceed the eligible order quantity.
 
-## 11.5 trip_loading_records
+#### 11.5 trip_loading_records
 
 Represents a physical loading event into a truck compartment.
 
@@ -1841,7 +1874,7 @@ Represents a physical loading event into a truck compartment.
 | officer_id | UUID | No | Loading officer |
 | created_at | TIMESTAMPTZ | Yes | Creation timestamp |
 
-## 11.6 trip_loading_batch_allocations
+#### 11.6 trip_loading_batch_allocations
 
 Links one compartment loading record to one or more inventory batches.
 
@@ -1858,7 +1891,7 @@ Exactly one supported source path must be supplied for each allocation. The sum 
 
 For direct supplier-to-customer fulfilment, the procurement batch provides the source traceability. For storage dispatch, the inventory batch provides the source traceability.
 
-## 11.7 trip_delivery_records
+#### 11.7 trip_delivery_records
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1879,7 +1912,7 @@ For direct supplier-to-customer fulfilment, the procurement batch provides the s
 
 A delivery must be linked to its trip, order-line allocation and relevant loading record where applicable.
 
-## 11.8 delivery_evidence
+#### 11.8 delivery_evidence
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1893,7 +1926,7 @@ A delivery must be linked to its trip, order-line allocation and relevant loadin
 
 Required evidence is configurable by transaction type. Evidence must be stored securely with role-based access.
 
-## 11.9 trip_expenses
+#### 11.9 trip_expenses
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1907,7 +1940,7 @@ Required evidence is configurable by transaction type. Evidence must be stored s
 | recorded_by | UUID | Yes | User |
 | created_at | TIMESTAMPTZ | Yes | Creation timestamp |
 
-## 11.10 trip_reconciliations
+#### 11.10 trip_reconciliations
 
 Trip-level reconciliation header.
 
@@ -1922,7 +1955,7 @@ Trip-level reconciliation header.
 | approved_by | UUID | No | Approver |
 | notes | TEXT | No | Reconciliation notes |
 
-## 11.11 trip_reconciliation_items
+#### 11.11 trip_reconciliation_items
 
 Detailed product and delivery-level reconciliation.
 
@@ -1943,7 +1976,7 @@ Detailed product and delivery-level reconciliation.
 
 A trip may contain multiple products and multiple delivery legs. Reconciliation must therefore be performed at the appropriate product and delivery allocation level.
 
-## 11.12 delivery_discrepancies
+#### 11.12 delivery_discrepancies
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1958,7 +1991,7 @@ A trip may contain multiple products and multiple delivery legs. Reconciliation 
 | reported_at | TIMESTAMPTZ | Yes | Report date |
 | reported_by | UUID | Yes | Reporting user |
 
-## 11.13 discrepancy_investigations
+#### 11.13 discrepancy_investigations
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1976,5 +2009,3 @@ A trip may contain multiple products and multiple delivery legs. Reconciliation 
 A discrepancy must never automatically become a driver debt, transporter debt or employee deduction. Liability requires investigation and authorised confirmation.
 
 ---
-
-]
