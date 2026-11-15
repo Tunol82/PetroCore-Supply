@@ -34,3 +34,4 @@ None.
 | `20261115000800_procurement_costs.sql` | Supplier-product links, cost categories, append-only cost components | Applied 2026-11-15; database RLS and privilege checks passed |
 | `20261115000900_sales_core.sql` | Customers, delivery locations, append-only sales orders and lines | Applied 2026-11-15; database RLS and privilege checks passed |
 | `20261115001000_transport_dispatch.sql` | Transporters, trucks, compartments, drivers, trips, assignments | Applied 2026-11-15; database RLS, uniqueness and privilege checks passed |
+| `20261115001100_trip_loading.sql` | Compartment loading records and procurement loading allocations | Applied 2026-11-15; capacity, product-match and quantity triggers verified |

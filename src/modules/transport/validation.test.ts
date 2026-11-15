@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   assignmentSchema,
   compartmentSchema,
   driverSchema,
+  loadingAllocationSchema,
+  loadingRecordSchema,
   transporterSchema,
   tripSchema,
   truckSchema,
@@ -12,6 +14,7 @@ const transporterId = "11111111-1111-1111-1111-111111111111";
 const truckId = "22222222-2222-2222-2222-222222222222";
 const driverId = "33333333-3333-3333-3333-333333333333";
 const tripId = "44444444-4444-4444-4444-444444444444";
+const productId = "55555555-5555-5555-5555-555555555555";
 
 describe("transporterSchema", () => {
   it("accepts a minimal transporter", () => {
@@ -134,3 +137,56 @@ describe("assignmentSchema", () => {
     ).toBe(false);
   });
 });
+
+describe("loadingRecordSchema", () => {
+  const base = {
+    tripId,
+    compartmentId: truckId,
+    productId,
+    loadedQuantity: "15000",
+  };
+
+  it("accepts a loading record", () => {
+    expect(loadingRecordSchema.parse(base).loadedQuantity).toBe(15000);
+  });
+
+  it("rejects a zero loaded quantity", () => {
+    expect(loadingRecordSchema.safeParse({ ...base, loadedQuantity: "0" }).success).toBe(false);
+  });
+
+  it("rejects an invalid loading date", () => {
+    expect(loadingRecordSchema.safeParse({ ...base, loadingDate: "15/11/2026" }).success).toBe(false);
+  });
+});
+
+describe("loadingAllocationSchema", () => {
+  const base = {
+    loadingRecordId: tripId,
+    procurementBatchId: truckId,
+    productId,
+    allocatedQuantity: "10000",
+  };
+
+  it("accepts an allocation without an order line", () => {
+    expect(loadingAllocationSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("accepts a valid order line", () => {
+    expect(
+      loadingAllocationSchema.safeParse({ ...base, salesOrderItemId: driverId }).success,
+    ).toBe(true);
+  });
+
+  it("rejects an invalid order line", () => {
+    expect(
+      loadingAllocationSchema.safeParse({ ...base, salesOrderItemId: "abc" }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a zero allocated quantity", () => {
+    expect(
+      loadingAllocationSchema.safeParse({ ...base, allocatedQuantity: "0" }).success,
+    ).toBe(false);
+  });
+});
+

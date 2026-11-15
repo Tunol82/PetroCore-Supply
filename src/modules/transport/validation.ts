@@ -105,6 +105,24 @@ export const assignmentSchema = z.object({
   assignmentRole: z.enum(ASSIGNMENT_ROLES),
 });
 
+export const loadingRecordSchema = z.object({
+  tripId: uuid("Select a trip."),
+  compartmentId: uuid("Select a compartment."),
+  productId: uuid("Select a product."),
+  loadedQuantity: z.coerce.number().positive("Loaded quantity must be greater than zero."),
+  loadingTicket: optionalText(100),
+  sealNumber: optionalText(100),
+  loadingDate: optionalDate,
+});
+
+export const loadingAllocationSchema = z.object({
+  loadingRecordId: uuid("Select a loading record."),
+  procurementBatchId: uuid("Select a procurement batch."),
+  salesOrderItemId: optionalUuid("Select a valid order line."),
+  productId: uuid("Select a product."),
+  allocatedQuantity: z.coerce.number().positive("Allocated quantity must be greater than zero."),
+});
+
 export type TransporterInput = z.infer<typeof transporterSchema>;
 export type TruckInput = z.infer<typeof truckSchema>;
 export type CompartmentInput = z.infer<typeof compartmentSchema>;

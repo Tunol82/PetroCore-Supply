@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getCurrentTenant, type CurrentTenant } from "@/modules/tenant/current-tenant";
-import { assignmentSchema, tripSchema } from "@/modules/transport/validation";
+import { assignmentSchema, loadingAllocationSchema, loadingRecordSchema, tripSchema } from "@/modules/transport/validation";
 
 export type DispatchActionState = {
   error: string | null;
@@ -150,4 +150,102 @@ export async function assignTrip(
 
   revalidatePath("/workspace/dispatch");
   return { error: null, success: "Trip assigned." };
+}
+
+export async function createLoadingRecord(
+  _previous: DispatchActionState,
+  formData: FormData,
+): Promise<DispatchActionState> {
+  const parsed = loadingRecordSchema.safeParse({
+    tripId: formData.get("tripId"),
+    compartmentId: formData.get("compartmentId"),
+    productId: formData.get("productId"),
+    loadedQuantity: formData.get("loadedQuantity"),
+    loadingTicket: formData.get("loadingTicket"),
+    sealNumber: formData.get("sealNumber"),
+    loadingDate: formData.get("loadingDate"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: insertError } = await context.supabase.from("trip_loading_records").insert({
+    organisation_id: context.tenant.organisationId,
+    trip_id: parsed.data.tripId,
+    compartment_id: parsed.data.compartmentId,
+    product_id: parsed.data.productId,
+    loaded_quantity: parsed.data.loadedQuantity,
+    loading_ticket: textOrNull(parsed.data.loadingTicket),
+    seal_number: textOrNull(parsed.data.sealNumber),
+    loading_time: dateToIso(parsed.data.loadingDate) ?? new Date().toISOString(),
+    officer_id: context.tenant.profileId,
+  });
+
+  if (insertError) {
+    return { error: loadingErrorMessage(insertError), success: null };
+  }
+
+  revalidatePath("/workspace/dispatch");
+  return { error: null, success: "Loading record saved." };
+}
+
+export async function addLoadingAllocation(
+  _previous: DispatchActionState,
+  formData: FormData,
+): Promise<DispatchActionState> {
+  const parsed = loadingAllocationSchema.safeParse({
+    loadingRecordId: formData.get("loadingRecordId"),
+    procurementBatchId: formData.get("procurementBatchId"),
+    salesOrderItemId: formData.get("salesOrderItemId"),
+    productId: formData.get("productId"),
+    allocatedQuantity: formData.get("allocatedQuantity"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: insertError } = await context.supabase
+    .from("trip_loading_procurement_allocations")
+    .insert({
+      organisation_id: context.tenant.organisationId,
+      trip_loading_record_id: parsed.data.loadingRecordId,
+      procurement_batch_id: parsed.data.procurementBatchId,
+      sales_order_item_id: textOrNull(parsed.data.salesOrderItemId),
+      product_id: parsed.data.productId,
+      allocated_quantity: parsed.data.allocatedQuantity,
+      created_by: context.tenant.profileId,
+    });
+
+  if (insertError) {
+    return { error: loadingErrorMessage(insertError), success: null };
+  }
+
+  revalidatePath("/workspace/dispatch");
+  return { error: null, success: "Loading allocation saved." };
+}
+
+function loadingErrorMessage(error: { message?: string; code?: string }): string {
+  const message = error.message ?? "";
+
+  if (
+    message.includes("exceeds") ||
+    message.includes("does not match") ||
+    message.includes("not found")
+  ) {
+    return message;
+  }
+
+  if (error.code === "23505") {
+    return "That procurement batch is already allocated to this loading record.";
+  }
+
+  return "The record could not be saved. Check the quantities and try again.";
 }

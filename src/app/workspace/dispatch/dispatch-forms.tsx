@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { assignTrip, createTrip, type DispatchActionState } from "./actions";
+import { addLoadingAllocation, assignTrip, createLoadingRecord, createTrip, type DispatchActionState } from "./actions";
 
 export type Option = { id: string; label: string };
 
@@ -159,6 +159,140 @@ export function AssignmentForm({
       <Feedback state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Assigning…" : "Assign trip"}
+      </button>
+    </form>
+  );
+}
+
+export function LoadingRecordForm({
+  trips,
+  compartments,
+  products,
+}: {
+  trips: Option[];
+  compartments: Option[];
+  products: Option[];
+}) {
+  const [state, formAction, pending] = useActionState(createLoadingRecord, initialState);
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <label htmlFor="ld-trip" className={labelClass}>Trip</label>
+          <select id="ld-trip" name="tripId" required className={fieldClass} defaultValue="">
+            <option value="" disabled>Select a trip</option>
+            {trips.map((trip) => (
+              <option key={trip.id} value={trip.id}>{trip.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="ld-compartment" className={labelClass}>Compartment</label>
+          <select id="ld-compartment" name="compartmentId" required className={fieldClass} defaultValue="">
+            <option value="" disabled>Select a compartment</option>
+            {compartments.map((compartment) => (
+              <option key={compartment.id} value={compartment.id}>{compartment.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="ld-product" className={labelClass}>Product</label>
+          <select id="ld-product" name="productId" required className={fieldClass} defaultValue="">
+            <option value="" disabled>Select a product</option>
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>{product.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="ld-quantity" className={labelClass}>Loaded quantity</label>
+          <input id="ld-quantity" name="loadedQuantity" type="number" step="0.001" min="0.001" required className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="ld-ticket" className={labelClass}>Loading ticket</label>
+          <input id="ld-ticket" name="loadingTicket" className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="ld-seal" className={labelClass}>Seal number</label>
+          <input id="ld-seal" name="sealNumber" className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="ld-date" className={labelClass}>Loading date</label>
+          <input id="ld-date" name="loadingDate" type="date" className={fieldClass} />
+        </div>
+      </div>
+      <Feedback state={state} />
+      <button type="submit" className={buttonClass} disabled={pending}>
+        {pending ? "Recording…" : "Record loading"}
+      </button>
+    </form>
+  );
+}
+
+export function LoadingAllocationForm({
+  loadingRecords,
+  batches,
+  salesOrderLines,
+  products,
+}: {
+  loadingRecords: Option[];
+  batches: Option[];
+  salesOrderLines: Option[];
+  products: Option[];
+}) {
+  const [state, formAction, pending] = useActionState(addLoadingAllocation, initialState);
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <label htmlFor="la-record" className={labelClass}>Loading record</label>
+          <select id="la-record" name="loadingRecordId" required className={fieldClass} defaultValue="">
+            <option value="" disabled>Select a loading record</option>
+            {loadingRecords.map((record) => (
+              <option key={record.id} value={record.id}>{record.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="la-batch" className={labelClass}>Procurement batch</label>
+          <select id="la-batch" name="procurementBatchId" required className={fieldClass} defaultValue="">
+            <option value="" disabled>Select a batch</option>
+            {batches.map((batch) => (
+              <option key={batch.id} value={batch.id}>{batch.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="la-product" className={labelClass}>Product</label>
+          <select id="la-product" name="productId" required className={fieldClass} defaultValue="">
+            <option value="" disabled>Select a product</option>
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>{product.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="la-sales-line" className={labelClass}>Sales order line (optional)</label>
+          <select id="la-sales-line" name="salesOrderItemId" className={fieldClass} defaultValue="">
+            <option value="">Not linked</option>
+            {salesOrderLines.map((line) => (
+              <option key={line.id} value={line.id}>{line.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="la-quantity" className={labelClass}>Allocated quantity</label>
+          <input id="la-quantity" name="allocatedQuantity" type="number" step="0.001" min="0.001" required className={fieldClass} />
+        </div>
+      </div>
+      <p className="text-xs text-[var(--muted)]">
+        Allocations are checked against the loaded quantity and the procurement batch quantity.
+      </p>
+      <Feedback state={state} />
+      <button type="submit" className={buttonClass} disabled={pending}>
+        {pending ? "Saving…" : "Save allocation"}
       </button>
     </form>
   );

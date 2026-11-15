@@ -106,7 +106,7 @@ Implemented in the scaffold:
 - Procurement costs at `/workspace/procurement/costs`: configurable cost categories and append-only procurement cost components linked to a batch; allocation and approval remain pending decisions.
 - Sales at `/workspace/sales`: customers, delivery locations, append-only sales orders and confirmed order lines with generated line totals. No invoicing, receivables or revenue recognition yet.
 - Fleet at `/workspace/fleet`: transporters, trucks, compartments and drivers. Third-party trucks and drivers must reference a transporter; third-party drivers create no payroll obligation.
-- Dispatch at `/workspace/dispatch`: trips and manual truck/driver assignments, with a database guarantee of one active primary assignment per trip.
+- Dispatch at `/workspace/dispatch`: trips, manual truck/driver assignments, compartment loading records and procurement loading allocations, with database checks for capacity, product match and allocated quantities.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
@@ -162,7 +162,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
 6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
-7. **Milestone 2 in progress.** Procurement, costs, sales orders, fleet and basic dispatch are implemented. Next: loading records, deliveries, evidence and trip reconciliation, plus transporter invoices — the latter needs DR-13. Truck/driver double-booking prevention across time ranges is still unimplemented. Tolerances and variance assessment need DR-01 to DR-03.
+7. **Milestone 2 in progress.** Procurement, costs, sales orders, fleet, dispatch and compartment loading are implemented. Next: deliveries, delivery evidence and trip reconciliation; transporter invoices need DR-13. Inventory batches (warehouse path) and truck/driver double-booking prevention are still outstanding. Tolerances and variance assessment need DR-01 to DR-03.
 8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
@@ -197,6 +197,7 @@ Approval state:
 - Migration `20261115000800_procurement_costs` adds supplier-product links, cost categories and append-only procurement cost components with a recorded-cost audit event.
 - Migration `20261115000900_sales_core` adds customers, delivery locations, append-only sales orders and confirmed order lines with a generated line total.
 - Migration `20261115001000_transport_dispatch` adds transporters, trucks, compartments, drivers, trips and assignments, with one active primary assignment per trip and dispatch audit events.
+- Migration `20261115001100_trip_loading` adds compartment loading records and typed procurement loading allocations, with capacity, product-match and quantity validation triggers.
 - Batch capture records supplier, loaded and received quantities as supplied and defaults `variance_status` to `not_assessed`; it deliberately does not apply tolerances, temperature correction or variance rules.
 - The single non-production platform admin is bootstrapped with `mfa_required = true`; the happy-path test temporarily disabled it and restored it. MFA enrolment is not yet built into the app, so platform switching currently requires an AAL2 session obtained elsewhere.
 

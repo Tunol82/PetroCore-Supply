@@ -4,7 +4,7 @@ import { signOut } from "@/app/workspace/actions";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
-import { AssignmentForm, TripForm } from "./dispatch-forms";
+import { AssignmentForm, LoadingAllocationForm, LoadingRecordForm, TripForm } from "./dispatch-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +34,27 @@ type Location = { id: string; location_name: string; location_code: string };
 type Truck = { id: string; registration_number: string };
 type Driver = { id: string; full_name: string; driver_code: string };
 type Transporter = { id: string; business_name: string };
+type Product = { id: string; product_code: string; product_name: string };
+type Compartment = { id: string; truck_id: string; compartment_number: string; capacity: number };
+type ProcurementBatch = { id: string; batch_number: string; product_id: string };
+type SalesOrderItemRef = { id: string; sales_order_id: string; product_id: string };
+type SalesOrderRef = { id: string; order_number: string };
+type LoadingRecord = {
+  id: string;
+  trip_id: string;
+  compartment_id: string;
+  product_id: string;
+  loaded_quantity: number;
+  loading_time: string;
+};
+type LoadingAllocation = {
+  id: string;
+  trip_loading_record_id: string;
+  procurement_batch_id: string;
+  product_id: string;
+  allocated_quantity: number;
+  created_at: string;
+};
 
 export default async function DispatchPage() {
   if (!getSupabaseConfig()) {
@@ -100,6 +121,32 @@ export default async function DispatchPage() {
       supabase.from("transporters").select("id, business_name").order("business_name"),
     ]);
 
+  const [
+    loadingRecordsResult,
+    allocationsResult,
+    compartmentsResult,
+    productsResult,
+    batchesResult,
+    salesItemsResult,
+    salesOrdersResult,
+  ] = await Promise.all([
+    supabase
+      .from("trip_loading_records")
+      .select("id, trip_id, compartment_id, product_id, loaded_quantity, loading_time")
+      .order("loading_time", { ascending: false })
+      .limit(20),
+    supabase
+      .from("trip_loading_procurement_allocations")
+      .select("id, trip_loading_record_id, procurement_batch_id, product_id, allocated_quantity, created_at")
+      .order("created_at", { ascending: false })
+      .limit(30),
+    supabase.from("truck_compartments").select("id, truck_id, compartment_number, capacity").order("compartment_number"),
+    supabase.from("products").select("id, product_code, product_name").order("product_name"),
+    supabase.from("procurement_batches").select("id, batch_number, product_id").order("created_at", { ascending: false }).limit(30),
+    supabase.from("sales_order_items").select("id, sales_order_id, product_id"),
+    supabase.from("sales_orders").select("id, order_number"),
+  ]);
+
   const queryError =
     tripsResult.error ??
     assignmentsResult.error ??
@@ -107,7 +154,14 @@ export default async function DispatchPage() {
     locationsResult.error ??
     trucksResult.error ??
     driversResult.error ??
-    transportersResult.error;
+    transportersResult.error ??
+    loadingRecordsResult.error ??
+    allocationsResult.error ??
+    compartmentsResult.error ??
+    productsResult.error ??
+    batchesResult.error ??
+    salesItemsResult.error ??
+    salesOrdersResult.error;
 
   if (queryError) {
     return (
@@ -158,6 +212,47 @@ export default async function DispatchPage() {
   const transporterOptions = transporters.map((transporter) => ({
     id: transporter.id,
     label: transporter.business_name,
+  }));
+
+  const loadingRecords = (loadingRecordsResult.data ?? []) as LoadingRecord[];
+  const allocations = (allocationsResult.data ?? []) as LoadingAllocation[];
+  const compartments = (compartmentsResult.data ?? []) as Compartment[];
+  const products = (productsResult.data ?? []) as Product[];
+  const batches = (batchesResult.data ?? []) as ProcurementBatch[];
+  const salesItems = (salesItemsResult.data ?? []) as SalesOrderItemRef[];
+  const salesOrders = (salesOrdersResult.data ?? []) as SalesOrderRef[];
+
+  const compartmentById = new Map(compartments.map((compartment) => [compartment.id, compartment]));
+  const productById = new Map(products.map((product) => [product.id, product]));
+  const batchById = new Map(batches.map((batch) => [batch.id, batch]));
+  const salesOrderById = new Map(salesOrders.map((order) => [order.id, order]));
+  const loadingRecordById = new Map(loadingRecords.map((record) => [record.id, record]));
+
+  const compartmentOptions = compartments.map((compartment) => ({
+    id: compartment.id,
+    label: `${truckById.get(compartment.truck_id)?.registration_number ?? "Truck"} · compartment ${compartment.compartment_number}`,
+  }));
+
+  const productOptions = products.map((product) => ({
+    id: product.id,
+    label: `${product.product_name} (${product.product_code})`,
+  }));
+
+  const batchOptions = batches.map((batch) => ({
+    id: batch.id,
+    label: `${batch.batch_number} · ${productById.get(batch.product_id)?.product_name ?? "product"}`,
+  }));
+
+  const salesLineOptions = salesItems.map((item) => ({
+    id: item.id,
+    label: `${salesOrderById.get(item.sales_order_id)?.order_number ?? "order"} · ${productById.get(item.product_id)?.product_name ?? "product"}`,
+  }));
+
+  const loadingRecordOptions = loadingRecords.map((record) => ({
+    id: record.id,
+    label: `${tripById.get(record.trip_id)?.trip_number ?? "trip"} · ${
+      productById.get(record.product_id)?.product_name ?? "product"
+    } · ${Number(record.loaded_quantity).toLocaleString("en-NG")}`,
   }));
 
   return (
@@ -280,6 +375,119 @@ export default async function DispatchPage() {
                   trucks={truckOptions}
                   drivers={driverOptions}
                   transporters={transporterOptions}
+                />
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold">Loading records</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Latest 20 compartment loadings. Loaded quantity cannot exceed compartment capacity.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
+                <tr>
+                  <th className="py-2 pr-3">Trip</th>
+                  <th className="py-2 pr-3">Compartment</th>
+                  <th className="py-2 pr-3">Product</th>
+                  <th className="py-2 pr-3 text-right">Loaded</th>
+                  <th className="py-2">Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--line)]">
+                {loadingRecords.map((record) => (
+                  <tr key={record.id}>
+                    <td className="py-2 pr-3 font-medium">
+                      {tripById.get(record.trip_id)?.trip_number ?? "—"}
+                    </td>
+                    <td className="py-2 pr-3 text-xs">
+                      {truckById.get(compartmentById.get(record.compartment_id)?.truck_id ?? "")?.registration_number ??
+                        "Truck"}{" "}
+                      · {compartmentById.get(record.compartment_id)?.compartment_number ?? "—"}
+                    </td>
+                    <td className="py-2 pr-3">{productById.get(record.product_id)?.product_name ?? "—"}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">
+                      {Number(record.loaded_quantity).toLocaleString("en-NG")}
+                    </td>
+                    <td className="py-2 text-xs">
+                      {new Date(record.loading_time).toLocaleDateString("en-GB")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {loadingRecords.length === 0 ? (
+              <p className="py-3 text-sm text-[var(--muted)]">No loading records yet.</p>
+            ) : null}
+          </div>
+
+          {canManage ? (
+            <div className="mt-6 border-t border-[var(--line)] pt-5">
+              <h3 className="text-sm font-semibold">Record loading</h3>
+              <div className="mt-3">
+                <LoadingRecordForm
+                  trips={tripOptions}
+                  compartments={compartmentOptions}
+                  products={productOptions}
+                />
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold">Loading allocations</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Direct procurement allocated to a loading record. Products must match and totals are validated.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
+                <tr>
+                  <th className="py-2 pr-3">Loading record</th>
+                  <th className="py-2 pr-3">Batch</th>
+                  <th className="py-2 pr-3">Product</th>
+                  <th className="py-2 text-right">Allocated</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--line)]">
+                {allocations.map((allocation) => {
+                  const record = loadingRecordById.get(allocation.trip_loading_record_id);
+
+                  return (
+                    <tr key={allocation.id}>
+                      <td className="py-2 pr-3 text-xs">
+                        {record ? tripById.get(record.trip_id)?.trip_number ?? "trip" : "—"}
+                      </td>
+                      <td className="py-2 pr-3 text-xs">
+                        {batchById.get(allocation.procurement_batch_id)?.batch_number ?? "—"}
+                      </td>
+                      <td className="py-2 pr-3">{productById.get(allocation.product_id)?.product_name ?? "—"}</td>
+                      <td className="py-2 text-right tabular-nums">
+                        {Number(allocation.allocated_quantity).toLocaleString("en-NG")}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {allocations.length === 0 ? (
+              <p className="py-3 text-sm text-[var(--muted)]">No allocations yet.</p>
+            ) : null}
+          </div>
+
+          {canManage ? (
+            <div className="mt-6 border-t border-[var(--line)] pt-5">
+              <h3 className="text-sm font-semibold">Allocate procurement to loading</h3>
+              <div className="mt-3">
+                <LoadingAllocationForm
+                  loadingRecords={loadingRecordOptions}
+                  batches={batchOptions}
+                  salesOrderLines={salesLineOptions}
+                  products={productOptions}
                 />
               </div>
             </div>
