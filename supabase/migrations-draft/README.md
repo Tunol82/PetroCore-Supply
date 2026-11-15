@@ -32,3 +32,4 @@ None.
 | `20261115000600_least_privilege_grants.sql` | Revokes unused write grants on permissions, audit and batches | Applied 2026-11-15 |
 | `20261115000700_purchase_orders.sql` | Purchase orders, line items and batch-to-order-line linkage | Applied 2026-11-15; live create and linkage checks passed |
 | `20261115000800_procurement_costs.sql` | Supplier-product links, cost categories, append-only cost components | Applied 2026-11-15; database RLS and privilege checks passed |
+| `20261115000900_sales_core.sql` | Customers, delivery locations, append-only sales orders and lines | Applied 2026-11-15; database RLS and privilege checks passed |

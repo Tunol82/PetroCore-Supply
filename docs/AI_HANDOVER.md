@@ -104,6 +104,7 @@ Implemented in the scaffold:
 - Account security at `/account/security`: TOTP enrollment, verification to AAL2 and factor removal. Removing the last factor ends the session so an elevated AAL2 claim cannot persist.
 - Procurement at `/workspace/procurement`: supplier, product and supplier-depot master data, purchase orders and line items, supplier-product links, and append-only procurement batch capture with separate supplier, loaded and received quantities, optional purchase-order line linkage, tenant RLS and audit events.
 - Procurement costs at `/workspace/procurement/costs`: configurable cost categories and append-only procurement cost components linked to a batch; allocation and approval remain pending decisions.
+- Sales at `/workspace/sales`: customers, delivery locations, append-only sales orders and confirmed order lines with generated line totals. No invoicing, receivables or revenue recognition yet.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
@@ -159,7 +160,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
 6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
-7. **Milestone 2 in progress.** Procurement master data, purchase orders, order lines, supplier-product links, batch capture and cost components are implemented. Next: customers, sales orders and pricing, then tolerances and variance assessment once DR-01 to DR-03 are approved. MFA enrolment is at `/account/security`; platform audit is at `/platform/audit`.
+7. **Milestone 2 in progress.** Procurement master data, purchase orders, supplier links, batch capture, cost components and sales order capture are implemented. Next: transport and dispatch (trucks, drivers, trips) — which needs no open decision — or invoicing once DR-08 is approved. Tolerances and variance assessment still need DR-01 to DR-03.
 8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
@@ -192,6 +193,7 @@ Approval state:
 - Migration `20261115000600_least_privilege_grants` revokes unused write grants that Supabase's defaults had applied; RLS already blocked them, but defence in depth now matches intent.
 - Migration `20261115000700_purchase_orders` adds purchase orders, line items with a generated line total, and an optional purchase-order line link on procurement batches. Orders and lines are append-only.
 - Migration `20261115000800_procurement_costs` adds supplier-product links, cost categories and append-only procurement cost components with a recorded-cost audit event.
+- Migration `20261115000900_sales_core` adds customers, delivery locations, append-only sales orders and confirmed order lines with a generated line total.
 - Batch capture records supplier, loaded and received quantities as supplied and defaults `variance_status` to `not_assessed`; it deliberately does not apply tolerances, temperature correction or variance rules.
 - The single non-production platform admin is bootstrapped with `mfa_required = true`; the happy-path test temporarily disabled it and restored it. MFA enrolment is not yet built into the app, so platform switching currently requires an AAL2 session obtained elsewhere.
 
