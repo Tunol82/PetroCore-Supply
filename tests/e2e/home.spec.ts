@@ -44,6 +44,13 @@ test("shows a setup state instead of failing when Supabase is not configured", a
   await expect(page.getByText("No tenant or business data has been assumed")).toBeVisible();
 });
 
+test("protects account security when Supabase is not configured", async ({ page }) => {
+  await page.goto("/account/security");
+
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: /sign in to your account/i })).toBeVisible();
+});
+
 test("sets baseline security headers", async ({ page }) => {
   const response = await page.goto("/");
   const headers = response?.headers() ?? {};

@@ -163,4 +163,4 @@ RLS policies cannot see an httpOnly cookie, so a switched tenant cannot be repre
 | PA-011 tenant user queries platform tables | Pass — permission denied |
 | PA-012 service role in the browser bundle | Pass — key absent from all 16 client bundles |
 
-Test fixture note: the happy-path test temporarily set `mfa_required = false` on the single non-production platform admin because MFA enrolment is not yet built into the application. It was restored to `true` immediately after the run. The production posture remains MFA-required.
+Test fixture note: the initial PA-003 run temporarily set `mfa_required = false` on the single non-production platform admin because MFA enrolment was not yet built. The real path was subsequently verified: enrolling a TOTP factor at `/account/security` raised the session to AAL2, the platform entry form appeared, a tenant was entered and exited, and removing the last factor signed the session out and restored the MFA gate.

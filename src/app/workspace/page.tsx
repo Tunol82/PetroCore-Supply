@@ -27,14 +27,22 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="mx-auto max-w-3xl">
         <header className="flex items-center justify-between border-b border-[var(--line)] pb-5">
           <Brand />
-          <form action={signOut}>
-            <button
+          <div className="flex items-center gap-2">
+            <Link
+              href="/account/security"
               className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
-              type="submit"
             >
-              Sign out
-            </button>
-          </form>
+              Security
+            </Link>
+            <form action={signOut}>
+              <button
+                className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
+                type="submit"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
         </header>
         {children}
       </div>

@@ -103,6 +103,9 @@ export default async function PlatformPage() {
               This platform account must complete an authenticator challenge before entering a tenant. Enrol MFA and
               sign in at AAL2, then return to this page. No tenant data is available until then.
             </p>
+            <Link href="/account/security" className="mt-4 inline-block text-sm font-semibold text-[var(--brand)]">
+              Open security settings
+            </Link>
           </section>
         ) : (
           <section className="mt-8 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
@@ -161,11 +164,19 @@ function Header() {
           <p className="text-xs text-[var(--muted)]">Platform administration</p>
         </div>
       </div>
-      <form action={signOut}>
-        <button className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50" type="submit">
-          Sign out
-        </button>
-      </form>
+      <div className="flex items-center gap-2">
+        <Link
+          href="/account/security"
+          className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
+        >
+          Security
+        </Link>
+        <form action={signOut}>
+          <button className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50" type="submit">
+            Sign out
+          </button>
+        </form>
+      </div>
     </header>
   );
 }
