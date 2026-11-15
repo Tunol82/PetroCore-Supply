@@ -108,6 +108,7 @@ Implemented in the scaffold:
 - Fleet at `/workspace/fleet`: transporters, trucks, compartments and drivers. Third-party trucks and drivers must reference a transporter; third-party drivers create no payroll obligation.
 - Dispatch at `/workspace/dispatch`: trips, manual truck/driver assignments, compartment loading records and procurement loading allocations, with database checks for capacity, product match and allocated quantities.
 - Deliveries at `/workspace/deliveries`: delivery records linked to a trip, sales order line, customer location and optional loading record, with customer-confirmed quantities, status, waybill reference and evidence metadata.
+- Reconciliation at `/workspace/reconciliation`: trip reconciliation headers and items with generated variances, delivery discrepancies and append-only investigations. Variance is evidence only; it does not create a loss or liability.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
@@ -163,7 +164,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
 6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
-7. **Milestone 2 in progress.** Procurement, costs, sales orders, fleet, dispatch, loading and deliveries are implemented. Next: trip reconciliation and discrepancies, inventory batches for the warehouse path, and transporter invoices (DR-13). Evidence files, double-booking prevention and tolerances remain outstanding.
+7. **Milestone 2 in progress.** Procurement, costs, sales orders, fleet, dispatch, loading, deliveries and reconciliation are implemented. Next: inventory batches for the warehouse path (receipts, reservations, issues, FIFO), transporter invoices (DR-13), evidence file upload, and double-booking prevention. Tolerances and variance classification remain open (DR-01/DR-03).
 8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
@@ -200,6 +201,8 @@ Approval state:
 - Migration `20261115001000_transport_dispatch` adds transporters, trucks, compartments, drivers, trips and assignments, with one active primary assignment per trip and dispatch audit events.
 - Migration `20261115001100_trip_loading` adds compartment loading records and typed procurement loading allocations, with capacity, product-match and quantity validation triggers.
 - Migration `20261115001200_deliveries` adds delivery records and evidence metadata, with product, customer-location, cumulative-quantity and confirmed-quantity validation.
+- Migration `20261115001300_reconciliation` adds reconciliation headers, items with generated variances, discrepancies and investigations, with audit events.
+- Migration `20261115001400_reconciliation_grants` revokes leftover UPDATE grants on reconciliation items and investigations.
 - Batch capture records supplier, loaded and received quantities as supplied and defaults `variance_status` to `not_assessed`; it deliberately does not apply tolerances, temperature correction or variance rules.
 - The single non-production platform admin is bootstrapped with `mfa_required = true`; the happy-path test temporarily disabled it and restored it. MFA enrolment is not yet built into the app, so platform switching currently requires an AAL2 session obtained elsewhere.
 

@@ -36,3 +36,5 @@ None.
 | `20261115001000_transport_dispatch.sql` | Transporters, trucks, compartments, drivers, trips, assignments | Applied 2026-11-15; database RLS, uniqueness and privilege checks passed |
 | `20261115001100_trip_loading.sql` | Compartment loading records and procurement loading allocations | Applied 2026-11-15; capacity, product-match and quantity triggers verified |
 | `20261115001200_deliveries.sql` | Delivery records and evidence metadata | Applied 2026-11-15; cumulative-quantity, confirmed-quantity and product checks verified |
+| `20261115001300_reconciliation.sql` | Reconciliation headers/items, discrepancies, investigations | Applied 2026-11-15; generated variances and tenant isolation verified |
+| `20261115001400_reconciliation_grants.sql` | Revokes leftover UPDATE grants on reconciliation evidence | Applied 2026-11-15; update now denied |

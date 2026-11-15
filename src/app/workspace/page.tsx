@@ -195,6 +195,12 @@ export default async function WorkspacePage() {
                 >
                   Deliveries
                 </Link>
+                <Link
+                  href="/workspace/reconciliation"
+                  className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-medium hover:bg-slate-50"
+                >
+                  Reconciliation
+                </Link>
               </>
             ) : null}
             {canManageAccess ? (

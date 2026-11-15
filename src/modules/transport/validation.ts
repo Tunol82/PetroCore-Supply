@@ -167,6 +167,69 @@ export const evidenceSchema = z.object({
   notes: optionalText(500),
 });
 
+export const RECONCILIATION_STATUSES = [
+  "pending",
+  "under_review",
+  "completed",
+  "disputed",
+] as const;
+export const ITEM_STATUSES = ["within_tolerance", "flagged", "investigated", "resolved"] as const;
+export const DISCREPANCY_TYPES = [
+  "supplier",
+  "loading",
+  "transport",
+  "customer_measurement",
+  "other",
+] as const;
+export const DISCREPANCY_STATUSES = [
+  "open",
+  "under_investigation",
+  "resolved",
+  "approved_loss",
+] as const;
+export const PARTY_TYPES = ["supplier", "transporter", "customer", "internal", "unresolved"] as const;
+export const RESPONSIBILITY_STATUSES = ["undetermined", "confirmed", "cleared"] as const;
+
+const nonNegative = (message: string) => z.coerce.number().min(0, message);
+
+export const reconciliationSchema = z.object({
+  tripId: uuid("Select a trip."),
+  reconciliationNumber: z.string().trim().min(2, "Enter the reconciliation number.").max(50),
+  status: z.enum(RECONCILIATION_STATUSES),
+  notes: optionalText(500),
+});
+
+export const reconciliationItemSchema = z.object({
+  reconciliationId: uuid("Select a reconciliation."),
+  tripLoadingRecordId: optionalUuid("Select a loading record."),
+  tripDeliveryRecordId: optionalUuid("Select a delivery record."),
+  productId: uuid("Select a product."),
+  loadedQuantity: nonNegative("Loaded quantity cannot be negative."),
+  deliveredQuantity: nonNegative("Delivered quantity cannot be negative."),
+  reconciliationStatus: z.enum(ITEM_STATUSES),
+  notes: optionalText(500),
+});
+
+export const discrepancySchema = z.object({
+  reconciliationItemId: uuid("Select a reconciliation item."),
+  discrepancyType: z.enum(DISCREPANCY_TYPES),
+  expectedQuantity: nonNegative("Expected quantity cannot be negative."),
+  actualQuantity: nonNegative("Actual quantity cannot be negative."),
+  provisionalFinancialImpact: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? undefined : value),
+    z.coerce.number().optional(),
+  ),
+  status: z.enum(DISCREPANCY_STATUSES),
+});
+
+export const investigationSchema = z.object({
+  discrepancyId: uuid("Select a discrepancy."),
+  findings: optionalText(1000),
+  responsiblePartyType: z.enum(PARTY_TYPES),
+  responsibilityStatus: z.enum(RESPONSIBILITY_STATUSES),
+  resolution: optionalText(1000),
+});
+
 export type TransporterInput = z.infer<typeof transporterSchema>;
 export type TruckInput = z.infer<typeof truckSchema>;
 export type CompartmentInput = z.infer<typeof compartmentSchema>;

@@ -348,6 +348,12 @@ function Header() {
           Dispatch
         </Link>
         <Link
+          href="/workspace/reconciliation"
+          className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
+        >
+          Reconciliation
+        </Link>
+        <Link
           href="/workspace"
           className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
         >

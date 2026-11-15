@@ -3,10 +3,14 @@ import {
   assignmentSchema,
   compartmentSchema,
   deliverySchema,
+  discrepancySchema,
   driverSchema,
   evidenceSchema,
+  investigationSchema,
   loadingAllocationSchema,
   loadingRecordSchema,
+  reconciliationItemSchema,
+  reconciliationSchema,
   transporterSchema,
   tripSchema,
   truckSchema,
@@ -241,6 +245,75 @@ describe("evidenceSchema", () => {
 
   it("rejects an unknown evidence type", () => {
     expect(evidenceSchema.safeParse({ ...base, evidenceType: "video" }).success).toBe(false);
+  });
+});
+
+
+describe("reconciliationSchema", () => {
+  const base = {
+    tripId,
+    reconciliationNumber: "REC-1",
+    status: "pending" as const,
+  };
+
+  it("accepts a pending reconciliation", () => {
+    expect(reconciliationSchema.parse(base).reconciliationNumber).toBe("REC-1");
+  });
+
+  it("rejects an unknown status", () => {
+    expect(reconciliationSchema.safeParse({ ...base, status: "done" }).success).toBe(false);
+  });
+});
+
+describe("reconciliationItemSchema", () => {
+  const base = {
+    reconciliationId: tripId,
+    productId,
+    loadedQuantity: "1000",
+    deliveredQuantity: "980",
+    reconciliationStatus: "flagged" as const,
+  };
+
+  it("accepts a reconciled line", () => {
+    expect(reconciliationItemSchema.parse(base).deliveredQuantity).toBe(980);
+  });
+
+  it("rejects a negative loaded quantity", () => {
+    expect(reconciliationItemSchema.safeParse({ ...base, loadedQuantity: "-1" }).success).toBe(false);
+  });
+});
+
+describe("discrepancySchema", () => {
+  const base = {
+    reconciliationItemId: tripId,
+    discrepancyType: "transport" as const,
+    expectedQuantity: "1000",
+    actualQuantity: "980",
+    status: "open" as const,
+  };
+
+  it("accepts an open discrepancy", () => {
+    expect(discrepancySchema.safeParse(base).success).toBe(true);
+  });
+
+  it("rejects a negative expected quantity", () => {
+    expect(discrepancySchema.safeParse({ ...base, expectedQuantity: "-1" }).success).toBe(false);
+  });
+});
+
+describe("investigationSchema", () => {
+  const base = {
+    discrepancyId: tripId,
+    responsiblePartyType: "transporter" as const,
+    responsibilityStatus: "undetermined" as const,
+  };
+
+  it("accepts an investigation", () => {
+    expect(investigationSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("rejects an unknown party type", () => {
+    expect(investigationSchema.safeParse({ ...base, responsiblePartyType: "driver" }).success).toBe(false);
   });
 });
 
