@@ -50,6 +50,11 @@ export const batchSchema = z
     supplierId: uuid("Select a supplier."),
     supplierDepotId: uuid("Select a supplier depot."),
     productId: uuid("Select a product."),
+    purchaseOrderItemId: z
+      .string()
+      .optional()
+      .or(z.literal(""))
+      .refine((value) => !value || UUID_PATTERN.test(value), "Select a valid order line."),
     supplierQuantity: z.coerce.number().positive("Supplier quantity must be greater than zero."),
     loadedQuantity: optionalQuantity,
     receivedQuantity: optionalQuantity,
@@ -73,7 +78,39 @@ export const batchSchema = z
     },
   );
 
+export const purchaseOrderSchema = z
+  .object({
+    poNumber: z.string().trim().min(2, "Enter a purchase order number.").max(50),
+    supplierId: uuid("Select a supplier."),
+    supplierDepotId: z
+      .string()
+      .optional()
+      .or(z.literal(""))
+      .refine((value) => !value || UUID_PATTERN.test(value), "Select a depot."),
+    orderDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid order date."),
+    expectedDate: optionalDate,
+    paymentTerms: optionalText(40),
+    notes: optionalText(500),
+  })
+  .refine((value) => !value.expectedDate || value.expectedDate >= value.orderDate, {
+    message: "Expected date cannot be before the order date.",
+    path: ["expectedDate"],
+  });
+
+export const purchaseOrderItemSchema = z.object({
+  purchaseOrderId: uuid("Select a purchase order."),
+  productId: uuid("Select a product."),
+  orderedQuantity: z.coerce.number().positive("Ordered quantity must be greater than zero."),
+  agreedUnitPrice: z.coerce.number().min(0, "Unit price cannot be negative."),
+  discountAmount: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? undefined : value),
+    z.coerce.number().min(0, "Discount cannot be negative.").optional(),
+  ),
+});
+
 export type SupplierInput = z.infer<typeof supplierSchema>;
 export type DepotInput = z.infer<typeof depotSchema>;
 export type ProductInput = z.infer<typeof productSchema>;
 export type BatchInput = z.infer<typeof batchSchema>;
+export type PurchaseOrderInput = z.infer<typeof purchaseOrderSchema>;
+export type PurchaseOrderItemInput = z.infer<typeof purchaseOrderItemSchema>;

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { batchSchema, depotSchema, productSchema, supplierSchema } from "./validation";
+import {
+  batchSchema,
+  depotSchema,
+  productSchema,
+  purchaseOrderItemSchema,
+  purchaseOrderSchema,
+  supplierSchema,
+} from "./validation";
 
 const supplierId = "11111111-1111-1111-1111-111111111111";
 const depotId = "22222222-2222-2222-2222-222222222222";
@@ -79,5 +86,72 @@ describe("batchSchema", () => {
 
   it("rejects an invalid date", () => {
     expect(batchSchema.safeParse({ ...base, loadingDate: "15/11/2026" }).success).toBe(false);
+  });
+});
+
+describe("purchaseOrderSchema", () => {
+  const base = {
+    poNumber: "PO-001",
+    supplierId,
+    orderDate: "2026-11-15",
+  };
+
+  it("accepts a minimal purchase order", () => {
+    expect(purchaseOrderSchema.parse(base).poNumber).toBe("PO-001");
+  });
+
+  it("rejects an expected date before the order date", () => {
+    expect(purchaseOrderSchema.safeParse({ ...base, expectedDate: "2026-11-14" }).success).toBe(false);
+  });
+
+  it("rejects a malformed order date", () => {
+    expect(purchaseOrderSchema.safeParse({ ...base, orderDate: "15/11/2026" }).success).toBe(false);
+  });
+});
+
+describe("purchaseOrderItemSchema", () => {
+  const base = {
+    purchaseOrderId: supplierId,
+    productId,
+    orderedQuantity: "33000",
+    agreedUnitPrice: "850.5",
+  };
+
+  it("coerces quantity and price", () => {
+    const parsed = purchaseOrderItemSchema.parse(base);
+    expect(parsed.orderedQuantity).toBe(33000);
+    expect(parsed.agreedUnitPrice).toBe(850.5);
+  });
+
+  it("rejects a zero quantity", () => {
+    expect(purchaseOrderItemSchema.safeParse({ ...base, orderedQuantity: "0" }).success).toBe(false);
+  });
+
+  it("rejects a negative unit price", () => {
+    expect(purchaseOrderItemSchema.safeParse({ ...base, agreedUnitPrice: "-1" }).success).toBe(false);
+  });
+});
+
+describe("batch purchase-order linkage", () => {
+  const base = {
+    batchNumber: "BAT-001",
+    supplierId,
+    supplierDepotId: depotId,
+    productId,
+    supplierQuantity: "33000",
+    fulfilmentType: "storage_receipt" as const,
+    receivedAtLocationId: locationId,
+  };
+
+  it("accepts a valid purchase-order line reference", () => {
+    expect(
+      batchSchema.safeParse({ ...base, purchaseOrderItemId: supplierId }).success,
+    ).toBe(true);
+  });
+
+  it("rejects an invalid purchase-order line reference", () => {
+    expect(
+      batchSchema.safeParse({ ...base, purchaseOrderItemId: "not-a-uuid" }).success,
+    ).toBe(false);
   });
 });

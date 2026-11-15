@@ -2,8 +2,10 @@
 
 import { useActionState, useState } from "react";
 import {
+  addPurchaseOrderItem,
   createDepot,
   createProduct,
+  createPurchaseOrder,
   createSupplier,
   recordBatch,
   type ProcurementActionState,
@@ -162,16 +164,138 @@ export function ProductForm() {
   );
 }
 
+export function PurchaseOrderForm({
+  suppliers,
+  depots,
+}: {
+  suppliers: Option[];
+  depots: DepotOption[];
+}) {
+  const [state, formAction, pending] = useActionState(createPurchaseOrder, initialState);
+  const [supplierId, setSupplierId] = useState("");
+  const depotsForSupplier = depots.filter((depot) => depot.supplierId === supplierId);
+  const today = new Date().toISOString().slice(0, 10);
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label htmlFor="po-number" className={labelClass}>Purchase order number</label>
+          <input id="po-number" name="poNumber" required className={fieldClass} placeholder="PO-2026-0001" />
+        </div>
+        <div>
+          <label htmlFor="po-supplier" className={labelClass}>Supplier</label>
+          <select
+            id="po-supplier"
+            name="supplierId"
+            required
+            className={fieldClass}
+            value={supplierId}
+            onChange={(event) => setSupplierId(event.target.value)}
+          >
+            <option value="" disabled>Select a supplier</option>
+            {suppliers.map((supplier) => (
+              <option key={supplier.id} value={supplier.id}>{supplier.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="po-depot" className={labelClass}>Supplier depot (optional)</label>
+          <select id="po-depot" name="supplierDepotId" className={fieldClass} defaultValue="">
+            <option value="">Not specified</option>
+            {depotsForSupplier.map((depot) => (
+              <option key={depot.id} value={depot.id}>{depot.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="po-order-date" className={labelClass}>Order date</label>
+          <input id="po-order-date" name="orderDate" type="date" required defaultValue={today} className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="po-expected-date" className={labelClass}>Expected date (optional)</label>
+          <input id="po-expected-date" name="expectedDate" type="date" className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="po-terms" className={labelClass}>Payment terms</label>
+          <input id="po-terms" name="paymentTerms" className={fieldClass} placeholder="30 days" />
+        </div>
+      </div>
+      <div>
+        <label htmlFor="po-notes" className={labelClass}>Notes</label>
+        <input id="po-notes" name="notes" className={fieldClass} />
+      </div>
+      <Feedback state={state} />
+      <button type="submit" className={buttonClass} disabled={pending}>
+        {pending ? "Saving…" : "Save purchase order"}
+      </button>
+    </form>
+  );
+}
+
+export function PurchaseOrderItemForm({
+  orders,
+  products,
+}: {
+  orders: Option[];
+  products: Option[];
+}) {
+  const [state, formAction, pending] = useActionState(addPurchaseOrderItem, initialState);
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label htmlFor="poi-order" className={labelClass}>Purchase order</label>
+          <select id="poi-order" name="purchaseOrderId" required className={fieldClass} defaultValue="">
+            <option value="" disabled>Select a purchase order</option>
+            {orders.map((order) => (
+              <option key={order.id} value={order.id}>{order.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="poi-product" className={labelClass}>Product</label>
+          <select id="poi-product" name="productId" required className={fieldClass} defaultValue="">
+            <option value="" disabled>Select a product</option>
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>{product.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="poi-quantity" className={labelClass}>Ordered quantity</label>
+          <input id="poi-quantity" name="orderedQuantity" type="number" step="0.001" min="0.001" required className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="poi-price" className={labelClass}>Agreed unit price</label>
+          <input id="poi-price" name="agreedUnitPrice" type="number" step="0.0001" min="0" required className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="poi-discount" className={labelClass}>Discount (optional)</label>
+          <input id="poi-discount" name="discountAmount" type="number" step="0.01" min="0" className={fieldClass} />
+        </div>
+      </div>
+      <Feedback state={state} />
+      <button type="submit" className={buttonClass} disabled={pending}>
+        {pending ? "Saving…" : "Save order line"}
+      </button>
+    </form>
+  );
+}
+
 export function BatchForm({
   suppliers,
   depots,
   products,
   locations,
+  purchaseOrderLines,
 }: {
   suppliers: Option[];
   depots: DepotOption[];
   products: Option[];
   locations: Option[];
+  purchaseOrderLines: Option[];
 }) {
   const [state, formAction, pending] = useActionState(recordBatch, initialState);
   const [supplierId, setSupplierId] = useState("");
@@ -219,6 +343,15 @@ export function BatchForm({
             <option value="" disabled>Select a product</option>
             {products.map((product) => (
               <option key={product.id} value={product.id}>{product.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="batch-po-line" className={labelClass}>Purchase order line (optional)</label>
+          <select id="batch-po-line" name="purchaseOrderItemId" className={fieldClass} defaultValue="">
+            <option value="">Not linked to an order line</option>
+            {purchaseOrderLines.map((line) => (
+              <option key={line.id} value={line.id}>{line.label}</option>
             ))}
           </select>
         </div>

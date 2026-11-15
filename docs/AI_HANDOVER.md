@@ -102,7 +102,7 @@ Implemented in the scaffold:
 - Platform administration at `/platform`: platform admins only, MFA-gated by default, read-only tenant view, 30-minute switch sessions and an append-only platform audit trail.
 - Platform audit viewer at `/platform/audit`: newest 50 platform events with action, administrator, tenant, reason and timestamp; platform admins only.
 - Account security at `/account/security`: TOTP enrollment, verification to AAL2 and factor removal. Removing the last factor ends the session so an elevated AAL2 claim cannot persist.
-- Procurement at `/workspace/procurement`: supplier, product and supplier-depot master data plus append-only procurement batch capture with separate supplier, loaded and received quantities, tenant RLS and an audit event per batch.
+- Procurement at `/workspace/procurement`: supplier, product and supplier-depot master data, purchase orders and line items, and append-only procurement batch capture with separate supplier, loaded and received quantities, optional purchase-order line linkage, tenant RLS and audit events.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
@@ -158,7 +158,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
 6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
-7. **Milestone 2 in progress.** Procurement master data and append-only batch capture are implemented. Next: purchase orders and sales linkage, then tolerances and variance assessment once DR-01 to DR-03 are approved. MFA enrolment is at `/account/security`; platform audit is at `/platform/audit`.
+7. **Milestone 2 in progress.** Procurement master data, purchase orders, order lines and append-only batch capture are implemented. Next: supplier pricing and landed-cost components, then tolerances and variance assessment once DR-01 to DR-03 are approved. MFA enrolment is at `/account/security`; platform audit is at `/platform/audit`.
 8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
@@ -189,6 +189,7 @@ Approval state:
 - **DR-26 approved and implemented:** migration `20261115000400_platform_admin` adds platform admins, switch sessions and platform audit. PA-001-PA-012 passed. Platform access is read-only and MFA-gated by default.
 - Migration `20261115000500_procurement_core` adds suppliers, supplier depots, products and append-only procurement batches, with `procurement.view` / `procurement.manage` permissions.
 - Migration `20261115000600_least_privilege_grants` revokes unused write grants that Supabase's defaults had applied; RLS already blocked them, but defence in depth now matches intent.
+- Migration `20261115000700_purchase_orders` adds purchase orders, line items with a generated line total, and an optional purchase-order line link on procurement batches. Orders and lines are append-only.
 - Batch capture records supplier, loaded and received quantities as supplied and defaults `variance_status` to `not_assessed`; it deliberately does not apply tolerances, temperature correction or variance rules.
 - The single non-production platform admin is bootstrapped with `mfa_required = true`; the happy-path test temporarily disabled it and restored it. MFA enrolment is not yet built into the app, so platform switching currently requires an AAL2 session obtained elsewhere.
 

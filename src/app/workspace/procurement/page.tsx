@@ -4,7 +4,7 @@ import { signOut } from "@/app/workspace/actions";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
-import { BatchForm, DepotForm, ProductForm, SupplierForm } from "./procurement-forms";
+import { BatchForm, DepotForm, ProductForm, PurchaseOrderForm, PurchaseOrderItemForm, SupplierForm } from "./procurement-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +18,7 @@ type Batch = {
   supplier_id: string;
   supplier_depot_id: string;
   product_id: string;
+  purchase_order_item_id: string | null;
   supplier_quantity: number;
   loaded_quantity: number | null;
   received_quantity: number | null;
@@ -25,6 +26,26 @@ type Batch = {
   fulfilment_type: string;
   variance_status: string;
   created_at: string;
+};
+
+type PurchaseOrder = {
+  id: string;
+  po_number: string;
+  supplier_id: string;
+  order_date: string;
+  expected_date: string | null;
+  status: string;
+  currency: string;
+};
+
+type PurchaseOrderItem = {
+  id: string;
+  purchase_order_id: string;
+  product_id: string;
+  ordered_quantity: number;
+  agreed_unit_price: number;
+  discount_amount: number;
+  line_total: number;
 };
 
 function formatQuantity(value: number | null) {
@@ -76,7 +97,15 @@ export default async function ProcurementPage() {
     );
   }
 
-  const [suppliersResult, depotsResult, productsResult, locationsResult, batchesResult] = await Promise.all([
+  const [
+    suppliersResult,
+    depotsResult,
+    productsResult,
+    locationsResult,
+    batchesResult,
+    ordersResult,
+    orderItemsResult,
+  ] = await Promise.all([
     supabase.from("suppliers").select("id, supplier_code, name, status").order("name"),
     supabase.from("supplier_depots").select("id, supplier_id, depot_code, name").order("name"),
     supabase.from("products").select("id, product_code, product_name, unit_of_measure").order("product_name"),
@@ -88,10 +117,19 @@ export default async function ProcurementPage() {
     supabase
       .from("procurement_batches")
       .select(
-        "id, batch_number, supplier_id, supplier_depot_id, product_id, supplier_quantity, loaded_quantity, received_quantity, total_quantity_variance, fulfilment_type, variance_status, created_at",
+        "id, batch_number, supplier_id, supplier_depot_id, product_id, purchase_order_item_id, supplier_quantity, loaded_quantity, received_quantity, total_quantity_variance, fulfilment_type, variance_status, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(20),
+    supabase
+      .from("purchase_orders")
+      .select("id, po_number, supplier_id, order_date, expected_date, status, currency")
+      .order("order_date", { ascending: false })
+      .limit(20),
+    supabase
+      .from("purchase_order_items")
+      .select("id, purchase_order_id, product_id, ordered_quantity, agreed_unit_price, discount_amount, line_total")
+      .order("created_at", { ascending: true }),
   ]);
 
   const queryError =
@@ -99,7 +137,9 @@ export default async function ProcurementPage() {
     depotsResult.error ??
     productsResult.error ??
     locationsResult.error ??
-    batchesResult.error;
+    batchesResult.error ??
+    ordersResult.error ??
+    orderItemsResult.error;
 
   if (queryError) {
     return (
@@ -121,10 +161,35 @@ export default async function ProcurementPage() {
   const products = (productsResult.data ?? []) as Product[];
   const locations = (locationsResult.data ?? []) as Location[];
   const batches = (batchesResult.data ?? []) as Batch[];
+  const orders = (ordersResult.data ?? []) as PurchaseOrder[];
+  const orderItems = (orderItemsResult.data ?? []) as PurchaseOrderItem[];
 
   const supplierById = new Map(suppliers.map((supplier) => [supplier.id, supplier]));
   const depotById = new Map(depots.map((depot) => [depot.id, depot]));
   const productById = new Map(products.map((product) => [product.id, product]));
+  const orderById = new Map(orders.map((order) => [order.id, order]));
+  const orderItemById = new Map(orderItems.map((item) => [item.id, item]));
+
+  const itemsByOrder = new Map<string, PurchaseOrderItem[]>();
+  for (const item of orderItems) {
+    const current = itemsByOrder.get(item.purchase_order_id) ?? [];
+    current.push(item);
+    itemsByOrder.set(item.purchase_order_id, current);
+  }
+
+  const orderOptions = orders.map((order) => ({
+    id: order.id,
+    label: `${order.po_number} · ${supplierById.get(order.supplier_id)?.name ?? "Unknown supplier"}`,
+  }));
+
+  const purchaseOrderLineOptions = orderItems.map((item) => {
+    const order = orderById.get(item.purchase_order_id);
+    const product = productById.get(item.product_id);
+    return {
+      id: item.id,
+      label: `${order?.po_number ?? "Order"} · ${product?.product_name ?? "Product"}`,
+    };
+  });
 
   const supplierOptions = suppliers.map((supplier) => ({
     id: supplier.id,
@@ -172,6 +237,7 @@ export default async function ProcurementPage() {
                 <tr>
                   <th className="py-2 pr-3">Batch</th>
                   <th className="py-2 pr-3">Product</th>
+                  <th className="py-2 pr-3">Order</th>
                   <th className="py-2 pr-3">Supplier / depot</th>
                   <th className="py-2 pr-3 text-right">Supplier</th>
                   <th className="py-2 pr-3 text-right">Loaded</th>
@@ -185,6 +251,13 @@ export default async function ProcurementPage() {
                   <tr key={batch.id}>
                     <td className="py-2 pr-3 font-medium">{batch.batch_number}</td>
                     <td className="py-2 pr-3">{productById.get(batch.product_id)?.product_name ?? "—"}</td>
+                    <td className="py-2 pr-3 text-xs">
+                      {batch.purchase_order_item_id
+                        ? orderById.get(
+                            orderItemById.get(batch.purchase_order_item_id)?.purchase_order_id ?? "",
+                          )?.po_number ?? "—"
+                        : "—"}
+                    </td>
                     <td className="py-2 pr-3">
                       {supplierById.get(batch.supplier_id)?.name ?? "—"}
                       <span className="block text-xs text-[var(--muted)]">
@@ -223,7 +296,73 @@ export default async function ProcurementPage() {
                   depots={depotOptions}
                   products={productOptions}
                   locations={locationOptions}
+                  purchaseOrderLines={purchaseOrderLineOptions}
                 />
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold">Purchase orders</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Commitments only. Creating a purchase order does not create inventory.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
+                <tr>
+                  <th className="py-2 pr-3">PO</th>
+                  <th className="py-2 pr-3">Supplier</th>
+                  <th className="py-2 pr-3">Order date</th>
+                  <th className="py-2 pr-3">Expected</th>
+                  <th className="py-2 pr-3">Status</th>
+                  <th className="py-2 pr-3 text-right">Lines</th>
+                  <th className="py-2 text-right">Value</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--line)]">
+                {orders.map((order) => {
+                  const lines = itemsByOrder.get(order.id) ?? [];
+                  const total = lines.reduce((sum, line) => sum + Number(line.line_total), 0);
+
+                  return (
+                    <tr key={order.id}>
+                      <td className="py-2 pr-3 font-medium">{order.po_number}</td>
+                      <td className="py-2 pr-3">{supplierById.get(order.supplier_id)?.name ?? "—"}</td>
+                      <td className="py-2 pr-3">{order.order_date}</td>
+                      <td className="py-2 pr-3">{order.expected_date ?? "—"}</td>
+                      <td className="py-2 pr-3 text-xs">{order.status}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{lines.length}</td>
+                      <td className="py-2 text-right tabular-nums">
+                        {new Intl.NumberFormat("en-NG", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }).format(total)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {orders.length === 0 ? (
+              <p className="py-3 text-sm text-[var(--muted)]">No purchase orders yet.</p>
+            ) : null}
+          </div>
+
+          {canManage ? (
+            <div className="mt-6 grid gap-6 border-t border-[var(--line)] pt-5 lg:grid-cols-2">
+              <div>
+                <h3 className="text-sm font-semibold">Create purchase order</h3>
+                <div className="mt-3">
+                  <PurchaseOrderForm suppliers={supplierOptions} depots={depotOptions} />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">Add order line</h3>
+                <div className="mt-3">
+                  <PurchaseOrderItemForm orders={orderOptions} products={productOptions} />
+                </div>
               </div>
             </div>
           ) : null}

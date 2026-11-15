@@ -30,3 +30,4 @@ None.
 | `20261115000400_platform_admin.sql` | Platform admins, switch sessions, platform audit | Applied 2026-11-15; PA-001 to PA-012 passed |
 | `20261115000500_procurement_core.sql` | Suppliers, supplier depots, products, append-only procurement batches | Applied 2026-11-15; live create and isolation checks passed |
 | `20261115000600_least_privilege_grants.sql` | Revokes unused write grants on permissions, audit and batches | Applied 2026-11-15 |
+| `20261115000700_purchase_orders.sql` | Purchase orders, line items and batch-to-order-line linkage | Applied 2026-11-15; live create and linkage checks passed |
