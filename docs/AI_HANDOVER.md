@@ -85,17 +85,21 @@ Implemented in the scaffold:
 - Next.js/React/TypeScript application shell and PetroCore Supply landing page.
 - Email/password sign-in UI, Zod input validation, Supabase SSR browser/server client helpers and request session-refresh proxy.
 - Authenticated workspace gate and sign-out action.
-- Starter unit test for sign-in validation and a Playwright home-page test.
-- GitHub Actions workflow for lint, typecheck, unit tests and production build.
+- Starter unit test for sign-in validation and a Playwright end-to-end suite covering the product identity and sign-in form.
+- GitHub Actions workflow for lint, typecheck, unit tests and production build, plus a separate Playwright end-to-end job.
+- Committed `package-lock.json`; CI installs with `npm ci` for reproducible builds.
 - Technical foundation, Milestone 1 scope, consolidated Database Dictionary v1.2 source document and Database v1.2 Reconciliation Report.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
+- A local verification pass was completed on Windows against Node 24.16.0 / npm 11.13.0: `npm install`, `npm run lint`, `npm run typecheck`, `npm test` (3 tests) and `npm run build` all passed, and `npm run test:e2e` passed 2 Playwright tests.
 - This does **not** establish that a configured Supabase project, tenant membership, RLS, production database or business transactions work.
 - Supabase environment values are not configured/verified in this handover.
 - No production business tables or SQL migrations have been created.
 - No procurement, inventory, sales, dispatch, delivery or finance transaction flows have been implemented.
 - No code has been merged into `main`; PR #1 remains draft.
+
+Local development and review work now happens on `chore/verification-and-ci-hardening`, branched from `chore/initial-project-scaffold`.
 
 ## 7. Source documents — read before implementation
 
@@ -121,6 +125,7 @@ Do not guess these or encode irreversible assumptions:
 - Documents/evidence: required document types, ownership, retention, versioning, access, evidence validation and polymorphic-link safeguards.
 - Liabilities and payment controls: supplier/transporter liability creation, invoice matching, payment verification, allocation, reversals and derived AP/AR reconciliation.
 - Canonical physical schema: exact table/column names, field types, nullability, FKs, uniqueness, delete policy, indexes, RLS, triggers, transaction boundaries and migration/backfill strategy.
+- Greenfield or legacy migration: confirm whether a pre-existing v1.1 PetroCore Supply database exists. The v1.2 documents assume one and require baseline inspection and additive backfill; if the product is greenfield, that instruction needs explicit owner reinterpretation (Reconciliation Report decision 25).
 
 The reconciliation report's implementation gate remains binding: **no production SQL or schema migration until the complete field-level dictionary, ERD and related business/technical specifications are reconciled and approved, and the actual target database has been inspected/backed up.**
 
@@ -128,11 +133,11 @@ The reconciliation report's implementation gate remains binding: **no production
 
 Work in small, reviewable commits on a feature branch. Do not merge PR #1 or create production migrations just to make visible progress.
 
-1. Inspect the full repository and current PR head; preserve any user changes.
-2. Run `npm install`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` and the Playwright suite locally; fix any failures and report exactly what ran.
-3. Review the scaffold for accessibility, error handling, session handling and Next.js/Supabase SSR correctness. Add tests where needed.
-4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables.
-5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement.
+1. ~~Inspect the full repository and current PR head; preserve any user changes.~~ Done 2026-11-15.
+2. ~~Run `npm install`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` and the Playwright suite locally; fix any failures and report exactly what ran.~~ Done 2026-11-15; see Section 6. Playwright now runs in CI.
+3. Review the scaffold for accessibility, error handling, session handling and Next.js/Supabase SSR correctness. Add tests where needed. **In progress:** remaining gaps are the signed-in `/login` redirect, the unconfigured-Supabase state, linking validation errors to inputs with `aria-invalid`/`aria-describedby`, and a no-active-membership state.
+4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Not started.**
+5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Not started.**
 6. After the physical schema is approved, implement additive migrations, RLS policies and cross-tenant/cross-location tests before any operational modules.
 7. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 

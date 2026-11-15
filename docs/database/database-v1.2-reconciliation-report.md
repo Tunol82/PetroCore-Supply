@@ -258,6 +258,7 @@ Additional schema decisions revealed by the ERD reconciliation:
 22. Transporter invoice header: whether trip_id remains nullable for backward compatibility and how invoice items become authoritative.
 23. Payment event model: exact relationship among financial_transactions, payment_records, payment_channels and reversals.
 24. Tenant and location ownership: required organisation_id/location_id coverage and RLS policy model; global reference catalogs and tenant-specific custom values are governed by D-005.
+25. **Greenfield or legacy migration:** confirm whether a pre-existing v1.1 PetroCore Supply database actually exists. The v1.2 documents assume an existing v1.1 schema to inspect, backfill and migrate additively. If the product is greenfield, the baseline-verification and backfill migrations reduce to schema creation with no legacy rows, and the "do not build from scratch" instruction must be reinterpreted with owner approval. This is unresolved and must not be assumed either way.
 
 ## 9. Approved decision log
 
