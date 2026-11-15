@@ -13,8 +13,9 @@ Use it to review a proposed migration, not as a substitute for one.
 
 ## 2. Preconditions before any migration is drafted
 
-- [x] Field-level Database Dictionary v1.2 available in `docs/database/` (proposal, owner-approved review baseline).
+- [x] Field-level Database Dictionary v1.2 available in `docs/database/` (Parts 1–2, proposal, owner-approved review baseline).
 - [x] ERD v1.2 available in `docs/erd/` (reconstructed proposal, owner-approved with re-verification condition).
+- [x] v1.1 Part 2 supplied (sections 12–25, including audit and platform controls).
 - [ ] Business Rules & Financial Logic Specification and Technical Blueprint reconciled against both.
 - [x] Reconciliation decision 25 resolved: **greenfield** (DR-25, 2026-11-15).
 - [x] Canonical naming approved: retain v1.1 names (DR-16, 2026-11-15).

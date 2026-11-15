@@ -148,7 +148,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 3. Review the scaffold for accessibility, error handling, session handling and Next.js/Supabase SSR correctness. Add tests where needed. **Partially done:** signed-in `/login` redirect, unconfigured-Supabase state, per-field validation with accessible errors and focus handling are implemented and covered by tests. Remaining: an explicit no-active-membership state, which needs the approved membership schema.
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. DR-16 and DR-25 are now approved; DR-10, DR-20 and DR-24 remain Open.
-6. Resolve DR-10 (location model), DR-24 (ownership/RLS) and, if approvals are in scope, DR-20. Then draft Migration 1 from `migration-1-tenant-access-checklist.md`, apply it to an empty non-production project, and add RLS plus cross-tenant/cross-location tests before any operational module.
+6. Resolve DR-10 (location model), DR-24 (ownership/RLS) and, if approvals are in scope, DR-20. Then review `supabase/migrations-draft/0001_tenant_access_core.sql` against `docs/database/migration-1-physical-proposal.md`, provision an empty non-production project, apply the draft and run the RLS plus cross-tenant/cross-location tests before any operational module.
 7. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
@@ -170,6 +170,8 @@ Approval state:
 - **DR-16 approved:** retain the v1.1 canonical names; ERD names are documentation aliases only.
 - **DR-25 approved:** greenfield. No v1.1 database exists; build v1.2 semantics directly in an empty project.
 - v1.1 baseline provenance and the field-level amendments are approved. ERD approval applies to the reconstruction; re-verify if the original artefact is produced.
+- v1.1 Part 2 (sections 12–25) was supplied on 2026-11-15 and appended to Appendix A, closing the platform-control gap.
+- A schema draft now exists at `supabase/migrations-draft/0001_tenant_access_core.sql`. It is **not** in `supabase/migrations/`, has not been executed, and must not be applied until the checklist in `docs/database/migration-1-physical-proposal.md` is signed.
 
 Still open and still gating tenant/access SQL:
 - **DR-10** location model and hierarchy.

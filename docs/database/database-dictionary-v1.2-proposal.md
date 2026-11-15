@@ -17,7 +17,7 @@
 | Field | Value |
 |---|---|
 | Document | Consolidated Field-Level Database Dictionary v1.2 (Proposal) |
-| Version | 1.2 proposal — review revision 3 (owner-approved review baseline) |
+| Version | 1.2 proposal — review revision 4 (Parts 1–2 complete) |
 | Status | Owner-approved review baseline. Authorised for Migration 1 drafting; **not** physical-schema approval and **not** SQL approval. |
 | Owner | Product owner (Tunde Oladeji) |
 | Prepared | 2026-11-15 |
@@ -40,7 +40,11 @@ This is a **consolidated review proposal**, not an approved physical schema and 
 
 The detailed v1.1 field-level dictionary supplied to the project is reproduced below as the baseline. Its field definitions are retained without alteration; only heading levels and transport formatting were normalised in this presentation.
 
-**Provenance must be confirmed.** The version, date and completeness of the v1.1 baseline have not been verified against an owner-signed original. Before this document is used as an approval baseline, the product owner must confirm it matches the authoritative Detailed Database Dictionary v1.1. If it does not, the appendix must be replaced rather than amended, and any already-approved v1.2 amendment re-checked against the corrected baseline.
+**Provenance must be confirmed.** The version, date and completeness of the v1.1 baseline have not been verified against an owner-signed original.
+
+**Part 2 supplied and included.** Appendix A now reproduces v1.1 Parts 1 and 2 (sections 1–25): incidents and compliance, finance and payments, documents, reporting, imports, notifications, document numbering, offline synchronisation, audit and idempotency, plus the deferred accounting, constraints, integrity rules and implementation phases. The earlier completeness gap is resolved. Part 2 provenance is the text supplied on 2026-11-15 and must be confirmed against the authoritative original in the same way as Part 1.
+
+If the baseline does not match the authoritative Detailed Database Dictionary v1.1, the appendix must be replaced rather than amended, and any already-approved v1.2 amendment re-checked against the corrected baseline.
 
 The original ERD v1.2 source artefact was **not located in the current repository or the accessible Library material during this preparation**. The companion ERD file is therefore a reconstructed logical proposal based on the v1.1 dictionary, the repository reconciliation report and the v1.2 amendment specification. It must be compared against the original owner-supplied ERD before final approval.
 
@@ -361,6 +365,10 @@ The following inventory is extracted from the v1.1 dictionary's table headings. 
 | `delivery_discrepancies` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
 | `discrepancy_investigations` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
 
+**Part 2 tables pending classification.** The register above was extracted from v1.1 Part 1. The following Part 2 tables are not yet classified and must be added before DR-24 closes: `incidents`, `incident_participants`, `incident_evidence`, `incident_investigations`, `incident_actions`, `insurance_policies`, `insurance_claims`, `compliance_requirements`, `compliance_records`, `product_quality_checks`, `financial_transactions`, `payment_records`, `payment_channels`, `invoice_payment_allocations`, `supplier_payment_allocations`, `transporter_payment_allocations`, `payment_reversals`, `accounts_receivable`, `accounts_payable`, `expense_records`, `documents`, `document_links`, `document_requirements`, `report_definitions`, `saved_report_views`, `report_schedules`, `data_import_jobs`, `data_import_errors`, `notifications`, `notification_preferences`, `notification_delivery_logs`, `document_number_sequences`, `offline_devices`, `offline_sync_sessions`, `offline_operation_log`, `offline_sync_conflicts`, `audit_logs`, `idempotency_records`, `chart_of_accounts`, `accounting_periods`, `journal_entries`, `journal_entry_lines`.
+
+`audit_logs` is provisionally classified as **direct tenant-owned** and is included in the Migration 1a draft. The deferred accounting tables are out of scope for the initial release.
+
 Before any tenant SQL is written, the owner must approve, table by table:
 1. direct `organisation_id` ownership;
 2. inherited ownership through a specific parent FK, including how the DB prevents cross-tenant parent references;
@@ -443,12 +451,13 @@ The current Decision Register is authoritative for status. The following remain 
 | 1 | 2026-11-15 | Initial consolidated proposal: v1.1 baseline plus v1.2 amendments, decision markers and ownership inventory. | Repository review |
 | 2 | 2026-11-15 | Added document control and approval block; made v1.1 provenance and verification requirements explicit; clarified that all three direct-fulfilment cost sources remain undecided; corrected §3.9 formatting; normalised appendix heading levels and removed pasted transport brackets; added this log. | Repository review |
 | 3 | 2026-11-15 | Recorded product-owner approval of the review baseline, v1.1 provenance, DR-16 (retain v1.1 names) and DR-25 (greenfield); updated the naming section, open-decision gate and implementation sequence to reflect the approvals; kept DR-10, DR-20 and DR-24 open. | Repository review |
+| 4 | 2026-11-15 | Appended the supplied v1.1 Part 2 (sections 12–25) to Appendix A: incidents and compliance, finance and payments, documents, reporting, imports, notifications, numbering, offline sync, audit, idempotency, deferred accounting, constraints and implementation phases. Resolved the earlier Part 2 completeness gap. | Repository review |
 
 ---
 
-# Appendix A — Detailed Database Dictionary v1.1 baseline (retained verbatim)
+# Appendix A — Detailed Database Dictionary v1.1, Parts 1–2 (sections 1–25), retained verbatim
 
-**Provenance:** supplied to the project as the Detailed Database Dictionary v1.1 (Revised Review Draft). Field definitions are reproduced without alteration; heading levels and transport formatting are normalised, the pasted transport brackets are removed, and the two separate title lines are combined into one heading.
+**Provenance:** supplied to the project as the Detailed Database Dictionary v1.1 (Revised Review Draft), **Parts 1 and 2**. Field definitions are reproduced without alteration; heading levels and transport formatting are normalised, the pasted transport brackets are removed, and the two separate title lines are combined into one heading.
 
 **Reading note:** the v1.1 text was written for a single-business deployment, so it refers to "Deuces" and "the business" in the singular. Under D-001 and D-002 every such record is tenant-scoped: read "the business" as "the tenant" and "Deuces" as the example tenant. This note is editorial and does not change any v1.1 field definition.
 
@@ -2013,3 +2022,1015 @@ A trip may contain multiple products and multiple delivery legs. Reconciliation 
 A discrepancy must never automatically become a driver debt, transporter debt or employee deduction. Liability requires investigation and authorised confirmation.
 
 ---
+
+
+### 12. Incident and compliance management
+
+#### 12.1 incidents
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| incident_number | VARCHAR(50) | Yes | Unique reference |
+| incident_type | VARCHAR(80) | Yes | Incident category |
+| incident_date | TIMESTAMPTZ | Yes | Date and time |
+| location_description | TEXT | No | Location |
+| business_location_id | UUID | No | FK to business_locations |
+| description | TEXT | Yes | Details |
+| severity | VARCHAR(20) | Yes | Severity |
+| status | VARCHAR(30) | Yes | Incident status |
+| created_by | UUID | Yes | Reporting user |
+
+#### 12.2 incident_participants
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| incident_id | UUID | Yes | FK to incidents |
+| driver_id | UUID | No | FK to drivers |
+| truck_id | UUID | No | FK to trucks |
+| employee_id | UUID | No | FK to employees |
+| transporter_id | UUID | No | FK to transporters |
+| trip_id | UUID | No | FK to trips |
+| involvement_type | VARCHAR(50) | No | Role in incident |
+
+#### 12.3 incident_evidence
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| incident_id | UUID | Yes | FK to incidents |
+| file_path | TEXT | Yes | Evidence reference |
+| evidence_type | VARCHAR(50) | Yes | Photograph, document or other |
+| uploaded_by | UUID | Yes | User |
+| uploaded_at | TIMESTAMPTZ | Yes | Timestamp |
+
+#### 12.4 incident_investigations
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| incident_id | UUID | Yes | FK to incidents |
+| findings | TEXT | No | Investigation findings |
+| responsibility_status | VARCHAR(30) | Yes | Undetermined, confirmed or cleared |
+| investigator_id | UUID | No | Investigator |
+| completed_at | TIMESTAMPTZ | No | Completion |
+
+#### 12.5 incident_actions
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| incident_id | UUID | Yes | FK to incidents |
+| action_description | TEXT | Yes | Required action |
+| assigned_to | UUID | No | Responsible user |
+| due_date | DATE | No | Due date |
+| status | VARCHAR(20) | Yes | Action status |
+
+#### 12.6 insurance_policies
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| policy_number | VARCHAR(100) | Yes | Policy reference |
+| truck_id | UUID | No | FK to trucks |
+| insurer | VARCHAR(150) | Yes | Insurance provider |
+| start_date | DATE | Yes | Policy start |
+| expiry_date | DATE | Yes | Expiry |
+| status | VARCHAR(20) | Yes | Status |
+
+#### 12.7 insurance_claims
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| incident_id | UUID | Yes | FK to incidents |
+| policy_id | UUID | Yes | FK to insurance_policies |
+| claim_amount | NUMERIC(18,2) | Yes | Claim amount |
+| settlement_amount | NUMERIC(18,2) | No | Settlement |
+| status | VARCHAR(30) | Yes | Claim status |
+
+#### 12.8 compliance_requirements
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| requirement_name | VARCHAR(150) | Yes | Requirement |
+| requirement_type | VARCHAR(80) | Yes | Document or compliance type |
+| applicable_entity | VARCHAR(50) | Yes | Truck, driver, depot or business |
+| status | VARCHAR(20) | Yes | Active or inactive |
+
+#### 12.9 compliance_records
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| requirement_id | UUID | Yes | FK to compliance_requirements |
+| entity_type | VARCHAR(50) | Yes | Related entity type |
+| entity_id | UUID | Yes | Related entity ID |
+| document_reference | VARCHAR(100) | No | Document number |
+| expiry_date | DATE | No | Expiry |
+| status | VARCHAR(30) | Yes | Compliance status |
+| file_path | TEXT | No | Document |
+
+The entity reference must be validated by the application because a generic entity ID cannot be protected by a conventional foreign key.
+
+#### 12.10 product_quality_checks
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| procurement_batch_id | UUID | No | FK to procurement_batches |
+| inventory_batch_id | UUID | No | FK to inventory_batches |
+| inspection_date | TIMESTAMPTZ | Yes | Date |
+| test_type | VARCHAR(80) | Yes | Test type |
+| result | TEXT | Yes | Result |
+| status | VARCHAR(30) | Yes | Passed, failed or pending |
+| inspected_by | UUID | No | Inspector |
+| evidence_path | TEXT | No | Test evidence |
+
+---
+
+### 13. Finance and payments
+
+#### 13.1 financial_transactions
+
+Represents the operational financial transaction record.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| transaction_number | VARCHAR(60) | Yes | Unique reference |
+| transaction_type | VARCHAR(50) | Yes | Receipt, supplier payment, expense, transfer or other |
+| transaction_date | TIMESTAMPTZ | Yes | Date |
+| description | TEXT | No | Description |
+| amount | NUMERIC(18,2) | Yes | Amount |
+| currency | VARCHAR(3) | Yes | NGN initially |
+| status | VARCHAR(25) | Yes | Draft, pending, posted, reversed or cancelled |
+| source_type | VARCHAR(50) | No | Source document type |
+| source_id | UUID | No | Source record |
+| created_by | UUID | Yes | User |
+| posted_by | UUID | No | Posting user |
+| posted_at | TIMESTAMPTZ | No | Posting timestamp |
+
+This table is an operational transaction register, not a substitute for a double-entry general ledger.
+
+#### 13.2 payment_records
+
+A common record for actual or pending payment events.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| transaction_id | UUID | No | FK to financial_transactions |
+| payment_direction | VARCHAR(20) | Yes | Inbound or outbound |
+| party_type | VARCHAR(30) | Yes | Customer, supplier, transporter, employee or other configured party |
+| party_id | UUID | Yes | Related party ID |
+| payment_method | VARCHAR(30) | Yes | Bank transfer, cash, POS or other |
+| payment_channel_id | UUID | No | FK to payment_channels |
+| payment_reference | VARCHAR(120) | No | Payment reference |
+| amount | NUMERIC(18,2) | Yes | Payment amount |
+| payment_date | TIMESTAMPTZ | Yes | Payment date |
+| verification_status | VARCHAR(20) | Yes | Pending, verified or rejected |
+| settlement_status | VARCHAR(20) | Yes | Pending, settled, failed or reversed |
+| evidence_path | TEXT | No | Payment evidence |
+| created_by | UUID | Yes | User |
+| verified_by | UUID | No | Verifier |
+| verified_at | TIMESTAMPTZ | No | Verification timestamp |
+
+`party_type` and `party_id` form a polymorphic party reference and therefore require strict application-service validation. Where stronger relational enforcement is required, use separate party-specific payment detail tables.
+
+A POS transaction must not be treated as settled cash until settlement is confirmed.
+
+#### 13.3 payment_channels
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| channel_name | VARCHAR(100) | Yes | Bank account, cash account, POS or other |
+| channel_type | VARCHAR(30) | Yes | Bank, cash, POS or other |
+| institution_name | VARCHAR(150) | No | Bank or provider |
+| account_name | VARCHAR(150) | No | Account name |
+| account_identifier | VARCHAR(100) | No | Account reference, securely stored |
+| status | VARCHAR(20) | Yes | Active or inactive |
+
+#### 13.4 invoice_payment_allocations
+
+Allocates inbound customer payments to sales invoices.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| payment_record_id | UUID | Yes | FK to payment_records |
+| sales_invoice_id | UUID | Yes | FK to sales_invoices |
+| allocated_amount | NUMERIC(18,2) | Yes | Amount allocated |
+| allocated_at | TIMESTAMPTZ | Yes | Allocation timestamp |
+| allocated_by | UUID | Yes | User |
+
+The payment must be inbound and associated with the relevant customer. Total allocations cannot exceed the verified, settled and available payment amount, subject to the configured treatment of pending settlement.
+
+#### 13.5 supplier_payment_allocations
+
+Allocates outbound supplier payments to supplier liabilities.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| payment_record_id | UUID | Yes | FK to payment_records |
+| accounts_payable_id | UUID | Yes | FK to accounts_payable |
+| allocated_amount | NUMERIC(18,2) | Yes | Amount allocated |
+| allocated_at | TIMESTAMPTZ | Yes | Allocation timestamp |
+| allocated_by | UUID | Yes | User |
+
+The payment must be outbound and associated with the supplier liability.
+
+#### 13.6 transporter_payment_allocations
+
+Allocates transporter payments to transporter invoices.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| payment_record_id | UUID | Yes | FK to payment_records |
+| transporter_invoice_id | UUID | Yes | FK to transporter_invoices |
+| allocated_amount | NUMERIC(18,2) | Yes | Amount allocated |
+| allocated_at | TIMESTAMPTZ | Yes | Allocation timestamp |
+| allocated_by | UUID | Yes | User |
+
+#### 13.7 payment_reversals
+
+Preserves the original payment and records a compensating reversal.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| original_payment_id | UUID | Yes | FK to payment_records |
+| reversal_payment_id | UUID | No | FK to payment_records where a separate reversal payment is created |
+| reversal_amount | NUMERIC(18,2) | Yes | Reversed amount |
+| reversal_reason | TEXT | Yes | Reason |
+| requested_by | UUID | Yes | Requesting user |
+| approved_by | UUID | No | Approver |
+| reversed_at | TIMESTAMPTZ | No | Reversal timestamp |
+| status | VARCHAR(20) | Yes | Pending, approved, posted or rejected |
+
+A reversal must not erase the original payment or its historical allocations. The application must recalculate outstanding balances from valid posted records.
+
+#### 13.8 accounts_receivable
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| customer_id | UUID | Yes | FK to customers |
+| invoice_id | UUID | Yes | FK to sales_invoices |
+| original_amount | NUMERIC(18,2) | Yes | Original amount |
+| outstanding_amount | NUMERIC(18,2) | Yes | Current balance |
+| due_date | DATE | No | Due date |
+| status | VARCHAR(20) | Yes | Outstanding, overdue, paid or disputed |
+| updated_at | TIMESTAMPTZ | Yes | Last balance update |
+
+Balances must reconcile with posted invoices, credit notes, receipts and reversals.
+
+#### 13.9 accounts_payable
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| supplier_id | UUID | No | FK to suppliers |
+| transporter_id | UUID | No | FK to transporters |
+| reference_type | VARCHAR(50) | Yes | Source transaction type |
+| reference_id | UUID | Yes | Source record |
+| original_amount | NUMERIC(18,2) | Yes | Amount owed |
+| outstanding_amount | NUMERIC(18,2) | Yes | Outstanding amount |
+| due_date | DATE | No | Due date |
+| status | VARCHAR(20) | Yes | Outstanding, partially paid, paid, overdue or disputed |
+| created_at | TIMESTAMPTZ | Yes | Creation timestamp |
+
+Exactly one appropriate supplier or transporter party relationship must be established for each payable. Source record references must be validated.
+
+#### 13.10 expense_records
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| expense_category | VARCHAR(100) | Yes | Expense category |
+| transaction_date | DATE | Yes | Expense date |
+| amount | NUMERIC(18,2) | Yes | Amount |
+| description | TEXT | Yes | Description |
+| location_id | UUID | No | FK to business_locations |
+| trip_id | UUID | No | FK to trips |
+| cost_treatment | VARCHAR(30) | Yes | Operating expense, inbound landed cost or direct delivery cost |
+| approval_status | VARCHAR(20) | Yes | Approval status |
+| evidence_path | TEXT | No | Evidence |
+| created_by | UUID | Yes | User |
+
+Expense treatment must follow the configured cost category. A cost must not be recorded both as an expense and as a landed-cost component without an explicit adjustment process.
+
+---
+
+### 14. Document management
+
+#### 14.1 documents
+
+Central document metadata table. Actual file contents are stored in secure cloud object storage.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| document_number | VARCHAR(60) | No | Document reference |
+| document_type | VARCHAR(60) | Yes | Invoice, loading ticket, receipt, waybill, contract, evidence or other |
+| file_name | VARCHAR(255) | Yes | Original file name |
+| storage_path | TEXT | Yes | Secure storage path |
+| mime_type | VARCHAR(120) | Yes | File type |
+| file_size_bytes | BIGINT | Yes | File size |
+| version_number | INTEGER | Yes | Version number |
+| uploaded_by | UUID | Yes | FK to profiles |
+| uploaded_at | TIMESTAMPTZ | Yes | Upload timestamp |
+| checksum | VARCHAR(128) | No | File integrity checksum |
+| status | VARCHAR(20) | Yes | Active, archived or superseded |
+
+#### 14.2 document_links
+
+Links documents to business records without storing duplicate file copies.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| document_id | UUID | Yes | FK to documents |
+| entity_type | VARCHAR(60) | Yes | Related record type |
+| entity_id | UUID | Yes | Related record ID |
+| relationship_type | VARCHAR(60) | No | Supporting, primary, evidence or other |
+| linked_by | UUID | Yes | User |
+| linked_at | TIMESTAMPTZ | Yes | Timestamp |
+
+Because `entity_id` is polymorphic, the application must validate the referenced record.
+
+#### 14.3 document_requirements
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| document_type | VARCHAR(60) | Yes | Required document type |
+| transaction_type | VARCHAR(60) | Yes | Relevant transaction |
+| is_mandatory | BOOLEAN | Yes | Mandatory flag |
+| applies_from | DATE | Yes | Effective date |
+| applies_to | DATE | No | End date |
+| status | VARCHAR(20) | Yes | Active or inactive |
+
+Missing mandatory documents must be flagged before the relevant transaction can be completed.
+
+---
+
+### 15. Reporting, imports and notifications
+
+#### 15.1 report_definitions
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| report_name | VARCHAR(150) | Yes | Report name |
+| report_category | VARCHAR(60) | Yes | Operational, finance, inventory, sales, haulage or other |
+| description | TEXT | No | Description |
+| default_filters | JSONB | No | Default report filters |
+| required_permission | VARCHAR(150) | Yes | Permission required |
+| status | VARCHAR(20) | Yes | Active or inactive |
+
+#### 15.2 saved_report_views
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| report_definition_id | UUID | Yes | FK to report_definitions |
+| user_id | UUID | Yes | FK to profiles |
+| view_name | VARCHAR(120) | Yes | Saved view name |
+| filter_configuration | JSONB | Yes | Saved filters |
+| column_configuration | JSONB | No | Selected columns |
+| is_shared | BOOLEAN | Yes | Shared view flag |
+| created_at | TIMESTAMPTZ | Yes | Creation timestamp |
+
+Custom report views must respect role and location access restrictions.
+
+#### 15.3 report_schedules
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| report_definition_id | UUID | Yes | FK to report_definitions |
+| created_by | UUID | Yes | FK to profiles |
+| frequency | VARCHAR(20) | Yes | Daily, weekly or monthly |
+| delivery_channel | VARCHAR(30) | Yes | Application, email or WhatsApp |
+| recipient_configuration | JSONB | Yes | Approved recipient details |
+| export_format | VARCHAR(10) | Yes | PDF, XLSX or CSV |
+| next_run_at | TIMESTAMPTZ | No | Next scheduled run |
+| status | VARCHAR(20) | Yes | Active, paused or cancelled |
+
+On-demand reports do not require a recurring schedule record.
+
+#### 15.4 data_import_jobs
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| import_type | VARCHAR(60) | Yes | Customer, supplier, product, opening balance or other |
+| file_name | VARCHAR(255) | Yes | Uploaded file |
+| storage_path | TEXT | Yes | Secure file path |
+| file_format | VARCHAR(10) | Yes | CSV or XLSX |
+| column_mapping | JSONB | No | Mapping configuration |
+| total_rows | INTEGER | No | Total rows |
+| valid_rows | INTEGER | No | Valid rows |
+| rejected_rows | INTEGER | No | Rejected rows |
+| status | VARCHAR(25) | Yes | Uploaded, previewed, validated, processing, completed or failed |
+| created_by | UUID | Yes | User |
+| created_at | TIMESTAMPTZ | Yes | Creation timestamp |
+| completed_at | TIMESTAMPTZ | No | Completion timestamp |
+
+Imports must support templates, preview, validation, duplicate detection and import history.
+
+#### 15.5 data_import_errors
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| import_job_id | UUID | Yes | FK to data_import_jobs |
+| row_number | INTEGER | Yes | Source row |
+| field_name | VARCHAR(100) | No | Problem field |
+| error_code | VARCHAR(60) | Yes | Validation error |
+| error_message | TEXT | Yes | Explanation |
+| source_values | JSONB | No | Relevant source data |
+
+#### 15.6 notifications
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| recipient_user_id | UUID | No | FK to profiles |
+| recipient_contact | VARCHAR(200) | No | External recipient |
+| notification_type | VARCHAR(60) | Yes | Notification category |
+| priority | VARCHAR(20) | Yes | Critical, high, normal or low |
+| title | VARCHAR(200) | Yes | Notification title |
+| message | TEXT | Yes | Notification message |
+| channel | VARCHAR(30) | Yes | In-app, email or WhatsApp |
+| related_entity_type | VARCHAR(60) | No | Related record type |
+| related_entity_id | UUID | No | Related record |
+| status | VARCHAR(20) | Yes | Pending, sent, failed or read |
+| sent_at | TIMESTAMPTZ | No | Send timestamp |
+| read_at | TIMESTAMPTZ | No | Read timestamp |
+| created_at | TIMESTAMPTZ | Yes | Creation timestamp |
+
+#### 15.7 notification_preferences
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| user_id | UUID | Yes | FK to profiles |
+| notification_type | VARCHAR(60) | Yes | Notification category |
+| channel | VARCHAR(30) | Yes | In-app, email or WhatsApp |
+| enabled | BOOLEAN | Yes | Preference |
+| created_at | TIMESTAMPTZ | Yes | Creation timestamp |
+
+#### 15.8 notification_delivery_logs
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| notification_id | UUID | Yes | FK to notifications |
+| attempt_number | INTEGER | Yes | Delivery attempt |
+| provider_reference | VARCHAR(150) | No | External provider reference |
+| delivery_status | VARCHAR(20) | Yes | Pending, delivered or failed |
+| error_message | TEXT | No | Failure explanation |
+| attempted_at | TIMESTAMPTZ | Yes | Attempt timestamp |
+
+Notifications must support deduplication, retry handling, read/unread state and escalation where configured.
+
+---
+
+### 16. Document numbering and offline synchronisation
+
+#### 16.1 document_number_sequences
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| document_type | VARCHAR(60) | Yes | Order, invoice, trip, payment or other |
+| location_id | UUID | No | Optional FK to business_locations |
+| prefix | VARCHAR(30) | No | Configured prefix |
+| suffix | VARCHAR(30) | No | Configured suffix |
+| number_format | VARCHAR(100) | Yes | Configured numbering pattern |
+| next_number | BIGINT | Yes | Next sequence value |
+| padding_length | INTEGER | Yes | Number padding |
+| reset_frequency | VARCHAR(20) | Yes | Never, yearly or configured |
+| status | VARCHAR(20) | Yes | Active or inactive |
+
+Sequence allocation must be concurrency-safe. Issued numbers must not be reused after cancellation.
+
+#### 16.2 offline_devices
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| user_id | UUID | Yes | FK to profiles |
+| device_identifier | VARCHAR(150) | Yes | Device reference |
+| device_name | VARCHAR(150) | No | Friendly device name |
+| last_sync_at | TIMESTAMPTZ | No | Last successful sync |
+| status | VARCHAR(20) | Yes | Active, suspended or revoked |
+| registered_at | TIMESTAMPTZ | Yes | Registration timestamp |
+
+Device identifiers must not expose unnecessary personal information.
+
+#### 16.3 offline_sync_sessions
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| device_id | UUID | Yes | FK to offline_devices |
+| user_id | UUID | Yes | FK to profiles |
+| started_at | TIMESTAMPTZ | Yes | Session start |
+| completed_at | TIMESTAMPTZ | No | Completion |
+| records_uploaded | INTEGER | Yes | Uploaded count |
+| records_downloaded | INTEGER | Yes | Downloaded count |
+| records_rejected | INTEGER | Yes | Rejected count |
+| status | VARCHAR(25) | Yes | Started, completed, partial or failed |
+| error_summary | TEXT | No | Error summary |
+
+#### 16.4 offline_operation_log
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| device_id | UUID | Yes | FK to offline_devices |
+| user_id | UUID | Yes | FK to profiles |
+| client_operation_id | UUID | Yes | Client-generated idempotency key |
+| entity_type | VARCHAR(60) | Yes | Record type |
+| local_record_id | UUID | Yes | Local record reference |
+| operation_type | VARCHAR(30) | Yes | Create, update or supported action |
+| payload | JSONB | Yes | Submitted operation data |
+| server_record_id | UUID | No | Server record after acceptance |
+| sync_status | VARCHAR(25) | Yes | Pending, accepted, rejected or conflict |
+| conflict_details | JSONB | No | Conflict information |
+| submitted_at | TIMESTAMPTZ | Yes | Submission timestamp |
+| processed_at | TIMESTAMPTZ | No | Processing timestamp |
+
+The `client_operation_id` must be unique within the relevant device or account scope to prevent duplicate processing.
+
+#### 16.5 offline_sync_conflicts
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| offline_operation_id | UUID | Yes | FK to offline_operation_log |
+| entity_type | VARCHAR(60) | Yes | Record type |
+| entity_id | UUID | No | Server record |
+| conflict_type | VARCHAR(40) | Yes | Concurrent update, stale data, permission or validation |
+| local_version | JSONB | No | Local submitted version |
+| server_version | JSONB | No | Current server version |
+| resolution | VARCHAR(30) | Yes | Pending, accepted local, retained server or manually resolved |
+| resolved_by | UUID | No | User |
+| resolved_at | TIMESTAMPTZ | No | Resolution timestamp |
+
+Offline records must not be represented as officially posted financial or inventory transactions until server validation and successful synchronisation have completed.
+
+Sensitive approvals, payments, stock postings and other controlled financial actions require additional server-side safeguards.
+
+---
+
+### 17. Audit and system controls
+
+#### 17.1 audit_logs
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| user_id | UUID | No | FK to profiles |
+| action | VARCHAR(80) | Yes | Action performed |
+| entity_type | VARCHAR(80) | Yes | Record type |
+| entity_id | UUID | No | Record ID |
+| old_values | JSONB | No | Previous values |
+| new_values | JSONB | No | New values |
+| reason | TEXT | No | Reason |
+| ip_address | INET | No | Request IP where appropriate |
+| device_id | UUID | No | FK to offline_devices |
+| correlation_id | UUID | No | Related operation identifier |
+| created_at | TIMESTAMPTZ | Yes | Event timestamp |
+
+Audit logs must be append-only and protected from normal application modification.
+
+Audit coverage includes:
+- Authentication and failed login attempts.
+- Role and permission changes.
+- Financial and inventory transactions.
+- Procurement and pricing changes.
+- Approval decisions.
+- Document uploads and access-sensitive actions.
+- User suspension and deactivation.
+- Offline synchronisation and conflict resolution.
+- Important administrative configuration changes.
+
+#### 17.2 idempotency_records
+
+Prevents duplicate processing of important operations.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| idempotency_key | VARCHAR(150) | Yes | Unique operation key |
+| operation_type | VARCHAR(80) | Yes | Operation category |
+| request_hash | VARCHAR(128) | Yes | Request fingerprint |
+| response_reference | UUID | No | Resulting record |
+| status | VARCHAR(20) | Yes | Processing, completed or failed |
+| created_at | TIMESTAMPTZ | Yes | Creation timestamp |
+| completed_at | TIMESTAMPTZ | No | Completion timestamp |
+
+Idempotency must be enforced for payment posting, inventory posting, reversals, imports and other operations where duplicate execution could cause financial or operational harm.
+
+---
+
+### 18. Deferred double-entry accounting module
+
+Full double-entry accounting is outside the initial release.
+
+The following tables should be designed as a later accounting phase, not improvised into the operational payment tables.
+
+#### 18.1 chart_of_accounts
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| account_code | VARCHAR(40) | Yes | Unique account code |
+| account_name | VARCHAR(150) | Yes | Account name |
+| account_type | VARCHAR(30) | Yes | Asset, liability, equity, income or expense |
+| parent_account_id | UUID | No | FK to chart_of_accounts |
+| status | VARCHAR(20) | Yes | Active or inactive |
+
+#### 18.2 accounting_periods
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| period_name | VARCHAR(80) | Yes | Period name |
+| start_date | DATE | Yes | Period start |
+| end_date | DATE | Yes | Period end |
+| status | VARCHAR(20) | Yes | Open, closed or locked |
+
+#### 18.3 journal_entries
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| journal_number | VARCHAR(60) | Yes | Unique journal number |
+| accounting_period_id | UUID | Yes | FK to accounting_periods |
+| journal_date | DATE | Yes | Journal date |
+| description | TEXT | Yes | Description |
+| source_type | VARCHAR(60) | No | Originating transaction |
+| source_id | UUID | No | Originating record |
+| status | VARCHAR(20) | Yes | Draft, posted or reversed |
+| posted_by | UUID | No | Posting user |
+| posted_at | TIMESTAMPTZ | No | Posting timestamp |
+
+#### 18.4 journal_entry_lines
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | Yes | Primary key |
+| journal_entry_id | UUID | Yes | FK to journal_entries |
+| account_id | UUID | Yes | FK to chart_of_accounts |
+| debit_amount | NUMERIC(18,2) | Yes | Debit |
+| credit_amount | NUMERIC(18,2) | Yes | Credit |
+| description | TEXT | No | Line description |
+
+A posted journal must balance: total debits equal total credits. Posted journals must not be silently edited.
+
+---
+
+### 19. Critical constraints, indexes and relationships
+
+#### 19.1 Unique constraints
+
+At minimum:
+
+- `profiles.auth_user_id`
+- `business_locations.location_code`
+- `suppliers.supplier_code`
+- `supplier_depots.depot_code` within the supplier
+- `products.product_code`
+- `purchase_orders.po_number`
+- `procurement_batches.batch_number`
+- `customers.customer_code`
+- `sales_orders.order_number`
+- `sales_invoices.invoice_number`
+- `sales_credit_notes.credit_note_number`
+- `transporters.transporter_code`
+- `trucks.registration_number`
+- `drivers.driver_code`
+- `trips.trip_number`
+- `incidents.incident_number`
+- `financial_transactions.transaction_number`
+- `document_number_sequences` for each configured document type and location combination
+- `offline_operation_log.client_operation_id` within the appropriate scope
+- `idempotency_records.idempotency_key`
+
+#### 19.2 Quantity and financial constraints
+
+- Purchased, reserved, allocated, loaded and delivered quantities must be positive where applicable.
+- Signed adjustments are permitted only in controlled adjustment records.
+- Monetary amounts must not be negative unless a specific adjustment or credit structure explicitly allows it.
+- Truck and compartment capacities must be positive.
+- Payment allocations must be positive.
+- Allocated payments must not exceed the available verified payment amount.
+- Outstanding balances must not become negative without an explicitly supported credit balance.
+- A batch cannot be issued beyond its available quantity.
+- A compartment cannot be loaded beyond its validated capacity.
+- Order-line trip allocations cannot exceed eligible quantities.
+- Invoice quantities cannot exceed eligible unbilled quantities.
+- A reversal cannot exceed the unreversed original transaction amount.
+
+#### 19.3 Important indexes
+
+Create appropriate indexes for:
+
+- All frequently joined foreign keys.
+- Business references and document numbers.
+- Supplier, customer, transporter, product, truck and driver codes.
+- Invoice, purchase order, trip and payment dates.
+- Inventory batch status, product, location and receipt date.
+- FIFO batch selection fields.
+- Active reservations and reservation expiry.
+- Payment allocation target fields.
+- Approval status and assigned approver.
+- Trip status, departure and expected arrival.
+- Notification recipient, status and creation date.
+- Audit entity type, entity ID and timestamp.
+- Offline device, sync status and submitted timestamp.
+- Effective dates on pricing, contracts and compensation records.
+
+Index design must be validated against actual query patterns rather than adding indexes indiscriminately.
+
+#### 19.4 Deletion rules
+
+Financial, inventory, payment, invoice, delivery, approval and audit history must not be deleted through ordinary user operations.
+
+Use:
+- `RESTRICT` for important historical references.
+- `CASCADE` only for safe draft dependencies and suitable junction records.
+- Reversal or archival workflows for posted transactions.
+- Soft deactivation for master records no longer in use.
+
+---
+
+### 20. Critical integrity and transaction rules
+
+#### 20.1 Procurement and quantity integrity
+
+1. Every procurement batch must identify its supplier, supplier depot and product.
+2. Supplier quantity, loading quantity and received quantity must be recorded independently.
+3. Storage inventory is based on verified received quantity.
+4. Direct customer fulfilment uses customer-confirmed receipt quantity.
+5. A direct-to-customer procurement batch must not create artificial storage inventory.
+6. Quantity differences must be calculated and investigated.
+7. A discrepancy must not automatically become a confirmed loss or liability.
+
+#### 20.2 Inventory integrity
+
+1. Purchase orders do not create stock.
+2. Only actual receipts into Deuces-controlled storage create inventory batches.
+3. Direct fulfilment does not create a warehouse receipt and subsequent warehouse issue.
+4. Reservations do not reduce physical stock.
+5. Actual posted issues reduce stock.
+6. FIFO allocations must reference actual inventory issue movements.
+7. Concurrent issues must be protected by transaction locks or equivalent database-safe controls.
+8. A batch cannot be consumed beyond its available quantity.
+9. Stock movements must be traceable to source records.
+10. Reversals must reference original movements.
+
+#### 20.3 Landed-cost integrity
+
+1. Acquisition cost must not be counted twice.
+2. Inbound procurement transport must be separate from outbound customer delivery haulage.
+3. Only configured landed-cost categories enter inventory or direct procurement cost.
+4. Cost allocations must reconcile to source cost components.
+5. Later cost adjustments require approval and an auditable impact record.
+6. Historical landed-cost snapshots must not be silently rewritten.
+
+#### 20.4 Sales and pricing integrity
+
+1. Confirmed selling prices must be preserved on sales order items.
+2. Current price changes must not alter historical orders.
+3. Price overrides must follow configured approval thresholds.
+4. Credit limits and overdue balances must be checked before order confirmation according to the customer's credit policy.
+5. Customer payment status and delivery status must remain separate.
+6. Partial delivery and partial invoicing must be supported.
+7. Sales revenue, delivery revenue and product cost must be distinguishable.
+
+#### 20.5 Payment integrity
+
+1. Payment records must preserve the original payment event.
+2. Payments requiring verification must not be allocated before verification.
+3. POS payments may remain pending until settlement.
+4. Allocation totals must not exceed the available payment amount.
+5. Customer receipts and supplier payments must use appropriate allocation relationships.
+6. Reversals must be compensating records, not deletion or overwriting.
+7. Outstanding balances must reconcile to invoices, credit notes, payments and reversals.
+8. Payment posting must be idempotent.
+
+#### 20.6 Transporter and driver integrity
+
+1. Dispatch manually selects the transporter.
+2. The system may display cost, capacity, reliability, availability and performance.
+3. Truck and driver availability must be checked to prevent double-booking.
+4. Third-party drivers are not automatically Deuces employees.
+5. Transporter haulage fees normally include the third-party driver's compensation.
+6. A separate Deuces driver salary or allowance must exist only where an actual Deuces obligation has been established.
+7. Driver advances, salary and trip allowances must remain separate.
+8. Driver deductions require documented approval.
+
+#### 20.7 Trip and delivery integrity
+
+1. A trip requires a valid primary truck and driver before loading.
+2. A trip may carry multiple orders.
+3. An order may be fulfilled by multiple trips.
+4. Order-line allocation must be maintained at the appropriate level.
+5. Loading must reconcile with compartment capacity.
+6. A compartment may be supplied by multiple batches where supported.
+7. Deliveries must link to the relevant order-line allocation and loading record.
+8. Partial, rejected, disputed and failed deliveries must be supported.
+9. Mandatory delivery evidence must be captured.
+10. A trip cannot close while mandatory reconciliation remains incomplete.
+
+#### 20.8 Profitability integrity
+
+1. Estimated profitability must be distinguishable from actual profitability.
+2. Historical snapshots must be versioned and retained.
+3. Product margin must be reported separately from delivery contribution.
+4. Inbound procurement cost and outbound delivery cost must not be double-counted.
+5. Shared trip expenses must use an explicit allocation method.
+6. Operational profitability must not be presented as a complete statutory profit-and-loss statement.
+
+#### 20.9 Offline integrity
+
+1. Offline operations must have unique client-generated operation identifiers.
+2. Duplicate submissions must not create duplicate business records.
+3. Server-side validation is mandatory before official posting.
+4. Conflicts must be recorded and resolved explicitly.
+5. Financial posting must not be assumed successful merely because a device saved a local record.
+6. Access permissions must be revalidated during synchronisation.
+7. Sensitive operations require additional safeguards.
+
+---
+
+### 21. Reporting and operational visibility
+
+The schema must support:
+
+- Procurement and supplier performance.
+- Supplier quantity versus loading and received quantity.
+- Procurement cost and landed cost per litre.
+- Inventory on hand, reserved and available quantities.
+- FIFO inventory valuation.
+- Sales orders and fulfilment status.
+- Customer outstanding balances and credit utilisation.
+- Sales revenue and product gross margin.
+- Delivery revenue and delivery contribution.
+- Trip performance and reconciliation.
+- Transporter rate and performance comparisons.
+- Supplier and transporter liabilities.
+- Customer receipts and supplier payments.
+- Cash, bank and POS tracking.
+- Operating expenses.
+- Driver compensation where applicable.
+- Incident and compliance monitoring.
+- Location-level and consolidated company reporting.
+
+Reports must support on-demand, daily, weekly and monthly scheduling where configured, with PDF, Excel and CSV exports.
+
+Report access must follow role and location permissions.
+
+---
+
+### 22. Technical implementation controls
+
+#### 22.1 Transactional posting
+
+The following operations must execute through controlled database transactions:
+
+- Procurement receipt posting.
+- Inventory receipt posting.
+- Inventory issue and FIFO allocation.
+- Stock transfer posting.
+- Payment posting and allocation.
+- Payment reversal.
+- Invoice posting.
+- Credit note posting.
+- Landed-cost adjustment.
+- Trip reconciliation completion.
+- Other operations that affect financial or inventory balances.
+
+A failed transaction must not leave partially updated financial or inventory records.
+
+#### 22.2 Server-side calculations
+
+Financial and inventory calculations must be performed by trusted server-side application services or database procedures.
+
+The frontend may display estimates and calculations for usability, but it must not be the authoritative source for posted financial values.
+
+#### 22.3 Concurrency
+
+The implementation must prevent:
+- Two users issuing the same available stock.
+- Two dispatchers booking the same truck for overlapping trips.
+- Two users allocating the same remaining payment balance.
+- Duplicate invoice or transaction numbering.
+- Duplicate offline transaction submission.
+- Concurrent approval or posting of the same transaction.
+
+Use database constraints, appropriate row locking, transaction isolation and idempotency controls.
+
+#### 22.4 Security
+
+- Supabase Auth manages authentication.
+- Supabase Row Level Security protects business records.
+- Role-based permissions govern actions.
+- Location-level access restrictions are enforced.
+- Sensitive files use private storage and authorised access.
+- Service-role credentials must never be exposed in the browser.
+- Audit records must be protected from ordinary modification.
+- Employee exit requires immediate account deactivation and reassignment of outstanding tasks and approvals.
+
+#### 22.5 Backup and retention
+
+- Use automated database backups and secure document backups.
+- Maintain appropriate backup retention.
+- Perform periodic restoration tests.
+- Preserve financial, operational and audit history.
+- Archive older records without destroying required history.
+- Apply applicable Nigerian statutory retention requirements.
+
+---
+
+### 23. Important open decisions before SQL generation
+
+The following items remain open and must not be silently invented by the development agent.
+
+| Area | Outstanding decision |
+|---|---|
+| Petroleum measurement | Final quantity precision and measurement basis |
+| Temperature correction | Whether and how temperature/density correction applies |
+| Measurement tolerances | Approved shortage and excess tolerances by product or transaction |
+| Reservation timing | Exact point at which stock is reserved and released |
+| Direct fulfilment | Final accounting treatment and cost recognition for supplier-to-customer procurement |
+| Landed-cost adjustments | Detailed allocation between remaining inventory and previously consumed stock |
+| Revenue recognition | Exact trigger for recognising operational revenue |
+| Invoicing | Rules for partial delivery, cancellation, credit notes and corrections |
+| Offline conflicts | Final conflict-resolution policy by transaction type |
+| Multiple locations | Final location hierarchy and permissions |
+| Approval thresholds | Exact monetary, margin and risk thresholds |
+| Documents | Maximum file sizes, retention and version policy |
+| Third-party liabilities | Final process for transporter invoice disputes and confirmed claims |
+| Operational tolerances | Final measurement and reconciliation standards validated by petroleum operations expertise |
+
+These decisions must be documented and approved before the affected logic is finalised in SQL.
+
+---
+
+### 24. Implementation phases
+
+| Phase | Scope |
+|---|---|
+| Phase 1 | Database foundation, authentication, roles, permissions, locations and audit |
+| Phase 2 | Suppliers, products, procurement, quantity reconciliation and landed costs |
+| Phase 3 | Sales, pricing, customers, credit controls and invoicing |
+| Phase 4 | Transporters, trucks, drivers, trips, loading and delivery |
+| Phase 5 | FIFO inventory, reservations, issues and stock movements |
+| Phase 6 | Payments, receivables, payables, expenses and operational profitability |
+| Phase 7 | Documents, reports, notifications, imports and offline synchronisation |
+| Phase 8 | Advanced analytics, GPS integration and future fleet expansion |
+| Later phase | Full double-entry accounting and statutory financial statements |
+
+The implementation sequence may be adjusted where dependencies require it, but financial and inventory integrity must not be compromised.
+
+---
+
+### 25. Final database design principles
+
+The Deuces database must preserve these essential relationships:
+
+- Every procurement batch identifies its supplier, supplier depot and product.
+- Every procurement batch preserves supplier, loading and received quantities.
+- Every storage inventory batch identifies its source and landed cost.
+- Direct customer fulfilment does not create artificial warehouse stock.
+- Every inventory reservation is separate from an actual issue.
+- Every FIFO allocation identifies the batch actually consumed.
+- Every sales order item preserves its confirmed selling price.
+- Every order-line allocation to a trip is traceable.
+- Every delivery is linked to its trip, order allocation and loading record.
+- Every trip preserves its historical truck, driver and transporter assignment.
+- Every transporter invoice and payment is traceable.
+- Every customer receipt and supplier payment is traceable to its allocations.
+- Every payment reversal preserves the original payment.
+- Every cost adjustment preserves its original and revised financial impact.
+- Every profitability snapshot preserves its calculation basis and version.
+- Every important approval and correction has an audit record.
+- Every offline operation is identifiable and protected against duplicate posting.
+
+**The database is the financial and operational foundation of Deuces. It must preserve evidence, prevent duplication, support reliable reconciliation and make every important transaction traceable.**
+
+**Document status: Detailed Database Dictionary v1.1 – Revised Review Draft.**
+
+**This document is not yet approval for SQL generation. The next step is a consistency review against the PRD, Technical Blueprint, ERD and Business Rules & Financial Logic Specification, followed by closure of the critical open decisions.**
