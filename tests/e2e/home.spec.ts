@@ -43,3 +43,13 @@ test("shows a setup state instead of failing when Supabase is not configured", a
   ).toBeVisible();
   await expect(page.getByText("No tenant or business data has been assumed")).toBeVisible();
 });
+
+test("sets baseline security headers", async ({ page }) => {
+  const response = await page.goto("/");
+  const headers = response?.headers() ?? {};
+
+  expect(headers["x-content-type-options"]).toBe("nosniff");
+  expect(headers["x-frame-options"]).toBe("DENY");
+  expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+  expect(headers["x-powered-by"]).toBeUndefined();
+});

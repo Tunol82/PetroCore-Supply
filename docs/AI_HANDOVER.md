@@ -91,11 +91,12 @@ Implemented in the scaffold:
 - Configuration-aware auth states: `/workspace` renders an explicit setup notice instead of failing when Supabase is not configured, and `/login` redirects an already-signed-in user to the workspace.
 - Per-field sign-in validation with `aria-invalid`, `aria-describedby` and focus on the first invalid field.
 - Supabase settings are read through `getSupabaseConfig()` so the app renders safely before a project is connected.
+- Baseline security headers (nosniff, frame denial, referrer policy, permissions policy) and a workspace loading state.
 - Technical foundation, Milestone 1 scope, consolidated Database Dictionary v1.2 source document and Database v1.2 Reconciliation Report.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
-- A local verification pass was completed on Windows against Node 24.16.0 / npm 11.13.0: `npm install`, `npm run lint`, `npm run typecheck`, `npm test` (6 tests) and `npm run build` all passed, and `npm run test:e2e` passed 4 Playwright tests.
+- A local verification pass was completed on Windows against Node 24.16.0 / npm 11.13.0: `npm install`, `npm run lint`, `npm run typecheck`, `npm test` (6 tests) and `npm run build` all passed, and `npm run test:e2e` passed 5 Playwright tests.
 - The end-to-end suite currently covers only the unconfigured state; `playwright.config.ts` blanks the Supabase variables for determinism until an approved test project and tenant fixtures exist.
 - This does **not** establish that a configured Supabase project, tenant membership, RLS, production database or business transactions work.
 - Supabase environment values are not configured/verified in this handover.
