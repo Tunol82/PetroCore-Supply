@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/shared/lib/supabase/server";
@@ -9,6 +9,7 @@ import {
   evidenceSchema,
   loadingAllocationSchema,
   loadingRecordSchema,
+  releaseAssignmentSchema,
   tripSchema,
 } from "@/modules/transport/validation";
 
@@ -146,17 +147,59 @@ export async function assignTrip(
   });
 
   if (insertError) {
+    if (insertError.code === "23505") {
+      return { error: "That trip already has an active primary assignment.", success: null };
+    }
+
+    if (insertError.message.includes("truck already has an active assignment")) {
+      return { error: "That truck is already assigned to an active trip. Release it first.", success: null };
+    }
+
+    if (insertError.message.includes("driver already has an active assignment")) {
+      return { error: "That driver is already assigned to an active trip. Release them first.", success: null };
+    }
+
+    if (insertError.message.includes("cancelled trips cannot be assigned")) {
+      return { error: "A cancelled trip cannot be assigned.", success: null };
+    }
+
+    return { error: "The assignment could not be saved.", success: null };
+  }
+
+  revalidatePath("/workspace/dispatch");
+  return { error: null, success: "Trip assigned." };
+}
+
+export async function releaseAssignment(
+  _previous: DispatchActionState,
+  formData: FormData,
+): Promise<DispatchActionState> {
+  const parsed = releaseAssignmentSchema.safeParse({
+    assignmentId: formData.get("assignmentId"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: rpcError } = await context.supabase.rpc("release_trip_assignment", {
+    p_assignment_id: parsed.data.assignmentId,
+  });
+
+  if (rpcError) {
     return {
-      error:
-        insertError.code === "23505"
-          ? "That trip already has an active primary assignment."
-          : "The assignment could not be saved.",
+      error: rpcError.message.includes("already been released")
+        ? "That assignment has already been released."
+        : "The assignment could not be released.",
       success: null,
     };
   }
 
   revalidatePath("/workspace/dispatch");
-  return { error: null, success: "Trip assigned." };
+  return { error: null, success: "Assignment released. The truck and driver are available again." };
 }
 
 export async function createLoadingRecord(
@@ -355,3 +398,4 @@ function deliveryErrorMessage(error: { message?: string; code?: string }): strin
 
   return "The delivery could not be recorded. Check the quantities and references.";
 }
+

@@ -11,6 +11,7 @@ import {
   loadingRecordSchema,
   reconciliationItemSchema,
   reconciliationSchema,
+  releaseAssignmentSchema,
   transporterSchema,
   tripSchema,
   truckSchema,
@@ -314,6 +315,17 @@ describe("investigationSchema", () => {
 
   it("rejects an unknown party type", () => {
     expect(investigationSchema.safeParse({ ...base, responsiblePartyType: "driver" }).success).toBe(false);
+  });
+});
+
+
+describe("releaseAssignmentSchema", () => {
+  it("accepts an assignment identifier", () => {
+    expect(releaseAssignmentSchema.safeParse({ assignmentId: tripId }).success).toBe(true);
+  });
+
+  it("rejects a missing assignment identifier", () => {
+    expect(releaseAssignmentSchema.safeParse({ assignmentId: "" }).success).toBe(false);
   });
 });
 

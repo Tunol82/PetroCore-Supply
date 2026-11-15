@@ -65,23 +65,6 @@ async function pickOption(page, selector, includes) {
   return match.text;
 }
 
-async function pickFirstOption(page, selector) {
-  const select = page.locator(selector);
-  const options = await select
-    .locator("option")
-    .evaluateAll((nodes) =>
-      nodes.map((node, index) => ({ index, value: node.value, text: node.textContent ?? "" })),
-    );
-  const match = options.find((option) => option.index > 0 && option.text.includes("left"));
-
-  if (!match) {
-    throw new Error(`No batch option available in ${selector}`);
-  }
-
-  await select.selectOption(match.value);
-  return match.text;
-}
-
 async function submitAndRead(page, buttonName) {
   const button = page.getByRole("button", { name: new RegExp(buttonName, "i") }).first();
   const form = button.locator("xpath=ancestor::form");

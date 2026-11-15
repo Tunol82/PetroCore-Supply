@@ -105,6 +105,10 @@ export const assignmentSchema = z.object({
   assignmentRole: z.enum(ASSIGNMENT_ROLES),
 });
 
+export const releaseAssignmentSchema = z.object({
+  assignmentId: uuid("Select an assignment."),
+});
+
 export const loadingRecordSchema = z.object({
   tripId: uuid("Select a trip."),
   compartmentId: uuid("Select a compartment."),

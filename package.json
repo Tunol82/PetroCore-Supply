@@ -14,7 +14,8 @@
     "test:e2e": "playwright test",
     "verify:live": "node scripts/live-auth-check.mjs",
     "verify:live:inventory": "node scripts/live-inventory-check.mjs",
-    "verify:live:fulfilment": "node scripts/live-fulfilment-check.mjs"
+    "verify:live:fulfilment": "node scripts/live-fulfilment-check.mjs",
+    "verify:live:dispatch": "node scripts/live-dispatch-check.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
@@ -41,3 +42,4 @@
     "vitest": "^3.2.4"
   }
 }
+

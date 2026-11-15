@@ -1,7 +1,14 @@
 "use client";
 
 import { useActionState } from "react";
-import { addLoadingAllocation, assignTrip, createLoadingRecord, createTrip, type DispatchActionState } from "./actions";
+import {
+  addLoadingAllocation,
+  assignTrip,
+  createLoadingRecord,
+  createTrip,
+  releaseAssignment,
+  type DispatchActionState,
+} from "./actions";
 
 export type Option = { id: string; label: string };
 
@@ -154,12 +161,32 @@ export function AssignmentForm({
         </div>
       </div>
       <p className="text-xs text-[var(--muted)]">
-        A trip can have one active primary truck and driver. Additional assignments are allowed.
+        A truck or driver can hold only one active assignment. Release the previous assignment before reuse, or cancel
+        the trip to release it automatically.
       </p>
       <Feedback state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Assigning…" : "Assign trip"}
       </button>
+    </form>
+  );
+}
+
+export function ReleaseAssignmentForm({ assignmentId }: { assignmentId: string }) {
+  const [state, formAction, pending] = useActionState(releaseAssignment, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="assignmentId" value={assignmentId} />
+      <button
+        type="submit"
+        className="rounded-lg border border-[var(--brand)] px-2 py-1 text-xs font-semibold text-[var(--brand)] transition hover:bg-[var(--brand)]/5 disabled:opacity-50"
+        disabled={pending}
+      >
+        {pending ? "Releasing…" : "Release"}
+      </button>
+      {state.error ? <span className="text-xs text-red-700">{state.error}</span> : null}
+      {state.success ? <span className="text-xs text-emerald-700">{state.success}</span> : null}
     </form>
   );
 }

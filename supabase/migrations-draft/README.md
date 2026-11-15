@@ -42,3 +42,6 @@ None.
 | `20261115001600_inventory_cumulative_receipts.sql` | Allows cumulative receipts per procurement batch | Applied 2026-11-15; partial, full and over-receipt checks verified |
 | `20261115001700_inventory_reservations.sql` | Inventory reservations and reservation lines | Applied 2026-11-15; availability, product-match and storage-location checks verified |
 | `20261115001800_inventory_issues_fifo.sql` | Inventory issues, issue lines and FIFO allocations | Applied 2026-11-15; FIFO split, cost preservation, shortfall rollback and isolation verified |
+| `20261115001900_double_booking.sql` | Double-booking prevention for trucks and drivers, assignment release, cancellation release | Applied 2026-11-16; busy-truck, busy-driver, release and cancellation checks verified |
+| `20261115002000_assignment_release_grants.sql` | Revokes direct UPDATE on trip assignments | Applied 2026-11-16; direct release now denied |
+| `20261115002100_cancelled_trip_assignments.sql` | Rejects new assignments on a cancelled trip | Applied 2026-11-16; cancellation now blocks assignment |

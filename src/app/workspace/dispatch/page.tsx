@@ -1,10 +1,16 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signOut } from "@/app/workspace/actions";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
-import { AssignmentForm, LoadingAllocationForm, LoadingRecordForm, TripForm } from "./dispatch-forms";
+import {
+  AssignmentForm,
+  LoadingAllocationForm,
+  LoadingRecordForm,
+  ReleaseAssignmentForm,
+  TripForm,
+} from "./dispatch-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -333,7 +339,8 @@ export default async function DispatchPage() {
                   <th className="py-2 pr-3">Driver</th>
                   <th className="py-2 pr-3">Role</th>
                   <th className="py-2 pr-3">Assigned</th>
-                  <th className="py-2">Released</th>
+                  <th className="py-2 pr-3">Released</th>
+                  <th className="py-2">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--line)]">
@@ -352,10 +359,17 @@ export default async function DispatchPage() {
                     <td className="py-2 pr-3 text-xs">
                       {new Date(assignment.assigned_at).toLocaleString("en-GB")}
                     </td>
-                    <td className="py-2 text-xs">
+                    <td className="py-2 pr-3 text-xs">
                       {assignment.released_at
                         ? new Date(assignment.released_at).toLocaleString("en-GB")
                         : "active"}
+                    </td>
+                    <td className="py-2 text-xs">
+                      {canManage && !assignment.released_at ? (
+                        <ReleaseAssignmentForm assignmentId={assignment.id} />
+                      ) : (
+                        <span className="text-[var(--muted)]">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -543,3 +557,4 @@ function Header() {
     </header>
   );
 }
+
