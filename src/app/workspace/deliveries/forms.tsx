@@ -166,9 +166,16 @@ export function EvidenceForm({ deliveries }: { deliveries: Option[] }) {
             <option value="other">Other</option>
           </select>
         </div>
-        <div>
-          <label htmlFor="ev-path" className={labelClass}>Storage reference</label>
-          <input id="ev-path" name="filePath" required className={fieldClass} placeholder="deliveries/2026/waybill.jpg" />
+        <div className="sm:col-span-2">
+          <label htmlFor="ev-file" className={labelClass}>Evidence file</label>
+          <input
+            id="ev-file"
+            name="file"
+            type="file"
+            required
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[var(--brand)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+          />
         </div>
         <div>
           <label htmlFor="ev-notes" className={labelClass}>Notes</label>
@@ -176,11 +183,11 @@ export function EvidenceForm({ deliveries }: { deliveries: Option[] }) {
         </div>
       </div>
       <p className="text-xs text-[var(--muted)]">
-        File upload is not implemented yet; this records the secure storage reference only.
+        Files upload to private tenant storage. JPEG, PNG, WebP or PDF up to 5 MB. Evidence is append-only.
       </p>
       <Feedback state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
-        {pending ? "Saving…" : "Save evidence"}
+        {pending ? "Uploading…" : "Upload evidence"}
       </button>
     </form>
   );

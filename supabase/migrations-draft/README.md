@@ -45,3 +45,4 @@ None.
 | `20261115001900_double_booking.sql` | Double-booking prevention for trucks and drivers, assignment release, cancellation release | Applied 2026-11-16; busy-truck, busy-driver, release and cancellation checks verified |
 | `20261115002000_assignment_release_grants.sql` | Revokes direct UPDATE on trip assignments | Applied 2026-11-16; direct release now denied |
 | `20261115002100_cancelled_trip_assignments.sql` | Rejects new assignments on a cancelled trip | Applied 2026-11-16; cancellation now blocks assignment |
+| `20261115002200_evidence_storage.sql` | Private delivery-evidence bucket, tenant-scoped storage policies, evidence file metadata | Applied 2026-11-16; upload, signed download, cross-tenant denial and isolation verified |

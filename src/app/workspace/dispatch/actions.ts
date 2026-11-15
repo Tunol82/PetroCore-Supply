@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/shared/lib/supabase/server";
@@ -6,11 +6,13 @@ import { getCurrentTenant, type CurrentTenant } from "@/modules/tenant/current-t
 import {
   assignmentSchema,
   deliverySchema,
+  evidenceFileExtension,
   evidenceSchema,
   loadingAllocationSchema,
   loadingRecordSchema,
   releaseAssignmentSchema,
   tripSchema,
+  validateEvidenceFile,
 } from "@/modules/transport/validation";
 
 export type DispatchActionState = {
@@ -356,7 +358,6 @@ export async function addDeliveryEvidence(
   const parsed = evidenceSchema.safeParse({
     deliveryRecordId: formData.get("deliveryRecordId"),
     evidenceType: formData.get("evidenceType"),
-    filePath: formData.get("filePath"),
     notes: formData.get("notes"),
   });
 
@@ -364,24 +365,70 @@ export async function addDeliveryEvidence(
     return { error: firstIssue(parsed), success: null };
   }
 
+  const file = formData.get("file");
+
+  if (!(file instanceof File)) {
+    return { error: "Choose a file to upload.", success: null };
+  }
+
+  const fileError = validateEvidenceFile(file);
+
+  if (fileError) {
+    return { error: fileError, success: null };
+  }
+
   const { context, error } = await requireManageAccess();
   if (!context) return { error: error ?? "Access denied.", success: null };
 
+  const { data: delivery, error: deliveryError } = await context.supabase
+    .from("trip_delivery_records")
+    .select("id")
+    .eq("id", parsed.data.deliveryRecordId)
+    .maybeSingle();
+
+  if (deliveryError || !delivery) {
+    return { error: "That delivery record is not available to this company.", success: null };
+  }
+
+  const path = `${context.tenant.organisationId}/${delivery.id}/${crypto.randomUUID()}.${evidenceFileExtension(
+    file.type,
+  )}`;
+
+  const { error: uploadError } = await context.supabase.storage
+    .from("delivery-evidence")
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (uploadError) {
+    if (uploadError.message.toLowerCase().includes("bucket not found")) {
+      return { error: "Evidence storage is not configured yet.", success: null };
+    }
+
+    if (uploadError.message.toLowerCase().includes("too large")) {
+      return { error: "The file cannot be larger than 5 MB.", success: null };
+    }
+
+    return { error: "The file could not be uploaded.", success: null };
+  }
+
   const { error: insertError } = await context.supabase.from("delivery_evidence").insert({
     organisation_id: context.tenant.organisationId,
-    trip_delivery_record_id: parsed.data.deliveryRecordId,
+    trip_delivery_record_id: delivery.id,
     evidence_type: parsed.data.evidenceType,
-    file_path: parsed.data.filePath,
+    file_path: path,
+    file_size: file.size,
+    content_type: file.type,
+    original_filename: file.name.slice(0, 255),
     notes: textOrNull(parsed.data.notes),
     uploaded_by: context.tenant.profileId,
   });
 
   if (insertError) {
-    return { error: "The evidence could not be saved.", success: null };
+    await context.supabase.storage.from("delivery-evidence").remove([path]);
+    return { error: "The evidence could not be recorded, so the upload was discarded.", success: null };
   }
 
   revalidatePath("/workspace/deliveries");
-  return { error: null, success: "Evidence saved." };
+  return { error: null, success: "Evidence uploaded." };
 }
 
 function deliveryErrorMessage(error: { message?: string; code?: string }): string {

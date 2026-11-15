@@ -26,6 +26,7 @@ type Evidence = {
   trip_delivery_record_id: string;
   evidence_type: string;
   file_path: string;
+  original_filename: string | null;
   uploaded_at: string;
 };
 
@@ -97,7 +98,7 @@ export default async function DeliveriesPage() {
       .limit(30),
     supabase
       .from("delivery_evidence")
-      .select("id, trip_delivery_record_id, evidence_type, file_path, uploaded_at")
+      .select("id, trip_delivery_record_id, evidence_type, file_path, original_filename, uploaded_at")
       .order("uploaded_at", { ascending: false })
       .limit(30),
     supabase.from("trips").select("id, trip_number").order("created_at", { ascending: false }).limit(30),
@@ -140,6 +141,18 @@ export default async function DeliveriesPage() {
 
   const deliveries = (deliveriesResult.data ?? []) as Delivery[];
   const evidence = (evidenceResult.data ?? []) as Evidence[];
+
+  const evidenceLinks = new Map<string, string>();
+  await Promise.all(
+    evidence.map(async (item) => {
+      const { data } = await supabase.storage.from("delivery-evidence").createSignedUrl(item.file_path, 600);
+
+      if (data?.signedUrl) {
+        evidenceLinks.set(item.id, data.signedUrl);
+      }
+    }),
+  );
+
   const trips = (tripsResult.data ?? []) as Trip[];
   const salesItems = (salesItemsResult.data ?? []) as SalesOrderItem[];
   const salesOrders = (salesOrdersResult.data ?? []) as SalesOrder[];
@@ -281,7 +294,7 @@ export default async function DeliveriesPage() {
                 <tr>
                   <th className="py-2 pr-3">Delivery</th>
                   <th className="py-2 pr-3">Type</th>
-                  <th className="py-2 pr-3">Storage reference</th>
+                  <th className="py-2 pr-3">File</th>
                   <th className="py-2">Uploaded</th>
                 </tr>
               </thead>
@@ -292,10 +305,23 @@ export default async function DeliveriesPage() {
                   return (
                     <tr key={item.id}>
                       <td className="py-2 pr-3 text-xs">
-                        {delivery ? tripById.get(delivery.trip_id)?.trip_number ?? "delivery" : "—"}
+                        {delivery ? tripById.get(delivery.trip_id)?.trip_number ?? "delivery" : "-"}
                       </td>
                       <td className="py-2 pr-3 text-xs">{item.evidence_type}</td>
-                      <td className="py-2 pr-3 text-xs break-all">{item.file_path}</td>
+                      <td className="py-2 pr-3 text-xs break-all">
+                        {evidenceLinks.has(item.id) ? (
+                          <a
+                            className="font-semibold text-[var(--brand)]"
+                            href={evidenceLinks.get(item.id)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {item.original_filename ?? "Open file"}
+                          </a>
+                        ) : (
+                          item.original_filename ?? item.file_path
+                        )}
+                      </td>
                       <td className="py-2 text-xs">
                         {new Date(item.uploaded_at).toLocaleDateString("en-GB")}
                       </td>
@@ -311,7 +337,7 @@ export default async function DeliveriesPage() {
 
           {canManage ? (
             <div className="mt-6 border-t border-[var(--line)] pt-5">
-              <h3 className="text-sm font-semibold">Add evidence reference</h3>
+              <h3 className="text-sm font-semibold">Upload evidence</h3>
               <div className="mt-3">
                 <EvidenceForm deliveries={deliveryOptions} />
               </div>
@@ -320,8 +346,9 @@ export default async function DeliveriesPage() {
         </section>
 
         <p className="mt-8 text-xs leading-6 text-[var(--muted)]">
-          Delivery confirmation is stored on the delivery row; a separate immutable confirmation event and secure file
-          upload are pending decisions. Trip reconciliation and discrepancy investigation come next.
+          Evidence files upload to private tenant storage and are append-only; signed links expire after ten minutes.
+          Delivery confirmation is stored on the delivery row; a separate immutable confirmation event is a pending
+          decision.
         </p>
       </div>
     </main>

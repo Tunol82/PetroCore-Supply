@@ -164,12 +164,46 @@ export const deliverySchema = z
     },
   );
 
+export const EVIDENCE_MAX_BYTES = 5 * 1024 * 1024;
+export const EVIDENCE_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+] as const;
+
+const EVIDENCE_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "application/pdf": "pdf",
+};
+
 export const evidenceSchema = z.object({
   deliveryRecordId: uuid("Select a delivery record."),
   evidenceType: z.enum(EVIDENCE_TYPES),
-  filePath: z.string().trim().min(3, "Enter the evidence storage reference.").max(500),
   notes: optionalText(500),
 });
+
+export function validateEvidenceFile(file: { size: number; type: string }): string | null {
+  if (file.size === 0) {
+    return "Choose a file to upload.";
+  }
+
+  if (file.size > EVIDENCE_MAX_BYTES) {
+    return "The file cannot be larger than 5 MB.";
+  }
+
+  if (!EVIDENCE_MIME_TYPES.includes(file.type as (typeof EVIDENCE_MIME_TYPES)[number])) {
+    return "Upload a JPEG, PNG or WebP image, or a PDF.";
+  }
+
+  return null;
+}
+
+export function evidenceFileExtension(type: string): string {
+  return EVIDENCE_EXTENSIONS[type] ?? "bin";
+}
 
 export const RECONCILIATION_STATUSES = [
   "pending",

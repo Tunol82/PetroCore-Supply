@@ -5,6 +5,7 @@ import {
   deliverySchema,
   discrepancySchema,
   driverSchema,
+  evidenceFileExtension,
   evidenceSchema,
   investigationSchema,
   loadingAllocationSchema,
@@ -15,6 +16,7 @@ import {
   transporterSchema,
   tripSchema,
   truckSchema,
+  validateEvidenceFile,
 } from "./validation";
 
 const transporterId = "11111111-1111-1111-1111-111111111111";
@@ -233,19 +235,42 @@ describe("evidenceSchema", () => {
   const base = {
     deliveryRecordId: tripId,
     evidenceType: "photo" as const,
-    filePath: "deliveries/2026/waybill.jpg",
   };
 
   it("accepts evidence metadata", () => {
     expect(evidenceSchema.safeParse(base).success).toBe(true);
   });
 
-  it("rejects an empty storage reference", () => {
-    expect(evidenceSchema.safeParse({ ...base, filePath: "" }).success).toBe(false);
-  });
-
   it("rejects an unknown evidence type", () => {
     expect(evidenceSchema.safeParse({ ...base, evidenceType: "video" }).success).toBe(false);
+  });
+});
+
+describe("validateEvidenceFile", () => {
+  it("accepts a JPEG within the size limit", () => {
+    expect(validateEvidenceFile({ size: 1024, type: "image/jpeg" })).toBeNull();
+  });
+
+  it("accepts a PDF", () => {
+    expect(validateEvidenceFile({ size: 1024, type: "application/pdf" })).toBeNull();
+  });
+
+  it("rejects an empty file", () => {
+    expect(validateEvidenceFile({ size: 0, type: "image/png" })).toBe("Choose a file to upload.");
+  });
+
+  it("rejects a file above 5 MB", () => {
+    expect(validateEvidenceFile({ size: 5 * 1024 * 1024 + 1, type: "image/png" })).toContain("5 MB");
+  });
+
+  it("rejects an unsupported content type", () => {
+    expect(validateEvidenceFile({ size: 1024, type: "video/mp4" })).toContain("JPEG");
+  });
+
+  it("maps accepted types to storage extensions", () => {
+    expect(evidenceFileExtension("image/jpeg")).toBe("jpg");
+    expect(evidenceFileExtension("application/pdf")).toBe("pdf");
+    expect(evidenceFileExtension("application/x-unknown")).toBe("bin");
   });
 });
 
