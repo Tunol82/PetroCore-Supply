@@ -113,6 +113,20 @@ No Milestone 1 decision remains open. What remains is environmental and document
 
 These are tracked in the Migration 1 checklist and the non-production Supabase plan.
 
+### DR-26 — Platform Super Admin and tenant switching
+
+| Field | Detail |
+|---|---|
+| Status | **Proposed** — design supplied 2026-11-15; not approved |
+| Question | How should platform Super Admin identity, tenant switching, privilege scope, session lifetime and audit work, given D-003? |
+| Proposal | Separate `platform_admins` table keyed by `auth.users.id` (no tenant membership); server-side `platform_tenant_sessions` with a 30-minute expiry and a signed httpOnly cookie; MFA AAL2 mandatory; read-only tenant access through a server-side service-role client explicitly scoped to the session tenant; append-only `platform_audit_logs` for entry, exit, denial and expiry; existing tenant RLS untouched. |
+| Why it matters | Super Admin can read every tenant. Modelled as ordinary membership it would silently weaken tenant isolation and D-001. |
+| Options | (a) Table + server-side switch session (proposed). (b) Supabase custom claims. (c) Environment allowlist. |
+| Consequences | (a) strongest audit and revocation, but introduces a service-role code path. (b) fewer moving parts, but claims are harder to revoke and audit. (c) simplest, but not auditable per action. |
+| Blocks | Any cross-tenant support capability and the platform admin UI. |
+| Approval needed | Identity source, MFA requirement, read-only scope, session length, platform audit visibility, acceptance of service-role usage. |
+| Detail | `docs/database/platform-admin-proposal.md`; draft SQL `supabase/migrations-draft/0004_platform_admin.sql` (not applied). |
+
 ## 4. Business decisions still open
 
 These come from the v1.2 specification §8. None may be encoded in code or schema until approved.

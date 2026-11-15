@@ -18,7 +18,9 @@ cannot apply it by accident.
 
 ## Current drafts
 
-None.
+| Draft | Scope | Blocked by |
+|---|---|---|
+| `0004_platform_admin.sql` | Platform admin identity, switch sessions, platform audit, RLS deny-by-default | DR-26 approval and PA-001 to PA-012 |
 
 ## Promoted
 

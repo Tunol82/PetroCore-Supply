@@ -154,7 +154,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
 6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
-7. **Next:** design Super Admin switching under D-003 before any cross-tenant capability. Tenant administration, audit visibility, second-user isolation and the no-membership state are implemented and verified.
+7. **Next:** DR-26 (platform Super Admin and tenant switching) is documented and has a non-applied draft migration. Obtain approval, apply it to the non-production project, and run PA-001 to PA-012 before building the `/platform` UI. Everything else in Milestone 1 is implemented and verified.
 8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
