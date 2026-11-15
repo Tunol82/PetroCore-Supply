@@ -1,6 +1,6 @@
 # PetroCore Supply — Consolidated Field-Level Database Dictionary v1.2 (Proposal)
 
-<badge>PROPOSAL — NOT APPROVED FOR SQL</badge>
+**PROPOSAL — NOT APPROVED FOR SQL**
 
 **Document status:** Product-owner review draft  
 **Version:** 1.2 proposal  
