@@ -1,11 +1,25 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { createClient } from "@/shared/lib/supabase/server";
+import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { SignInForm } from "./sign-in-form";
 
 export const metadata: Metadata = {
   title: "Sign in",
 };
 
-export default function LoginPage() {
+export const dynamic = "force-dynamic";
+
+export default async function LoginPage() {
+  if (getSupabaseConfig()) {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+
+    if (data.user) {
+      redirect("/workspace");
+    }
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center px-5 py-12">
       <div className="grid w-full max-w-5xl overflow-hidden rounded-3xl border border-[var(--line)] bg-white shadow-sm lg:grid-cols-2">

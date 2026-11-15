@@ -88,11 +88,15 @@ Implemented in the scaffold:
 - Starter unit test for sign-in validation and a Playwright end-to-end suite covering the product identity and sign-in form.
 - GitHub Actions workflow for lint, typecheck, unit tests and production build, plus a separate Playwright end-to-end job.
 - Committed `package-lock.json`; CI installs with `npm ci` for reproducible builds.
+- Configuration-aware auth states: `/workspace` renders an explicit setup notice instead of failing when Supabase is not configured, and `/login` redirects an already-signed-in user to the workspace.
+- Per-field sign-in validation with `aria-invalid`, `aria-describedby` and focus on the first invalid field.
+- Supabase settings are read through `getSupabaseConfig()` so the app renders safely before a project is connected.
 - Technical foundation, Milestone 1 scope, consolidated Database Dictionary v1.2 source document and Database v1.2 Reconciliation Report.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
-- A local verification pass was completed on Windows against Node 24.16.0 / npm 11.13.0: `npm install`, `npm run lint`, `npm run typecheck`, `npm test` (3 tests) and `npm run build` all passed, and `npm run test:e2e` passed 2 Playwright tests.
+- A local verification pass was completed on Windows against Node 24.16.0 / npm 11.13.0: `npm install`, `npm run lint`, `npm run typecheck`, `npm test` (6 tests) and `npm run build` all passed, and `npm run test:e2e` passed 4 Playwright tests.
+- The end-to-end suite currently covers only the unconfigured state; `playwright.config.ts` blanks the Supabase variables for determinism until an approved test project and tenant fixtures exist.
 - This does **not** establish that a configured Supabase project, tenant membership, RLS, production database or business transactions work.
 - Supabase environment values are not configured/verified in this handover.
 - No production business tables or SQL migrations have been created.
@@ -135,7 +139,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 
 1. ~~Inspect the full repository and current PR head; preserve any user changes.~~ Done 2026-11-15.
 2. ~~Run `npm install`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` and the Playwright suite locally; fix any failures and report exactly what ran.~~ Done 2026-11-15; see Section 6. Playwright now runs in CI.
-3. Review the scaffold for accessibility, error handling, session handling and Next.js/Supabase SSR correctness. Add tests where needed. **In progress:** remaining gaps are the signed-in `/login` redirect, the unconfigured-Supabase state, linking validation errors to inputs with `aria-invalid`/`aria-describedby`, and a no-active-membership state.
+3. Review the scaffold for accessibility, error handling, session handling and Next.js/Supabase SSR correctness. Add tests where needed. **Partially done:** signed-in `/login` redirect, unconfigured-Supabase state, per-field validation with accessible errors and focus handling are implemented and covered by tests. Remaining: an explicit no-active-membership state, which needs the approved membership schema.
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Not started.**
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Not started.**
 6. After the physical schema is approved, implement additive migrations, RLS policies and cross-tenant/cross-location tests before any operational modules.

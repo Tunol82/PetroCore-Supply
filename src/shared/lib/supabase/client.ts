@@ -1,12 +1,12 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseConfig } from "./config";
 
 export function createClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const config = getSupabaseConfig();
 
-  if (!url || !anonKey) {
+  if (!config) {
     throw new Error("Supabase is not configured. Add the public URL and anon key to your environment.");
   }
 
-  return createBrowserClient(url, anonKey);
+  return createBrowserClient(config.url, config.anonKey);
 }
