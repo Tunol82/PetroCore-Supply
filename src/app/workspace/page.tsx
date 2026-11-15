@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
@@ -116,6 +117,10 @@ export default async function WorkspacePage() {
     .from("business_locations")
     .select("id", { count: "exact", head: true });
 
+  const { data: canManageAccess } = await supabase.rpc("has_permission", {
+    p_permission_key: "users.manage",
+  });
+
   return (
     <Shell>
       <section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm sm:p-9">
@@ -127,7 +132,17 @@ export default async function WorkspacePage() {
               {tenant.organisationCode} · Petrocore Supply workspace
             </p>
           </div>
-          <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">Active</span>
+          <div className="flex items-center gap-2">
+            {canManageAccess ? (
+              <Link
+                href="/workspace/access"
+                className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-medium hover:bg-slate-50"
+              >
+                Manage access
+              </Link>
+            ) : null}
+            <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">Active</span>
+          </div>
         </div>
 
         <dl className="mt-8 grid gap-4 sm:grid-cols-3">

@@ -95,6 +95,9 @@ Implemented in the scaffold:
 - Baseline security headers (nosniff, frame denial, referrer policy, permissions policy), a workspace loading state, a route error boundary and a `/api/health` configuration probe that exposes no secrets.
 - Technical foundation, Milestone 1 scope, consolidated Database Dictionary v1.2 source document and Database v1.2 Reconciliation Report.
 - Owner-approved design review pack (PR #2, merged 2026-11-15): field-level Database Dictionary v1.2 proposal, reconstructed ERD v1.2, Decision Register, Migration 1 checklist and non-production Supabase plan.
+- Tenant access migration applied to the non-production project: organisations, settings, locations, profiles, roles, permissions, role assignments, location grants and audit log, with RLS on every table.
+- Tenant resolution in `/workspace`: verified tenant, access-pending and workspace-error states.
+- Tenant administration at `/workspace/access`: member list with roles, role assignment/revocation, location grant creation/revocation, server-side permission checks and audit triggers on every access change.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
@@ -149,7 +152,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
 6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
-7. **Next:** build tenant administration on top of the applied schema — list memberships, assign roles, grant and revoke location access — using server actions and the existing RLS policies. Add Playwright coverage for a second user and a no-membership user. Then design Super Admin switching (D-003) before any cross-tenant capability.
+7. **Next:** add a second-user browser test (no membership → access-pending; another tenant → isolation), design Super Admin switching under D-003, and add audit visibility for the tenant administrator. Tenant administration itself is implemented at `/workspace/access`.
 8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
