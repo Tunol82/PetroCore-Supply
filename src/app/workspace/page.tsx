@@ -125,9 +125,14 @@ export default async function WorkspacePage() {
     .from("business_locations")
     .select("id", { count: "exact", head: true });
 
-  const { data: canManageAccess } = await supabase.rpc("has_permission", {
-    p_permission_key: "users.manage",
-  });
+  const [{ data: canManageAccess }, { data: canViewProcurement }, { data: canManageProcurement }] =
+    await Promise.all([
+      supabase.rpc("has_permission", { p_permission_key: "users.manage" }),
+      supabase.rpc("has_permission", { p_permission_key: "procurement.view" }),
+      supabase.rpc("has_permission", { p_permission_key: "procurement.manage" }),
+    ]);
+
+  const showProcurement = Boolean(canViewProcurement || canManageProcurement);
 
   return (
     <Shell>
@@ -141,6 +146,14 @@ export default async function WorkspacePage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {showProcurement ? (
+              <Link
+                href="/workspace/procurement"
+                className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-medium hover:bg-slate-50"
+              >
+                Procurement
+              </Link>
+            ) : null}
             {canManageAccess ? (
               <Link
                 href="/workspace/access"
