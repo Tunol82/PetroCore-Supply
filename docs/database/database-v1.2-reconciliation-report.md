@@ -249,7 +249,7 @@ The v1.2 specification lists the following as unresolved; none should be invente
 Additional schema decisions revealed by the ERD reconciliation:
 
 15. Tenant root and membership: `organisations` is approved as the tenant root; ordinary-user membership is one tenant per user, with no tenant switching. Only Super Admins may switch tenant context through the audited privileged path.
-16. Canonical naming: purchase_orders vs procurement_orders; business_locations vs locations; sales_credit_notes vs credit_notes; payment_records vs payments; trip_delivery_records vs deliveries.
+16. Canonical naming: purchase_orders vs procurement_orders; business_locations vs locations; sales_credit_notes vs credit_notes; payment_records vs payments; trip_delivery_records vs deliveries. **Resolved 2026-11-15 (DR-16): retain the v1.1 names; ERD names are documentation aliases only.**
 17. Quantity model: current-value columns only or columns plus immutable measurement event history.
 18. Delivery confirmation: field-level acknowledgement/evidence or separate confirmation event table.
 19. Discrepancy model: one shared typed model or procurement and delivery-specific discrepancy tables.
@@ -258,7 +258,7 @@ Additional schema decisions revealed by the ERD reconciliation:
 22. Transporter invoice header: whether trip_id remains nullable for backward compatibility and how invoice items become authoritative.
 23. Payment event model: exact relationship among financial_transactions, payment_records, payment_channels and reversals.
 24. Tenant and location ownership: required organisation_id/location_id coverage and RLS policy model; global reference catalogs and tenant-specific custom values are governed by D-005.
-25. **Greenfield or legacy migration:** confirm whether a pre-existing v1.1 PetroCore Supply database actually exists. The v1.2 documents assume an existing v1.1 schema to inspect, backfill and migrate additively. If the product is greenfield, the baseline-verification and backfill migrations reduce to schema creation with no legacy rows, and the "do not build from scratch" instruction must be reinterpreted with owner approval. This is unresolved and must not be assumed either way.
+25. **Greenfield or legacy migration:** **Resolved 2026-11-15 (DR-25): greenfield.** No pre-existing v1.1 PetroCore Supply database exists; build v1.2 semantics directly in an empty Supabase project. The baseline-verification step becomes a confirmation that the target is empty. If a v1.1 database is later discovered, implementation must stop and this decision be reopened.
 
 ## 9. Approved decision log
 
@@ -392,7 +392,7 @@ Additional schema decisions revealed by the ERD reconciliation:
 
 This is the safe sequence, subject to approval and actual database inspection:
 
-1. **Baseline verification:** inspect the actual Supabase schema, existing rows, constraints, indexes, RLS policies and storage policies; compare against the approved v1.1 dictionary. Create and verify a restorable backup.
+1. **Baseline verification (greenfield, DR-25):** confirm the target project is empty and review its configuration, extensions, roles and storage policies. No legacy rows exist to compare or backfill. Take a baseline backup immediately after provisioning.
 2. **Tenant/access foundation:** resolve tenant root, user membership, locations, roles, permissions, approval rules/requests and audit ownership.
 3. **Procurement traceability:** add only missing order-line relationships and establish quantity/discrepancy rules.
 4. **Loading split:** classify existing loading allocation rows; create the dedicated direct allocation table; migrate and reconcile; retain old data until sign-off.

@@ -13,12 +13,12 @@
 | Field | Value |
 |---|---|
 | Document | ERD v1.2 Logical Proposal (reconstructed) |
-| Version | Review revision 2 |
-| Status | Product-owner review draft. **Not approved.** |
+| Version | Review revision 3 (owner-approved review baseline) |
+| Status | Owner-approved review baseline. Authorised for Migration 1 drafting; not physical-schema approval. |
 | Owner | Product owner (Tunde Oladeji) |
 | Prepared | 2026-11-15 |
 | Repository branch | `docs/database-v1.2-review-proposal` |
-| Approval required | Comparison with the original ERD v1.2 artefact, then owner sign-off |
+| Approval required | Owner sign-off recorded 2026-11-15 on the reconstructed model; re-verify if the original artefact is produced |
 | Change record | See §8 Amendment log. |
 
 ## 1. Source and limitation
@@ -183,7 +183,7 @@ erDiagram
 | Decision | Relationship / design question | Status |
 |---|---|---|
 | DR-10 | Are tenant locations flat or hierarchical? What are valid types, and does access inherit? | Open |
-| DR-16 | Canonical names for purchase orders, locations, credit notes, payments and deliveries. | Open |
+| DR-16 | Canonical names for purchase orders, locations, credit notes, payments and deliveries. | **Approved** — retain v1.1 names |
 | DR-17 | Do quantity measurements need an immutable event/history entity? | Open |
 | DR-18 | Are customer delivery confirmations fields/evidence on delivery rows or separate events? | Open |
 | DR-19 | Shared typed discrepancy model or separate procurement/delivery discrepancy entities? | Open |
@@ -192,7 +192,7 @@ erDiagram
 | DR-22 | Is transporter invoice header `trip_id` retained for compatibility, and are invoice items authoritative? | Open |
 | DR-23 | Exact payment event, channel, settlement and reversal relationships. | Open |
 | DR-24 | Which entities carry `organisation_id` directly, which inherit, and exact RLS predicates? | Open |
-| DR-25 | Greenfield database or existing v1.1 database requiring inspection/backfill? | Open |
+| DR-25 | Greenfield database or existing v1.1 database requiring inspection/backfill? | **Approved** — greenfield |
 
 ## 6. Items deliberately not drawn as final physical entities
 
@@ -207,8 +207,8 @@ erDiagram
 ## 7. Approval checklist
 
 The ERD may move from proposal to approved logical design only after:
-1. The original ERD v1.2 is supplied or located and compared against this reconstruction.
-2. DR-16 and DR-25 are explicitly resolved.
+1. ~~The original ERD v1.2 is compared against this reconstruction.~~ Owner approved the reconstruction on 2026-11-15 because the original was unavailable; re-verify if it is produced.
+2. ~~DR-16 and DR-25 are explicitly resolved.~~ Approved 2026-11-15.
 3. DR-10 and DR-24 are explicitly resolved.
 4. DR-20 is resolved if approvals are in Milestone 1.
 5. Cardinalities and optionality are reviewed against the complete field-level dictionary.
@@ -222,3 +222,4 @@ The ERD may move from proposal to approved logical design only after:
 |---|---|---|---|
 | 1 | 2026-11-15 | Initial reconstructed logical ERD proposal. | Repository review |
 | 2 | 2026-11-15 | Added document control and approval requirement; noted that the procurement-batch to inventory-batch cardinality is unresolved; added this log. | Repository review |
+| 3 | 2026-11-15 | Recorded owner approval of the reconstructed model, DR-16 and DR-25; updated status, open-decision and checklist sections. DR-10, DR-20 and DR-24 remain open. | Repository review |

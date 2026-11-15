@@ -94,6 +94,7 @@ Implemented in the scaffold:
 - Supabase settings are read through `getSupabaseConfig()` so the app renders safely before a project is connected.
 - Baseline security headers (nosniff, frame denial, referrer policy, permissions policy), a workspace loading state, a route error boundary and a `/api/health` configuration probe that exposes no secrets.
 - Technical foundation, Milestone 1 scope, consolidated Database Dictionary v1.2 source document and Database v1.2 Reconciliation Report.
+- Owner-approved design review pack (PR #2, merged 2026-11-15): field-level Database Dictionary v1.2 proposal, reconstructed ERD v1.2, Decision Register, Migration 1 checklist and non-production Supabase plan.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
@@ -133,8 +134,8 @@ Do not guess these or encode irreversible assumptions:
 - Approvals: approval matrix, thresholds, separation of duties, delegation, escalation, rejection and amendment/re-submission history.
 - Documents/evidence: required document types, ownership, retention, versioning, access, evidence validation and polymorphic-link safeguards.
 - Liabilities and payment controls: supplier/transporter liability creation, invoice matching, payment verification, allocation, reversals and derived AP/AR reconciliation.
-- Canonical physical schema: exact table/column names, field types, nullability, FKs, uniqueness, delete policy, indexes, RLS, triggers, transaction boundaries and migration/backfill strategy.
-- Greenfield or legacy migration: confirm whether a pre-existing v1.1 PetroCore Supply database exists. The v1.2 documents assume one and require baseline inspection and additive backfill; if the product is greenfield, that instruction needs explicit owner reinterpretation (Reconciliation Report decision 25).
+- Canonical physical schema: exact table/column names, field types, nullability, FKs, uniqueness, delete policy, indexes, RLS, triggers, transaction boundaries and migration/backfill strategy. Canonical names are resolved (DR-16: retain v1.1 names); the physical definitions still depend on DR-10, DR-20 and DR-24.
+- Migration basis is resolved: the product is **greenfield** (DR-25). No v1.1 database exists, so there is no legacy inspection or backfill; confirm the target project is empty before the first migration.
 
 The reconciliation report's implementation gate remains binding: **no production SQL or schema migration until the complete field-level dictionary, ERD and related business/technical specifications are reconciled and approved, and the actual target database has been inspected/backed up.**
 
@@ -146,8 +147,8 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 2. ~~Run `npm install`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` and the Playwright suite locally; fix any failures and report exactly what ran.~~ Done 2026-11-15; see Section 6. Playwright now runs in CI.
 3. Review the scaffold for accessibility, error handling, session handling and Next.js/Supabase SSR correctness. Add tests where needed. **Partially done:** signed-in `/login` redirect, unconfigured-Supabase state, per-field validation with accessible errors and focus handling are implemented and covered by tests. Remaining: an explicit no-active-membership state, which needs the approved membership schema.
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
-5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. Every item remains Open pending product-owner approval.
-6. After the physical schema is approved, implement additive migrations, RLS policies and cross-tenant/cross-location tests before any operational modules.
+5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. DR-16 and DR-25 are now approved; DR-10, DR-20 and DR-24 remain Open.
+6. Resolve DR-10 (location model), DR-24 (ownership/RLS) and, if approvals are in scope, DR-20. Then draft Migration 1 from `migration-1-tenant-access-checklist.md`, apply it to an empty non-production project, and add RLS plus cross-tenant/cross-location tests before any operational module.
 7. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
@@ -157,17 +158,22 @@ Start by telling the user what branch and PR you found, what checks you ran, and
 **Primary instruction:** Preserve the approved architecture and business boundaries. PetroCore Supply is independent, multi-tenant from day one, and database security/integrity comes before operational feature breadth.
 
 
-## 11. Database design proposal work (2026-11-15)
+## 11. Database design documents (approved 2026-11-15)
 
-A separate review branch, `docs/database-v1.2-review-proposal`, contains two **unapproved proposals**:
+The design review pack was merged from `docs/database-v1.2-review-proposal` (PR #2) into `chore/verification-and-ci-hardening` on 2026-11-15.
 
-- `docs/database/database-dictionary-v1.2-proposal.md` — consolidates the complete v1.1 field-level dictionary baseline with proposed v1.2 amendments, candidate tenant/membership fields, an ownership review inventory and explicit open-decision markers.
-- `docs/erd/erd-v1.2-proposal.md` — reconstructed logical ERD based on the v1.1 dictionary, v1.2 amendment specification and repository reconciliation report.
+- `docs/database/database-dictionary-v1.2-proposal.md` — complete v1.1 field-level baseline plus proposed v1.2 amendments, candidate tenant/membership fields and an ownership review inventory.
+- `docs/erd/erd-v1.2-proposal.md` — reconstructed logical ERD based on the v1.1 dictionary, v1.2 amendment specification and reconciliation report.
 
-Important limitations and controls:
-- The original owner-supplied ERD v1.2 artefact was not located in the current repository or accessible Library material during preparation. The new ERD is a reconstruction and must be compared with the original before approval.
-- DR-16, DR-20, DR-24, DR-25 and DR-10 remain Open in the Decision Register. The proposals do not change decision status.
-- The proposed `organisations` table fields, `organisation_memberships` candidate and ownership classifications are not approved physical schema.
-- No SQL, migration, seed, trigger or RLS policy was created.
-- Do not merge the proposal branch into the verification branch or main until the product owner reviews the documents and explicitly approves the applicable decisions.
-- The existing `chore/verification-and-ci-hardening` branch and PR #1 remain separate. No changes were made to `main` or StationOs.
+Approval state:
+- The product owner approved the review pack as the working design baseline on 2026-11-15.
+- **DR-16 approved:** retain the v1.1 canonical names; ERD names are documentation aliases only.
+- **DR-25 approved:** greenfield. No v1.1 database exists; build v1.2 semantics directly in an empty project.
+- v1.1 baseline provenance and the field-level amendments are approved. ERD approval applies to the reconstruction; re-verify if the original artefact is produced.
+
+Still open and still gating tenant/access SQL:
+- **DR-10** location model and hierarchy.
+- **DR-20** approval model.
+- **DR-24** tenant/location ownership coverage and RLS predicate model.
+
+No SQL, migration, seed, trigger or RLS policy has been created. `main` and StationOs remain untouched; PR #1 remains draft.

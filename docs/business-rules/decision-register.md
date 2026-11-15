@@ -14,21 +14,47 @@
 
 Status values: **Open**, **Approved**, **Deferred**, **Superseded**.
 
-Already approved: D-001 tenancy and switching, D-002 tenant master, D-003 Super Admin, D-004 location access, D-005 global reference data (see the reconciliation report §9).
+Already approved: D-001 tenancy and switching, D-002 tenant master, D-003 Super Admin, D-004 location access, D-005 global reference data (see the reconciliation report §9), plus DR-16 and DR-25 below.
 
-## 2. Records blocking Milestone 1
+## 2. Approved in this revision
 
 ### DR-16 — Canonical entity naming
 
 | Field | Detail |
 |---|---|
-| Status | Open |
+| Status | **Approved** — option (a): retain v1.1 names as canonical |
 | Question | Which name is canonical for each concept where the ERD and v1.1 dictionary differ: `purchase_orders` vs `procurement_orders`, `business_locations` vs `locations`, `sales_credit_notes` vs `credit_notes`, `payment_records` vs `payments`, `trip_delivery_records` vs `deliveries`, `business_settings` vs `organisations`? |
 | Why it matters | Two names for one concept creates duplicate masters and split reporting. The migration cannot start until each concept has one name. |
 | Options | (a) Retain v1.1 names as canonical, map ERD names in documentation. (b) Adopt ERD names and rename with a controlled migration. (c) Mixed: retain v1.1 where data exists, adopt ERD where new. |
 | Consequences | (a) smallest migration, ERD readers must translate. (b) clearest long-term model, but renames affect constraints, policies and any existing code. (c) risks exactly the duplicate-source problem the report warns about. |
 | Blocks | Migration 1 and every later migration. |
 | Recommendation | (a) for Milestone 1 entities, because no data exists yet and renames add risk without benefit. |
+| Decision | `purchase_orders`, `business_locations`, `sales_credit_notes`, `payment_records`, `trip_delivery_records` and `business_settings` remain canonical. `organisations` is the approved tenant master (D-002); `business_settings` remains its settings record. ERD alternative names are documentation aliases only. |
+| Approved by | Product owner (Tunde Oladeji) |
+| Approved on | 2026-11-15 |
+| Basis | Approved with the Database Dictionary v1.2 / ERD review pack in the project conversation. |
+| Conditions | Do not create alias tables or duplicate masters. A future rename requires a new decision and an approved migration map. |
+| Recorded in | Database Dictionary v1.2 §2; ERD v1.2 §5; Migration 1 checklist. |
+
+### DR-25 — Greenfield or legacy migration
+
+| Field | Detail |
+|---|---|
+| Status | **Approved** — option (a): greenfield |
+| Question | Does a pre-existing v1.1 PetroCore Supply database exist that must be inspected, backfilled and migrated? |
+| Why it matters | The v1.2 documents instruct "do not build from scratch; migrate only what is missing". If no database exists, that instruction is inapplicable and the migration plan reduces to controlled schema creation. |
+| Options | (a) Greenfield: build v1.2 semantics directly, no backfill. (b) Legacy: inspect and migrate additively. |
+| Consequences | (a) simpler, no reconciliation queries, but the "baseline verification" step becomes a confirmation that the target is empty. (b) requires full field-level dictionary and live-schema inspection first. |
+| Blocks | Every migration. |
+| Recommendation | (a) greenfield: no PetroCore Supply database exists and StationOs must remain untouched. |
+| Decision | There is no v1.1 database to migrate. Build v1.2 semantics directly in a new, empty Supabase project. No backfill, dual-read or deprecation migrations are required. |
+| Approved by | Product owner (Tunde Oladeji) |
+| Approved on | 2026-11-15 |
+| Basis | Approved with the Database Dictionary v1.2 / ERD review pack in the project conversation. |
+| Conditions | Confirm the target project is empty before the first migration. If a v1.1 database is later discovered, stop and reopen this decision. |
+| Recorded in | Non-production Supabase plan; Migration 1 checklist; Reconciliation Report decision 25. |
+
+## 3. Records still blocking Milestone 1
 
 ### DR-20 — Approval model
 
@@ -53,17 +79,6 @@ Already approved: D-001 tenancy and switching, D-002 tenant master, D-003 Super 
 | Blocks | All RLS policies. |
 | Note | D-005 fixes the platform-global exception list conceptually, not the table list. |
 
-### DR-25 — Greenfield or legacy migration
-
-| Field | Detail |
-|---|---|
-| Status | Open |
-| Question | Does a pre-existing v1.1 PetroCore Supply database exist that must be inspected, backfilled and migrated? |
-| Why it matters | The v1.2 documents instruct "do not build from scratch; migrate only what is missing". If no database exists, that instruction is inapplicable and the migration plan reduces to controlled schema creation. |
-| Options | (a) Greenfield: build v1.2 semantics directly, no backfill. (b) Legacy: inspect and migrate additively. |
-| Consequences | (a) simpler, no reconciliation queries, but the "baseline verification" step becomes a confirmation that the target is empty. (b) requires full field-level dictionary and live-schema inspection first. |
-| Blocks | Every migration. |
-
 ### DR-10 — Location model and hierarchy
 
 | Field | Detail |
@@ -75,7 +90,7 @@ Already approved: D-001 tenancy and switching, D-002 tenant master, D-003 Super 
 | Consequences | (a) simplest, no inheritance. (b) powerful, harder policies. (c) clearest semantics, more joins and duplication. |
 | Blocks | Migration 1 location grants and policies. |
 
-## 3. Business decisions still open
+## 4. Business decisions still open
 
 These come from the v1.2 specification §8. None may be encoded in code or schema until approved.
 
@@ -95,7 +110,7 @@ These come from the v1.2 specification §8. None may be encoded in code or schem
 | DR-13 | Transporter dispute and liability treatment | Determines when a dispute becomes a liability. |
 | DR-14 | Operational reconciliation tolerances | Determines trip closure rules. |
 
-## 4. Schema decisions still open
+## 5. Schema decisions still open
 
 | ID | Decision | Status |
 |---|---|---|
@@ -106,7 +121,7 @@ These come from the v1.2 specification §8. None may be encoded in code or schem
 | DR-22 | Transporter invoice header `trip_id` compatibility and authority | Open |
 | DR-23 | Payment event model across `financial_transactions`, `payment_records`, `payment_channels`, reversals | Open |
 
-## 5. Record template
+## 6. Record template
 
 Copy this block for each new decision:
 

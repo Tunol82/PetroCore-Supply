@@ -10,11 +10,12 @@
 2. Never commit the service-role key, database password or any real credential. `.env.local` is git-ignored; `.env.example` contains names only.
 3. The service-role key is server-only and must not be used to bypass RLS in ordinary user flows.
 4. Do not create business tables or RLS policies until the database gate is cleared and the tenant/access checklist is signed off.
-5. Treat the target database as unknown until inspected. Decision 25 (greenfield or legacy migration) is still unresolved, so this plan assumes an empty project and must be revisited if that changes.
+5. The target is **greenfield** (DR-25, approved 2026-11-15). Confirm the project is empty before the first migration and revisit this plan if any pre-existing schema or data is discovered.
 
 ## 2. Prerequisites
 
 - [ ] Product owner approves creating a non-production project.
+- [ ] Confirm the project is **empty** — no pre-existing schema, data or extensions beyond Supabase defaults (DR-25 greenfield).
 - [ ] Confirm the project is not shared with another application.
 - [ ] Confirm the region and plan; record both in the project handover.
 - [ ] Confirm who holds owner access and where recovery codes are stored (outside the repository).
@@ -71,11 +72,12 @@
 
 | Decision | Status |
 |---|---|
-| Greenfield or legacy migration (reconciliation decision 25) | Open |
-| Field-level Database Dictionary v1.2 | Not in repository |
-| ERD v1.2 | Not in repository |
-| Canonical table naming (#16) | Open |
-| Approval model (#20) | Open |
-| Tenant/location ownership coverage (#24) | Open |
+| Greenfield or legacy migration (DR-25) | **Approved — greenfield, 2026-11-15** |
+| Field-level Database Dictionary v1.2 | Available and owner-approved as review baseline |
+| ERD v1.2 | Reconstructed proposal, owner-approved with re-verification condition |
+| Canonical table naming (DR-16) | **Approved — retain v1.1 names, 2026-11-15** |
+| Approval model (DR-20) | Open |
+| Tenant/location ownership coverage (DR-24) | Open |
+| Location model and hierarchy (DR-10) | Open |
 
 Until these are closed, only the verification steps in Section 4 may be performed, and only against a project that contains no business tables.

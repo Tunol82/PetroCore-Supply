@@ -13,17 +13,18 @@ Use it to review a proposed migration, not as a substitute for one.
 
 ## 2. Preconditions before any migration is drafted
 
-- [ ] Field-level Database Dictionary v1.2 available in `docs/database/`.
-- [ ] ERD v1.2 available in `docs/erd/`.
+- [x] Field-level Database Dictionary v1.2 available in `docs/database/` (proposal, owner-approved review baseline).
+- [x] ERD v1.2 available in `docs/erd/` (reconstructed proposal, owner-approved with re-verification condition).
 - [ ] Business Rules & Financial Logic Specification and Technical Blueprint reconciled against both.
-- [ ] Reconciliation decision 25 (greenfield or legacy migration) resolved by the product owner.
-- [ ] Target Supabase project inspected: existing schemas, tables, roles, extensions, RLS state.
-- [ ] Restorable backup taken and a restore drill completed.
-- [ ] Canonical naming approved for every entity in scope (report decision 16).
-- [ ] Approval model approved (report decision 20).
-- [ ] Tenant/location ownership coverage approved (report decision 24).
+- [x] Reconciliation decision 25 resolved: **greenfield** (DR-25, 2026-11-15).
+- [x] Canonical naming approved: retain v1.1 names (DR-16, 2026-11-15).
+- [ ] Target Supabase project provisioned and confirmed **empty**; roles, extensions and storage configuration reviewed.
+- [ ] Baseline backup taken after provisioning and a restore drill completed.
+- [ ] Approval model approved (DR-20).
+- [ ] Tenant/location ownership coverage approved (DR-24).
+- [ ] Location model and hierarchy approved (DR-10).
 
-Until these are closed, this document remains a checklist only.
+Until these are closed, this document remains a checklist only. No migration may be drafted while DR-10, DR-20 or DR-24 is open.
 
 ## 3. Entities in scope
 
@@ -100,13 +101,14 @@ These extend, and do not replace, DB-001–DB-030 and the decision-specific test
 
 ## 7. Sequence once approved
 
-1. Approve canonical names and the physical definitions for every entity in Section 3.
-2. Create the schema in a non-production project only.
-3. Enable RLS with deny-by-default and add the policies from Section 5.
-4. Seed only the minimum reference data required by the approved dictionary.
-5. Run Section 6 and the applicable DB-001–DB-030 tests.
-6. Restore from backup in a second environment and verify.
-7. Obtain sign-off before any production migration.
+1. Canonical names are approved (DR-16). Confirm the physical definitions for every entity in Section 3 once DR-10, DR-20 and DR-24 close.
+2. Provision an empty non-production Supabase project (DR-25 greenfield) and take a baseline backup.
+3. Create the schema in that project only.
+4. Enable RLS with deny-by-default and add the policies from Section 5.
+5. Seed only the minimum reference data required by the approved dictionary.
+6. Run Section 6 and the applicable DB-001–DB-030 tests.
+7. Restore from the baseline backup in a second environment and verify.
+8. Obtain sign-off before any production migration.
 
 ## 8. Explicitly out of scope
 
@@ -119,8 +121,12 @@ These extend, and do not replace, DB-001–DB-030 and the decision-specific test
 
 | Item | Value |
 |---|---|
-| Database Dictionary v1.2 version approved | _pending_ |
-| ERD v1.2 version approved | _pending_ |
-| Reconciliation decision 25 resolved | _pending_ |
-| Approved by (product owner) | _pending_ |
-| Date | _pending_ |
+| Database Dictionary v1.2 version approved | v1.2 proposal review revision 3, owner-approved 2026-11-15 |
+| ERD v1.2 version approved | Reconstructed ERD review revision 3, approved 2026-11-15 (re-verify if the original is produced) |
+| Reconciliation decision 25 resolved | Yes — greenfield (DR-25) |
+| Canonical naming resolved | Yes — retain v1.1 names (DR-16) |
+| Approval model (DR-20) | _pending_ |
+| Tenant/location ownership (DR-24) | _pending_ |
+| Location model (DR-10) | _pending_ |
+| Approved by (product owner) | Tunde Oladeji |
+| Date | 2026-11-15 |

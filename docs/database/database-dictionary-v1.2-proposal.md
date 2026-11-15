@@ -17,8 +17,8 @@
 | Field | Value |
 |---|---|
 | Document | Consolidated Field-Level Database Dictionary v1.2 (Proposal) |
-| Version | 1.2 proposal — review revision 2 |
-| Status | Product-owner review draft. **Not approved for SQL.** |
+| Version | 1.2 proposal — review revision 3 (owner-approved review baseline) |
+| Status | Owner-approved review baseline. Authorised for Migration 1 drafting; **not** physical-schema approval and **not** SQL approval. |
 | Owner | Product owner (Tunde Oladeji) |
 | Prepared | 2026-11-15 |
 | Repository branch | `docs/database-v1.2-review-proposal` |
@@ -27,10 +27,12 @@
 
 | Approval step | Approved by | Date | Version approved |
 |---|---|---|---|
-| v1.1 baseline provenance confirmed | _pending_ | _pending_ | _pending_ |
-| Field-level v1.2 amendments | _pending_ | _pending_ | _pending_ |
-| ERD comparison completed | _pending_ | _pending_ | _pending_ |
-| Authorised for migration drafting | _pending_ | _pending_ | _pending_ |
+| v1.1 baseline provenance confirmed | Product owner | 2026-11-15 | v1.2 proposal rev 2 |
+| Field-level v1.2 amendments | Product owner | 2026-11-15 | v1.2 proposal rev 2 |
+| ERD comparison completed | Product owner | 2026-11-15 | Reconstructed ERD rev 2 — original artefact unavailable; re-verify if produced |
+| Authorised for migration drafting | Product owner | 2026-11-15 | Conditional on DR-10 and DR-24 |
+
+**Approval basis:** the product owner approved this review pack in the project conversation on 2026-11-15. Because the original ERD artefact was not available, ERD approval applies to the reconstructed proposal and must be re-verified if the original is produced. Approval authorises drafting Migration 1 against this dictionary; it does not approve physical types, constraints, policies or SQL, and it does not close DR-10, DR-20 or DR-24.
 
 ## 0. Read this before using the document
 
@@ -45,7 +47,8 @@ The original ERD v1.2 source artefact was **not located in the current repositor
 ### Decision status
 
 - D-001 to D-005 are recorded as approved logical decisions in the reconciliation report and decision register.
-- DR-16, DR-20, DR-24, DR-25 and DR-10 remain **Open** in the current decision register. Nothing in this proposal changes those statuses.
+- DR-16 (canonical naming) and DR-25 (greenfield) are **Approved** as of 2026-11-15; see the Decision Register.
+- DR-20, DR-24 and DR-10 remain **Open** in the current decision register. Nothing in this proposal changes those statuses.
 - Every field marked **Proposed / owner review** is a candidate, not an approved column.
 - Every ownership classification marked **Open — DR-24** remains unresolved.
 - No SQL, migration, seed data, RLS policy or database change is authorised by this document.
@@ -72,20 +75,22 @@ These are logical decisions already recorded as approved; they do not approve ex
 | D-004 — Location access | Ordinary users may receive explicit access to multiple locations within their one tenant. Tenant-wide visibility is a separate explicit permission. | Exact permission key, location type model, direct ownership columns and RLS predicate. |
 | D-005 — Global reference data | Stable standard reference catalogs are platform-owned; operational/commercial data remains tenant-owned. | Exact global catalog list, custom-value design, versioning and per-table ownership mapping. |
 
-## 2. Canonical naming reconciliation — DR-16 remains Open
+## 2. Canonical naming reconciliation — DR-16 approved: retain v1.1 names
 
-Until the product owner approves one canonical name per concept, the v1.1 names below are preserved as the working baseline. This is not approval of the recommendation.
+**Decision (2026-11-15):** retain the v1.1 names as canonical. ERD alternative names are documentation aliases only and must never become a second table.
+
+These are now the approved canonical names. The table records the alias mapping so ERD readers can translate terms without creating duplicate entities.
 
 | Concept | v1.1 baseline name | ERD / alternative name | Proposal treatment |
 |---|---|---|---|
-| Supplier purchasing commitment | `purchase_orders` | `procurement_orders` | Retain v1.1 name in this draft; do not create a second order master. |
-| Tenant operating/storage location | `business_locations` | `locations` | Retain v1.1 name in this draft; supplier depots and customer locations remain distinct. |
-| Sales credit note | `sales_credit_notes` / `sales_credit_note_items` | `credit_notes` | Retain v1.1 name pending approval. |
-| Payment record | `payment_records` | `payments` | Retain v1.1 name pending approval. |
-| Delivery record | `trip_delivery_records` | `deliveries` | Retain v1.1 name pending approval. |
+| Supplier purchasing commitment | `purchase_orders` | `procurement_orders` | Canonical. Do not create a second order master. |
+| Tenant operating/storage location | `business_locations` | `locations` | Canonical. Supplier depots and customer locations remain distinct entities. |
+| Sales credit note | `sales_credit_notes` / `sales_credit_note_items` | `credit_notes` | Canonical. |
+| Payment record | `payment_records` | `payments` | Canonical. |
+| Delivery record | `trip_delivery_records` | `deliveries` | Canonical. |
 | Tenant identity/settings | `business_settings` | `organisations` | Approved logical separation: `organisations` is tenant master; `business_settings` remains settings. |
 
-**Do not create both names for one business concept.** If a rename is approved, record the canonical name, old-name mapping, affected FKs, indexes, policies, code references and migration/rollback plan.
+**Do not create both names for one business concept.** A future rename would require a new decision, an old-name mapping and an approved migration plan covering FKs, indexes, policies and code references.
 
 ## 3. Proposed additive field-level changes
 
@@ -111,7 +116,7 @@ The complete v1.1 field list is retained in the baseline section below.
 
 **Proposed amendment:** add `organisation_id UUID` as the tenant owner reference, with a unique constraint candidate to enforce one settings record per organisation.
 
-- **Status:** Proposed; requires DR-16/DR-24 closure and field-level owner approval.
+- **Status:** Proposed; requires DR-24 closure and field-level owner approval.
 - The existing `id` must not be assumed to equal `organisations.id` without inspection and explicit approval.
 - Confirm whether the relationship is one-to-one and whether the FK should be the primary key or a separate unique column.
 - Keep business configuration fields (currency, timezone, costing preferences, offline setting) on `business_settings`; do not use them as tenant identity.
@@ -152,7 +157,7 @@ Add or verify the following v1.2 field candidates:
 | Field | Type | Required | Purpose | Status |
 |---|---|---|---|---|
 | `sales_order_item_id` | UUID | No | Identifies the customer order line served by this procurement batch. | Amendment candidate; confirm FK and when mandatory. |
-| `procurement_order_item_id` | UUID | No | Proposed explicit reference to purchase-order line if the existing `purchase_order_item_id` does not already serve this purpose. | Do **not** add if it duplicates `purchase_order_item_id`. DR-16 open. |
+| `procurement_order_item_id` | UUID | No | Proposed explicit reference to purchase-order line if the existing `purchase_order_item_id` does not already serve this purpose. | Do **not** add if it duplicates `purchase_order_item_id`. DR-16 is approved: the v1.1 field remains the only reference. |
 
 Retain `purchase_order_item_id` and `sales_order_id` from v1.1 unless a controlled, approved rename/mapping is adopted.
 
@@ -406,7 +411,6 @@ The current Decision Register is authoritative for status. The following remain 
 - DR-12 document limits, retention and versioning.
 - DR-13 transporter disputes and liability.
 - DR-14 operational reconciliation tolerances.
-- DR-16 canonical entity naming.
 - DR-17 quantity model and measurement event history.
 - DR-18 delivery confirmation model.
 - DR-19 discrepancy model.
@@ -415,23 +419,22 @@ The current Decision Register is authoritative for status. The following remain 
 - DR-22 transporter invoice header `trip_id` authority/compatibility.
 - DR-23 payment event model.
 - DR-24 tenant/location ownership coverage and RLS model.
-- DR-25 greenfield versus legacy database status.
 
-The approved logical decisions D-001 to D-005 remain in force. This draft does not alter the Decision Register.
+**Approved and therefore not listed above:** D-001 to D-005, DR-16 (retain v1.1 canonical names) and DR-25 (greenfield). DR-10, DR-20 and DR-24 still gate Migration 1.
 
 ## 7. Required approval and implementation sequence
 
-1. Product owner resolves DR-25 (greenfield/legacy) and DR-16 (canonical names).
+1. ~~Resolve DR-25 (greenfield) and DR-16 (canonical names).~~ **Approved 2026-11-15.**
 2. Product owner resolves DR-10 (location types/hierarchy) and DR-24 (tenant ownership coverage/RLS).
 3. Product owner resolves DR-20 if approval is required in the tenant/access milestone.
-4. Complete and approve every field-level amendment and relationship/cardinality.
-5. Compare this reconstructed logical ERD with the original ERD v1.2 artefact.
+4. Complete and approve every remaining field-level amendment and relationship/cardinality.
+5. Re-verify this reconstructed ERD against the original ERD v1.2 if that artefact becomes available.
 6. Reconcile the final dictionary and ERD against the Technical Blueprint, PRD and Business Rules & Financial Logic Specification.
-7. Confirm the target Supabase project and inspect its actual schema, policies, data and storage configuration.
-8. Produce and verify a restorable backup if a database exists.
-9. Only then prepare additive migrations and security/acceptance tests.
+7. Confirm the target Supabase project is **empty** (DR-25 greenfield) and review its configuration, roles and extensions.
+8. Provision the empty project and take a baseline backup before the first migration; no legacy backup is required.
+9. Only then prepare migrations and security/acceptance tests.
 
-**Until these steps are approved, do not generate SQL, migrations, seeds, triggers or RLS policies.**
+**Until DR-10, DR-24 and DR-20 are resolved, do not generate tenant/access SQL, migrations, seeds, triggers or RLS policies.**
 
 ## 8. Amendment log
 
@@ -439,6 +442,7 @@ The approved logical decisions D-001 to D-005 remain in force. This draft does n
 |---|---|---|---|
 | 1 | 2026-11-15 | Initial consolidated proposal: v1.1 baseline plus v1.2 amendments, decision markers and ownership inventory. | Repository review |
 | 2 | 2026-11-15 | Added document control and approval block; made v1.1 provenance and verification requirements explicit; clarified that all three direct-fulfilment cost sources remain undecided; corrected §3.9 formatting; normalised appendix heading levels and removed pasted transport brackets; added this log. | Repository review |
+| 3 | 2026-11-15 | Recorded product-owner approval of the review baseline, v1.1 provenance, DR-16 (retain v1.1 names) and DR-25 (greenfield); updated the naming section, open-decision gate and implementation sequence to reflect the approvals; kept DR-10, DR-20 and DR-24 open. | Repository review |
 
 ---
 
