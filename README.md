@@ -36,6 +36,19 @@ Open http://localhost:3000.
 
 The app can start without Supabase credentials. Supabase-backed features must not be enabled until environment variables and database migrations are configured.
 
+## Quality checks
+
+```bash
+npm run lint        # ESLint
+npm run typecheck   # TypeScript, no emit
+npm test            # Vitest unit tests
+npm run build       # Next.js production build
+npm run test:e2e    # Playwright, chromium (installs the browser on first run)
+npx playwright install chromium   # one-off browser install
+```
+
+CI runs the same checks on pull requests to `main`.
+
 ## Repository structure
 
 - `src/app` — routes and application shell

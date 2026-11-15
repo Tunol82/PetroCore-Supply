@@ -91,12 +91,12 @@ Implemented in the scaffold:
 - Configuration-aware auth states: `/workspace` renders an explicit setup notice instead of failing when Supabase is not configured, and `/login` redirects an already-signed-in user to the workspace.
 - Per-field sign-in validation with `aria-invalid`, `aria-describedby` and focus on the first invalid field.
 - Supabase settings are read through `getSupabaseConfig()` so the app renders safely before a project is connected.
-- Baseline security headers (nosniff, frame denial, referrer policy, permissions policy) and a workspace loading state.
+- Baseline security headers (nosniff, frame denial, referrer policy, permissions policy), a workspace loading state, a route error boundary and a `/api/health` configuration probe that exposes no secrets.
 - Technical foundation, Milestone 1 scope, consolidated Database Dictionary v1.2 source document and Database v1.2 Reconciliation Report.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
-- A local verification pass was completed on Windows against Node 24.16.0 / npm 11.13.0: `npm install`, `npm run lint`, `npm run typecheck`, `npm test` (6 tests) and `npm run build` all passed, and `npm run test:e2e` passed 5 Playwright tests.
+- A local verification pass was completed on Windows against Node 24.16.0 / npm 11.13.0: `npm install`, `npm run lint`, `npm run typecheck`, `npm test` (6 tests) and `npm run build` all passed, and `npm run test:e2e` passed 6 Playwright tests.
 - The end-to-end suite currently covers only the unconfigured state; `playwright.config.ts` blanks the Supabase variables for determinism until an approved test project and tenant fixtures exist.
 - This does **not** establish that a configured Supabase project, tenant membership, RLS, production database or business transactions work.
 - Supabase environment values are not configured/verified in this handover.
@@ -113,8 +113,9 @@ Local development and review work now happens on `chore/verification-and-ci-hard
 3. `docs/database/consolidated-database-dictionary-v1.2.md` — controlled implementation review draft; preserve unaffected v1.1 definitions and explicit v1.2 amendments.
 4. `docs/implementation/milestone-1-auth-tenant-access.md` — Milestone 1 scope and acceptance/release criteria.
 5. `docs/database/migration-1-tenant-access-checklist.md` — the questions to close before tenant/access SQL exists.
-6. `docs/implementation/non-production-supabase-plan.md` — provisioning and verification plan; not executed.
-7. `docs/README.md` and root `README.md`.
+6. `docs/business-rules/decision-register.md` — unresolved decisions and their approval status.
+7. `docs/implementation/non-production-supabase-plan.md` — provisioning and verification plan; not executed.
+8. `docs/README.md` and root `README.md`.
 
 The dictionary is a controlled review draft, not final physical-schema approval. The ERD, full v1.1 dictionary, v1.2 amendments, Business Rules & Financial Logic Specification and Technical Blueprint must be reconciled together.
 
@@ -144,7 +145,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 2. ~~Run `npm install`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` and the Playwright suite locally; fix any failures and report exactly what ran.~~ Done 2026-11-15; see Section 6. Playwright now runs in CI.
 3. Review the scaffold for accessibility, error handling, session handling and Next.js/Supabase SSR correctness. Add tests where needed. **Partially done:** signed-in `/login` redirect, unconfigured-Supabase state, per-field validation with accessible errors and focus handling are implemented and covered by tests. Remaining: an explicit no-active-membership state, which needs the approved membership schema.
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
-5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Not started.**
+5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. Every item remains Open pending product-owner approval.
 6. After the physical schema is approved, implement additive migrations, RLS policies and cross-tenant/cross-location tests before any operational modules.
 7. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 

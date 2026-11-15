@@ -22,6 +22,10 @@ Only approved, current versions should be treated as implementation authority. D
 - [Consolidated Database Dictionary v1.2 — Implementation Specification](database/consolidated-database-dictionary-v1.2.md) — controlled implementation review draft; source wording retained, with repository product/tenant naming clarified.
 - [Migration 1 — Tenant & Access Foundation: Reconciliation Checklist](database/migration-1-tenant-access-checklist.md) — entities, invariants, RLS questions and acceptance tests to close before any tenant/access SQL is written.
 
+## Business rules and decisions
+
+- [Decision Register](business-rules/decision-register.md) — every unresolved business and schema decision with options, consequences, blockers and owner approval status.
+
 ## Active implementation notes
 - [Milestone 1 — Authentication, Tenant Management & Access Control](implementation/milestone-1-auth-tenant-access.md)
 - [Non-Production Supabase Setup Plan](implementation/non-production-supabase-plan.md) — provisioning, verification and backup/restore steps; plan only, nothing executed.

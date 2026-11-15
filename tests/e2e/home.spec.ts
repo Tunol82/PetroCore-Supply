@@ -53,3 +53,11 @@ test("sets baseline security headers", async ({ page }) => {
   expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
   expect(headers["x-powered-by"]).toBeUndefined();
 });
+
+test("reports configuration status without exposing secrets", async ({ request }) => {
+  const response = await request.get("/api/health");
+
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toEqual({ status: "ok", supabaseConfigured: false });
+  expect(response.headers()["cache-control"]).toContain("no-store");
+});
