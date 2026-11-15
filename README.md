@@ -45,6 +45,8 @@ npm test            # Vitest unit tests
 npm run build       # Next.js production build
 npm run test:e2e    # Playwright, chromium (installs the browser on first run)
 npx playwright install chromium   # one-off browser install
+npm run verify:live # browser checks against the configured project; needs a running dev server
+                    # and DEV_TEST_USER_*, DEV_TEST_BETA_*, DEV_TEST_PENDING_* in .env.local
 ```
 
 CI runs the same checks on pull requests to `main`.

@@ -105,6 +105,7 @@ Current verification snapshot (2026-11-15):
 - The end-to-end suite covers the unconfigured, signed-out and validation states; `playwright.config.ts` blanks the Supabase variables so it stays deterministic.
 - A non-production Supabase project now exists. Migration `20261115000100_tenant_access_core` was applied on 2026-11-15 and the tenant-isolation tests passed (see the Migration 1 physical proposal §9).
 - Live browser sign-in was verified: `/workspace` resolved the organisation `Alpha` (`ORG-A`) from the authenticated membership, with no console errors.
+- `npm run verify:live` verifies three identities end to end: the Alpha administrator (tenant + access administration), a Beta-tenant user (isolation, no admin link, access denied) and a no-membership user (access-pending state). All passed on 2026-11-15.
 - Local Supabase values live in `.env.local`, which is git-ignored. No credentials are committed.
 - No **production** database has been touched. No procurement, inventory, sales, dispatch, delivery or finance transaction flows have been implemented.
 - No code has been merged into `main`; PR #1 remains draft.
@@ -152,7 +153,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
 6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
-7. **Next:** add a second-user browser test (no membership → access-pending; another tenant → isolation), design Super Admin switching under D-003, and add audit visibility for the tenant administrator. Tenant administration itself is implemented at `/workspace/access`.
+7. **Next:** add audit visibility for the tenant administrator, then design Super Admin switching under D-003 before any cross-tenant capability. Second-user, tenant-isolation and no-membership behaviour are now covered by `npm run verify:live`.
 8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
