@@ -4,7 +4,7 @@
 **Draft SQL:** `supabase/migrations-draft/0001_tenant_access_core.sql` (deliberately outside `supabase/migrations/`).  
 **Prepared:** 2026-11-15.  
 **Depends on:** Database Dictionary v1.2 (Parts 1–2); ERD v1.2; Decision Register.  
-**Open decisions used as recommended options:** DR-10 (a) flat typed locations, DR-24 (a) direct ownership, DR-20 (c) defer approvals. These remain **Open** until the owner records them.
+**Decisions:** DR-10 (a) flat typed locations, DR-24 (a) direct ownership, DR-20 (c) approvals deferred, and the five permission keys were **approved by the product owner on 2026-11-15**.
 
 ## 1. Baseline completeness
 
@@ -61,23 +61,23 @@ Deny by default. RLS is enabled on every table in scope. Helper functions are `s
 | `role_permissions` | Own tenant | `users.manage` |
 | `user_roles` | Own assignments **or** `users.manage` | `users.manage` |
 | `user_location_access` | Own grants **or** `users.manage` | `users.manage` |
-| `audit_logs` | Own tenant with `audit.view` | Insert own tenant only; no update/delete policy and an append-only trigger |
+| `audit_logs` | Own tenant with `audit.view` | No direct writes; `app.record_audit()` only; no update/delete policy and an append-only trigger |
 
 The authenticated tenant comes only from `auth.uid()` → `profiles`. No client-supplied tenant identifier is consulted anywhere.
 
-## 5. Candidate permission keys
+## 5. Approved permission keys
 
-These keys are **not yet approved**. They are used in the draft so the policy intent is reviewable.
+These keys are approved (2026-11-15) and are seeded by the migration.
 
 | Key | Purpose | Source |
 |---|---|---|
-| `organisation.manage` | Update tenant profile and settings | New; not in v1.1 examples |
-| `users.manage` | Manage roles, assignments and location grants | New; not in v1.1 examples |
+| `organisation.manage` | Update tenant profile and settings | New |
+| `users.manage` | Manage roles, assignments and location grants | New |
 | `locations.manage` | Create and change locations | v1.1 example key |
 | `locations.view_all` | Tenant-wide location visibility (D-004) | New; implements the distinct permission D-004 requires |
-| `audit.view` | Read the tenant audit trail | New; not in v1.1 examples |
+| `audit.view` | Read the tenant audit trail | New |
 
-If the owner prefers different keys, only the policy predicates and seed data change — not the table structure.
+Renaming a key later requires a migration and an update to every policy that references it.
 
 ## 6. Known unverified items
 
@@ -88,7 +88,7 @@ If the owner prefers different keys, only the policy predicates and seed data ch
 - Status value sets (`active`, `suspended`, `inactive`) and `access_level` values are taken from the v1.1 text and remain candidates for confirmation.
 - `assigned_by` on `user_roles` and `user_location_access` is intentionally not a foreign key, because a composite FK with `set null` would null the non-null tenant column.
 - `audit_logs.device_id` has no FK until `offline_devices` is created; the FK must be added in that migration.
-- The audit insert policy trusts the server path to write the correct actor and action. A later revision should route audit writes through a security-definer function rather than direct table inserts.
+- Audit writes go through `app.record_audit()`; direct insert has been revoked. The function derives actor and tenant from `auth.uid()`, so it must be reviewed for search-path and definer safety in the target project.
 
 ## 7. Acceptance coverage
 
@@ -113,13 +113,13 @@ If the owner prefers different keys, only the policy predicates and seed data ch
 
 Before the draft may move into `supabase/migrations/`:
 
-- [ ] DR-10 approved (flat typed locations recommended).
-- [ ] DR-24 approved (direct ownership recommended).
-- [ ] DR-20 approved (defer approvals recommended).
-- [ ] Candidate permission keys approved or replaced.
-- [ ] Status and access-level value sets approved.
-- [ ] `business_locations.status` added to the visibility predicate (or the omission accepted).
-- [ ] Audit write path reviewed; consider a security-definer insert function.
+- [x] DR-10 approved (flat typed locations).
+- [x] DR-24 approved (direct ownership).
+- [x] DR-20 approved (approvals deferred).
+- [x] Permission keys approved.
+- [x] Status and access-level value sets approved.
+- [x] `business_locations.status` added to the visibility predicate.
+- [x] Audit write routed through the `app.record_audit()` security-definer function; direct insert revoked.
 - [ ] Non-production Supabase project provisioned and confirmed empty.
 - [ ] Draft executed and RLS tested there, including T-001, T-004, T-008 and T-012.
 - [ ] Sign-off recorded in the Decision Register and the Migration 1 checklist.

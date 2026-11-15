@@ -76,8 +76,8 @@
 | Field-level Database Dictionary v1.2 | Available and owner-approved as review baseline |
 | ERD v1.2 | Reconstructed proposal, owner-approved with re-verification condition |
 | Canonical table naming (DR-16) | **Approved — retain v1.1 names, 2026-11-15** |
-| Approval model (DR-20) | Open |
-| Tenant/location ownership coverage (DR-24) | Open |
-| Location model and hierarchy (DR-10) | Open |
+| Approval model (DR-20) | **Approved — deferred to the finance milestone, 2026-11-15** |
+| Tenant/location ownership coverage (DR-24) | **Approved — direct ownership, 2026-11-15** |
+| Location model and hierarchy (DR-10) | **Approved — flat, typed, 2026-11-15** |
 
 Until these are closed, only the verification steps in Section 4 may be performed, and only against a project that contains no business tables.

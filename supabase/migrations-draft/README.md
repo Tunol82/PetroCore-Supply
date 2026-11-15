@@ -20,7 +20,7 @@ cannot apply it by accident.
 
 | Draft | Scope | Blocked by |
 |---|---|---|
-| `0001_tenant_access_core.sql` | Organisations, settings, locations, profiles, roles, permissions, role permissions, user roles, location access, audit log, RLS | DR-10, DR-20, DR-24; physical sign-off |
+| `0001_tenant_access_core.sql` | Organisations, settings, locations, profiles, roles, permissions, role permissions, user roles, location access, audit log, RLS | Execution and test sign-off in an empty non-production project |
 
 ## Later migrations
 

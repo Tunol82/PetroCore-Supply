@@ -21,11 +21,11 @@ Use it to review a proposed migration, not as a substitute for one.
 - [x] Canonical naming approved: retain v1.1 names (DR-16, 2026-11-15).
 - [ ] Target Supabase project provisioned and confirmed **empty**; roles, extensions and storage configuration reviewed.
 - [ ] Baseline backup taken after provisioning and a restore drill completed.
-- [ ] Approval model approved (DR-20).
-- [ ] Tenant/location ownership coverage approved (DR-24).
-- [ ] Location model and hierarchy approved (DR-10).
+- [x] Approval model approved (DR-20): deferred to the finance milestone.
+- [x] Tenant/location ownership coverage approved (DR-24): direct ownership.
+- [x] Location model and hierarchy approved (DR-10): flat, typed, no inheritance.
 
-Until these are closed, this document remains a checklist only. No migration may be drafted while DR-10, DR-20 or DR-24 is open.
+Until these are closed, this document remains a checklist only. The only remaining gates are the non-production project, execution and test sign-off.
 
 ## 3. Entities in scope
 
@@ -102,7 +102,7 @@ These extend, and do not replace, DB-001–DB-030 and the decision-specific test
 
 ## 7. Sequence once approved
 
-1. Canonical names are approved (DR-16). Confirm the physical definitions for every entity in Section 3 once DR-10, DR-20 and DR-24 close.
+1. Canonical names (DR-16) and the physical model (DR-10, DR-20, DR-24) are approved. Apply the draft in an empty project, then confirm the executed schema against Section 3.
 2. Provision an empty non-production Supabase project (DR-25 greenfield) and take a baseline backup.
 3. Create the schema in that project only.
 4. Enable RLS with deny-by-default and add the policies from Section 5.
@@ -126,8 +126,8 @@ These extend, and do not replace, DB-001–DB-030 and the decision-specific test
 | ERD v1.2 version approved | Reconstructed ERD review revision 3, approved 2026-11-15 (re-verify if the original is produced) |
 | Reconciliation decision 25 resolved | Yes — greenfield (DR-25) |
 | Canonical naming resolved | Yes — retain v1.1 names (DR-16) |
-| Approval model (DR-20) | _pending_ |
-| Tenant/location ownership (DR-24) | _pending_ |
-| Location model (DR-10) | _pending_ |
+| Approval model (DR-20) | Approved — deferred to the finance milestone |
+| Tenant/location ownership (DR-24) | Approved — direct ownership |
+| Location model (DR-10) | Approved — flat, typed, no inheritance |
 | Approved by (product owner) | Tunde Oladeji |
 | Date | 2026-11-15 |

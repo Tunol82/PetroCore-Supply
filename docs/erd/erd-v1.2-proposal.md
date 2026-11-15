@@ -40,9 +40,9 @@ The diagram intentionally shows core business relationships only. It is not a co
 - `business_settings` remains tenant configuration, not tenant identity.
 - `profiles` represents the application profile linked to Supabase Auth; exact tenant membership implementation remains open.
 - `PLATFORM_ADMIN_AUTHORITY` is a conceptual security boundary, **not a proposed physical table**.
-- The diagram omits `organisation_id` from many entity boxes to avoid implying that DR-24 has been resolved. Direct-versus-inherited ownership must be completed in the ownership matrix.
-- Relationships involving the location hierarchy are provisional because DR-10 remains open.
-- Approval rules/requests are shown as a future/open approval model; DR-20 remains open.
+- The diagram omits `organisation_id` from many entity boxes for readability. DR-24 is approved: every tenant-owned table carries `organisation_id` directly, with composite tenant keys on junctions.
+- Locations are flat and tenant-owned (DR-10 approved); no entity has a parent location.
+- Approval rules/requests are not modelled in Milestone 1 (DR-20 approved: deferred to the finance phase).
 - No entity or relationship shown here authorises SQL.
 
 ## 3. Logical ERD
@@ -147,7 +147,7 @@ erDiagram
 - A profile may have multiple roles and explicit grants to multiple locations inside its tenant.
 - A location grant must never cross an organisation boundary.
 - Super Admin authority is not modelled as membership in every tenant. Use a separate platform-level privileged access path with audit.
-- Every tenant-owned row must resolve to exactly one organisation. The table-by-table direct/inherited/global ownership map is still DR-24.
+- Every tenant-owned row resolves to exactly one organisation. DR-24 (approved) requires direct `organisation_id` ownership and composite tenant keys.
 
 ### 4.2 Procurement and fulfilment
 
@@ -182,21 +182,21 @@ erDiagram
 
 | Decision | Relationship / design question | Status |
 |---|---|---|
-| DR-10 | Are tenant locations flat or hierarchical? What are valid types, and does access inherit? | Open |
+| DR-10 | Are tenant locations flat or hierarchical? What are valid types, and does access inherit? | **Approved** - flat, tenant-owned, typed; no inheritance |
 | DR-16 | Canonical names for purchase orders, locations, credit notes, payments and deliveries. | **Approved** — retain v1.1 names |
 | DR-17 | Do quantity measurements need an immutable event/history entity? | Open |
 | DR-18 | Are customer delivery confirmations fields/evidence on delivery rows or separate events? | Open |
 | DR-19 | Shared typed discrepancy model or separate procurement/delivery discrepancy entities? | Open |
-| DR-20 | How do approval rules, approval requests and existing approval records relate? | Open |
+| DR-20 | How do approval rules, approval requests and existing approval records relate? | **Approved** - deferred to the finance phase |
 | DR-21 | Exact destination FK model for cost allocations. | Open |
 | DR-22 | Is transporter invoice header `trip_id` retained for compatibility, and are invoice items authoritative? | Open |
 | DR-23 | Exact payment event, channel, settlement and reversal relationships. | Open |
-| DR-24 | Which entities carry `organisation_id` directly, which inherit, and exact RLS predicates? | Open |
+| DR-24 | Which entities carry `organisation_id` directly, which inherit, and exact RLS predicates? | **Approved** - direct ownership on every tenant table |
 | DR-25 | Greenfield database or existing v1.1 database requiring inspection/backfill? | **Approved** — greenfield |
 
 ## 6. Items deliberately not drawn as final physical entities
 
-- `approval_rules` and `approval_requests`: conceptual only until DR-20.
+- `approval_rules` and `approval_requests`: deferred to the finance phase (DR-20).
 - `procurement_quantity_records`: conceptual only until DR-17.
 - `organisations`: approved logical tenant root; exact field definition still needs approval.
 - `organisation_memberships`: candidate only; no approval to create this table.
@@ -209,8 +209,8 @@ erDiagram
 The ERD may move from proposal to approved logical design only after:
 1. ~~The original ERD v1.2 is compared against this reconstruction.~~ Owner approved the reconstruction on 2026-11-15 because the original was unavailable; re-verify if it is produced.
 2. ~~DR-16 and DR-25 are explicitly resolved.~~ Approved 2026-11-15.
-3. DR-10 and DR-24 are explicitly resolved.
-4. DR-20 is resolved if approvals are in Milestone 1.
+3. ~~DR-10 and DR-24 are explicitly resolved.~~ Approved 2026-11-15.
+4. ~~DR-20 is resolved.~~ Approved 2026-11-15: deferred to the finance phase.
 5. Cardinalities and optionality are reviewed against the complete field-level dictionary.
 6. The product owner records approval date, selected option and conditions in the Decision Register.
 

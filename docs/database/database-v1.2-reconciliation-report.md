@@ -240,7 +240,7 @@ The v1.2 specification lists the following as unresolved; none should be invente
 7. Operational revenue recognition trigger.
 8. Partial invoicing rules for partial delivery, cancellation and credit notes.
 9. Offline conflict resolution policy by transaction type.
-10. Location hierarchy and access inheritance.
+10. Location hierarchy and access inheritance. **Resolved 2026-11-15 (DR-10): flat, tenant-owned, typed locations; no inheritance.**
 11. Approval thresholds for monetary, margin and risk decisions.
 12. Document limits, retention and version policy.
 13. Transporter dispute and liability treatment.
@@ -253,11 +253,11 @@ Additional schema decisions revealed by the ERD reconciliation:
 17. Quantity model: current-value columns only or columns plus immutable measurement event history.
 18. Delivery confirmation: field-level acknowledgement/evidence or separate confirmation event table.
 19. Discrepancy model: one shared typed model or procurement and delivery-specific discrepancy tables.
-20. Approval model: how approval_rules, approval_requests and existing approval_records relate.
+20. Approval model: how approval_rules, approval_requests and existing approval_records relate. **Resolved 2026-11-15 (DR-20): deferred to the finance milestone; access administration is audited.**
 21. Cost allocation model: exact destination FK(s) and how procurement_cost_components reconcile to inventory and direct fulfilment allocations.
 22. Transporter invoice header: whether trip_id remains nullable for backward compatibility and how invoice items become authoritative.
 23. Payment event model: exact relationship among financial_transactions, payment_records, payment_channels and reversals.
-24. Tenant and location ownership: required organisation_id/location_id coverage and RLS policy model; global reference catalogs and tenant-specific custom values are governed by D-005.
+24. Tenant and location ownership: required organisation_id/location_id coverage and RLS policy model; global reference catalogs and tenant-specific custom values are governed by D-005. **Resolved 2026-11-15 (DR-24): direct `organisation_id` on every tenant-owned table, composite tenant keys on junctions, platform-global only for approved reference catalogs.**
 25. **Greenfield or legacy migration:** **Resolved 2026-11-15 (DR-25): greenfield.** No pre-existing v1.1 PetroCore Supply database exists; build v1.2 semantics directly in an empty Supabase project. The baseline-verification step becomes a confirmation that the target is empty. If a v1.1 database is later discovered, implementation must stop and this decision be reopened.
 
 ## 9. Approved decision log

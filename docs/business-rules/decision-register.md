@@ -54,41 +54,64 @@ Already approved: D-001 tenancy and switching, D-002 tenant master, D-003 Super 
 | Conditions | Confirm the target project is empty before the first migration. If a v1.1 database is later discovered, stop and reopen this decision. |
 | Recorded in | Non-production Supabase plan; Migration 1 checklist; Reconciliation Report decision 25. |
 
-## 3. Records still blocking Milestone 1
-
 ### DR-20 — Approval model
 
 | Field | Detail |
 |---|---|
-| Status | Open |
+| Status | **Approved** — option (c): defer approvals to the finance milestone |
 | Question | How do `approval_rules`, `approval_requests` (ERD) and `approval_records` (v1.1) relate? Is approval needed in Milestone 1 at all? |
 | Why it matters | Approval history is part of access administration and later financial controls. Retrofitting an approval model after postings exist is expensive. |
 | Options | (a) Single `approval_records` table for Milestone 1, expand later. (b) Full rule/request/decision split now. (c) Defer approvals entirely to the finance milestone. |
 | Consequences | (a) simple, but may need migration later. (b) more work now, future-proof. (c) least work now, highest rework risk. |
-| Blocks | Migration 1 only if tenant/role administration requires approval. |
+| Decision | No approval tables in Milestone 1. Access administration is auditable through `audit_logs`. Approval rules, requests and decisions are designed with the finance phase, before any posting that requires approval. |
+| Approved by | Product owner (Tunde Oladeji) |
+| Approved on | 2026-11-15 |
+| Basis | Owner approved all outstanding Milestone 1 decisions in the project conversation. |
+| Conditions | No financial or inventory posting may be enabled before the approval model is designed. `audit_logs` must capture access changes in the meantime. |
+| Recorded in | Migration 1 physical proposal; dictionary §3.9 and §6; ERD §5. |
 
 ### DR-24 — Tenant and location ownership coverage
 
 | Field | Detail |
 |---|---|
-| Status | Open |
+| Status | **Approved** — option (a): direct `organisation_id` on every tenant-owned table |
 | Question | Which tables carry `organisation_id` directly, which inherit ownership through a parent, and which are platform-global? What is the exact RLS predicate model? |
 | Why it matters | RLS correctness depends on every tenant-owned row being resolvable to one organisation. A missed table is a cross-tenant leak. |
 | Options | (a) Direct `organisation_id` on every tenant table. (b) Direct on aggregate roots, inherited through enforced parents. (c) Hybrid, documented table by table. |
 | Consequences | (a) simplest policies, more columns and joins. (b) fewer columns, policies depend on joins being correct. (c) flexible but easiest to get wrong. |
-| Blocks | All RLS policies. |
-| Note | D-005 fixes the platform-global exception list conceptually, not the table list. |
+| Decision | Every tenant-owned table carries `organisation_id` directly. Junctions add it and use composite foreign keys to the parents' `(id, organisation_id)` keys so a cross-tenant parent cannot be stored. Platform-global tables carry no `organisation_id`; currently only `permissions` and future approved global catalogs. |
+| Approved by | Product owner (Tunde Oladeji) |
+| Approved on | 2026-11-15 |
+| Basis | Owner approved all outstanding Milestone 1 decisions in the project conversation. |
+| Conditions | Every new tenant table must follow the same pattern. A table without `organisation_id` requires an explicit platform-global classification. |
+| Recorded in | Migration 1 physical proposal §2; dictionary §4; Migration 1 draft SQL. |
 
 ### DR-10 — Location model and hierarchy
 
 | Field | Detail |
 |---|---|
-| Status | Open |
+| Status | **Approved** — option (a): flat, tenant-owned, typed locations |
 | Question | What location types exist (depot, office, customer site, supplier depot), how are they owned, and does access inherit through a hierarchy? |
 | Why it matters | D-004 settles *how* access is granted, not *what* a location is. RLS scope and dispatch workflows both depend on it. |
 | Options | (a) Flat tenant-owned `business_locations` with a type. (b) Hierarchical locations with inherited access. (c) Separate tables per location kind. |
 | Consequences | (a) simplest, no inheritance. (b) powerful, harder policies. (c) clearest semantics, more joins and duplication. |
-| Blocks | Migration 1 location grants and policies. |
+| Decision | `business_locations` remains the single flat, tenant-owned location entity with `location_type` and `is_storage_location`. There is no parent location and no inherited access. Supplier depots and customer locations remain separate entities. Access is explicit per D-004. |
+| Approved by | Product owner (Tunde Oladeji) |
+| Approved on | 2026-11-15 |
+| Basis | Owner approved all outstanding Milestone 1 decisions in the project conversation. |
+| Conditions | Introducing hierarchy later requires a new decision and a migration with backfill. |
+| Recorded in | Migration 1 physical proposal §2; dictionary §3.3; ERD §5. |
+
+## 3. Remaining blockers
+
+No Milestone 1 decision remains open. What remains is environmental and documentary:
+
+1. Provision an empty non-production Supabase project (DR-25 greenfield) and confirm it is empty.
+2. Apply `supabase/migrations-draft/0001_tenant_access_core.sql` there and run the RLS and cross-tenant tests.
+3. Reconcile the Business Rules & Financial Logic Specification and Technical Blueprint when those documents are available; they are not required for the tenant/access schema but are required before operational modules.
+4. Confirm v1.1 Parts 1 and 2 provenance against the owner-signed originals.
+
+These are tracked in the Migration 1 checklist and the non-production Supabase plan.
 
 ## 4. Business decisions still open
 

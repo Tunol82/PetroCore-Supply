@@ -130,14 +130,14 @@ Do not guess these or encode irreversible assumptions:
 - Direct-fulfilment commercial/accounting treatment: revenue recognition, supplier cost allocation, expense treatment, customer confirmation and profitability basis.
 - Invoicing/revenue: invoice eligibility, partial invoicing, invoice numbering, tax/levies and the precise relationship between delivery confirmation and invoicing.
 - Offline conflict policy: conflict types, authority, resolution/override rules, retry/idempotency and treatment of stale reference data.
-- Location model: operational location types, ownership, depot/customer/supplier location boundaries and exact access/assignment rules.
-- Approvals: approval matrix, thresholds, separation of duties, delegation, escalation, rejection and amendment/re-submission history.
-- Documents/evidence: required document types, ownership, retention, versioning, access, evidence validation and polymorphic-link safeguards.
-- Liabilities and payment controls: supplier/transporter liability creation, invoice matching, payment verification, allocation, reversals and derived AP/AR reconciliation.
-- Canonical physical schema: exact table/column names, field types, nullability, FKs, uniqueness, delete policy, indexes, RLS, triggers, transaction boundaries and migration/backfill strategy. Canonical names are resolved (DR-16: retain v1.1 names); the physical definitions still depend on DR-10, DR-20 and DR-24.
+- Location model: **resolved (DR-10)** — flat, tenant-owned, typed locations with no inheritance.
+- Approvals: **resolved for Milestone 1 (DR-20)** — deferred to the finance milestone; access administration is audited.
+- Documents/evidence: required document types, ownership, retention, versioning, access, evidence validation and polymorphic-link safeguards. Still open; Part 2 defines the tables but not the policy.
+- Liabilities and payment controls: supplier/transporter liability creation, invoice matching, payment verification, allocation, reversals and derived AP/AR reconciliation. Still open.
+- Canonical physical schema: exact table/column names, field types, nullability, FKs, uniqueness, delete policy, indexes, RLS, triggers, transaction boundaries and migration strategy are now drafted in `docs/database/migration-1-physical-proposal.md` and `supabase/migrations-draft/0001_tenant_access_core.sql`. Ownership is resolved (DR-24: direct `organisation_id`).
 - Migration basis is resolved: the product is **greenfield** (DR-25). No v1.1 database exists, so there is no legacy inspection or backfill; confirm the target project is empty before the first migration.
 
-The reconciliation report's implementation gate remains binding: **no production SQL or schema migration until the complete field-level dictionary, ERD and related business/technical specifications are reconciled and approved, and the actual target database has been inspected/backed up.**
+The remaining blocking item is environmental: no Supabase project exists and the draft migration has not been executed or tested. The reconciliation report's implementation gate remains binding for production: **no production SQL until the field-level dictionary and ERD are reconciled, the tenant/access migration is tested in an empty non-production project, and sign-off is recorded.**
 
 ## 9. Recommended next steps for the coding agent
 
@@ -169,13 +169,14 @@ Approval state:
 - The product owner approved the review pack as the working design baseline on 2026-11-15.
 - **DR-16 approved:** retain the v1.1 canonical names; ERD names are documentation aliases only.
 - **DR-25 approved:** greenfield. No v1.1 database exists; build v1.2 semantics directly in an empty project.
+- **DR-10 approved:** flat, tenant-owned, typed locations; no inheritance.
+- **DR-20 approved:** approvals deferred to the finance milestone; access administration is audited.
+- **DR-24 approved:** direct `organisation_id` on every tenant-owned table, composite tenant keys on junctions.
+- The five permission keys (`organisation.manage`, `users.manage`, `locations.manage`, `locations.view_all`, `audit.view`) are approved.
 - v1.1 baseline provenance and the field-level amendments are approved. ERD approval applies to the reconstruction; re-verify if the original artefact is produced.
-- v1.1 Part 2 (sections 12–25) was supplied on 2026-11-15 and appended to Appendix A, closing the platform-control gap.
+- v1.1 Part 2 (sections 12-25) was supplied on 2026-11-15 and appended to Appendix A, closing the platform-control gap.
 - A schema draft now exists at `supabase/migrations-draft/0001_tenant_access_core.sql`. It is **not** in `supabase/migrations/`, has not been executed, and must not be applied until the checklist in `docs/database/migration-1-physical-proposal.md` is signed.
 
-Still open and still gating tenant/access SQL:
-- **DR-10** location model and hierarchy.
-- **DR-20** approval model.
-- **DR-24** tenant/location ownership coverage and RLS predicate model.
+Remaining gate: environment and execution. Provision an empty non-production Supabase project, apply the draft there, run T-001, T-004, T-008 and T-012, then record sign-off. No Milestone 1 design decision remains open.
 
-No SQL, migration, seed, trigger or RLS policy has been created. `main` and StationOs remain untouched; PR #1 remains draft.
+No migration has been applied. `main` and StationOs remain untouched; PR #1 remains draft.

@@ -1,11 +1,12 @@
 -- =============================================================================
 -- PetroCore Supply — Migration 1a: Tenant & Access Core
 -- =============================================================================
--- STATUS: DRAFT — NOT APPLIED. DO NOT MOVE TO supabase/migrations UNTIL:
---   1. DR-10, DR-20 and DR-24 are approved (Decision Register).
---   2. The physical definitions below are signed off.
---   3. A non-production Supabase project exists and is confirmed empty (DR-25).
---   4. The migration is reviewed against the v1.2 dictionary and ERD.
+-- STATUS: DRAFT — NOT APPLIED. DR-10, DR-20 and DR-24 were approved on
+-- 2026-11-15, so this schema is authorised for review and execution in an empty
+-- non-production project. Do not move it to supabase/migrations until:
+--   1. A non-production Supabase project exists and is confirmed empty (DR-25).
+--   2. This draft has been executed there and the RLS/cross-tenant tests pass.
+--   3. The execution results are signed off in the Migration 1 checklist.
 --
 -- SCOPE:
 --   organisations, business_settings, business_locations, profiles,
@@ -25,7 +26,7 @@
 --   D-004 explicit location grants; D-005 platform-global reference data;
 --   DR-16 canonical v1.1 names; DR-25 greenfield.
 --
--- CANDIDATE PERMISSION KEYS (not yet approved; see physical proposal §5):
+-- APPROVED PERMISSION KEYS (2026-11-15):
 --   organisation.manage, users.manage, locations.manage, locations.view_all,
 --   audit.view.
 --
@@ -38,88 +39,6 @@ begin;
 create extension if not exists pgcrypto;
 
 create schema if not exists app;
-
--- -----------------------------------------------------------------------------
--- Helper functions
--- -----------------------------------------------------------------------------
-
--- Resolves the authenticated user's single active profile. D-001 guarantees at
--- most one, enforced later by the unique auth_user_id constraint.
-create or replace function app.current_profile_id()
-returns uuid
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select p.id
-  from public.profiles p
-  where p.auth_user_id = auth.uid()
-    and p.status = 'active'
-  limit 1
-$$;
-
-create or replace function app.current_organisation_id()
-returns uuid
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select p.organisation_id
-  from public.profiles p
-  where p.auth_user_id = auth.uid()
-    and p.status = 'active'
-  limit 1
-$$;
-
--- Permission check. Security definer avoids recursive RLS evaluation on the
--- role tables when used inside their own policies.
-create or replace function app.has_permission(p_permission_key text)
-returns boolean
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select exists (
-    select 1
-    from public.user_roles ur
-    join public.role_permissions rp
-      on rp.role_id = ur.role_id
-     and rp.organisation_id = ur.organisation_id
-    join public.permissions perm
-      on perm.id = rp.permission_id
-    where ur.user_id = app.current_profile_id()
-      and perm.permission_key = p_permission_key
-  )
-$$;
-
-create or replace function app.has_location_access(p_location_id uuid, p_access_level text)
-returns boolean
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select exists (
-    select 1
-    from public.user_location_access ula
-    where ula.user_id = app.current_profile_id()
-      and ula.location_id = p_location_id
-      and ula.access_level = p_access_level
-      and ula.status = 'active'
-  )
-$$;
-
-revoke all on function app.current_profile_id() from public;
-revoke all on function app.current_organisation_id() from public;
-revoke all on function app.has_permission(text) from public;
-revoke all on function app.has_location_access(uuid, text) from public;
-grant execute on function app.current_profile_id() to authenticated;
-grant execute on function app.current_organisation_id() to authenticated;
-grant execute on function app.has_permission(text) to authenticated;
-grant execute on function app.has_location_access(uuid, text) to authenticated;
 
 -- -----------------------------------------------------------------------------
 -- Tables
@@ -263,6 +182,88 @@ create table public.user_location_access (
 );
 
 -- -----------------------------------------------------------------------------
+-- Helper functions
+-- -----------------------------------------------------------------------------
+
+-- Resolves the authenticated user's single active profile. D-001 guarantees at
+-- most one, enforced later by the unique auth_user_id constraint.
+create or replace function app.current_profile_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select p.id
+  from public.profiles p
+  where p.auth_user_id = auth.uid()
+    and p.status = 'active'
+  limit 1
+$$;
+
+create or replace function app.current_organisation_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select p.organisation_id
+  from public.profiles p
+  where p.auth_user_id = auth.uid()
+    and p.status = 'active'
+  limit 1
+$$;
+
+-- Permission check. Security definer avoids recursive RLS evaluation on the
+-- role tables when used inside their own policies.
+create or replace function app.has_permission(p_permission_key text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.user_roles ur
+    join public.role_permissions rp
+      on rp.role_id = ur.role_id
+     and rp.organisation_id = ur.organisation_id
+    join public.permissions perm
+      on perm.id = rp.permission_id
+    where ur.user_id = app.current_profile_id()
+      and perm.permission_key = p_permission_key
+  )
+$$;
+
+create or replace function app.has_location_access(p_location_id uuid, p_access_level text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.user_location_access ula
+    where ula.user_id = app.current_profile_id()
+      and ula.location_id = p_location_id
+      and ula.access_level = p_access_level
+      and ula.status = 'active'
+  )
+$$;
+
+revoke all on function app.current_profile_id() from public;
+revoke all on function app.current_organisation_id() from public;
+revoke all on function app.has_permission(text) from public;
+revoke all on function app.has_location_access(uuid, text) from public;
+grant execute on function app.current_profile_id() to authenticated;
+grant execute on function app.current_organisation_id() to authenticated;
+grant execute on function app.has_permission(text) to authenticated;
+grant execute on function app.has_location_access(uuid, text) to authenticated;
+
+-- -----------------------------------------------------------------------------
 -- Audit
 -- -----------------------------------------------------------------------------
 
@@ -285,6 +286,58 @@ create table public.audit_logs (
   correlation_id  uuid,
   created_at      timestamptz not null default now()
 );
+
+-- Trusted audit writer. Direct inserts into audit_logs are revoked, so audit
+-- events can only be produced by this function, which derives the actor and
+-- tenant from the authenticated session rather than from caller-supplied data.
+create or replace function app.record_audit(
+  p_action text,
+  p_entity_type text,
+  p_entity_id uuid default null,
+  p_old_values jsonb default null,
+  p_new_values jsonb default null,
+  p_reason text default null,
+  p_correlation_id uuid default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_profile_id uuid := app.current_profile_id();
+  v_organisation_id uuid := app.current_organisation_id();
+  v_audit_id uuid;
+begin
+  if v_profile_id is null or v_organisation_id is null then
+    raise exception 'no active tenant context';
+  end if;
+
+  insert into public.audit_logs (
+    organisation_id, user_id, action, entity_type, entity_id,
+    old_values, new_values, reason, correlation_id
+  ) values (
+    v_organisation_id, v_profile_id, p_action, p_entity_type, p_entity_id,
+    p_old_values, p_new_values, p_reason, p_correlation_id
+  )
+  returning id into v_audit_id;
+
+  return v_audit_id;
+end;
+$$;
+
+revoke all on function app.record_audit(text, text, uuid, jsonb, jsonb, text, uuid) from public;
+grant execute on function app.record_audit(text, text, uuid, jsonb, jsonb, text, uuid) to authenticated;
+
+-- Approved permission keys (DR-24 / physical proposal §5). Idempotent seed of
+-- platform-global reference data.
+insert into public.permissions (permission_key, description) values
+  ('organisation.manage', 'Update the tenant profile and business settings'),
+  ('users.manage', 'Manage roles, user-role assignments and location grants'),
+  ('locations.manage', 'Create and change business locations'),
+  ('locations.view_all', 'View all business locations in the tenant'),
+  ('audit.view', 'Read the tenant audit trail')
+on conflict (permission_key) do nothing;
 
 -- -----------------------------------------------------------------------------
 -- Indexes
@@ -376,8 +429,14 @@ create policy business_locations_select_scoped on public.business_locations
   using (
     organisation_id = app.current_organisation_id()
     and (
-      app.has_permission('locations.view_all')
-      or app.has_location_access(id, 'view')
+      app.has_permission('locations.manage')
+      or (
+        status = 'active'
+        and (
+          app.has_permission('locations.view_all')
+          or app.has_location_access(id, 'view')
+        )
+      )
     )
   );
 
@@ -526,8 +585,8 @@ create trigger audit_logs_append_only
   before update or delete on public.audit_logs
   for each row execute function app.prevent_audit_mutation();
 
--- audit_logs: readable inside the tenant with audit.view; insert restricted to
--- the caller's own tenant. Corrections are new events, never edits.
+-- audit_logs: readable inside the tenant with audit.view. Writes go only
+-- through app.record_audit(); no insert, update or delete policy exists.
 create policy audit_logs_select_tenant on public.audit_logs
   for select to authenticated
   using (
@@ -535,9 +594,7 @@ create policy audit_logs_select_tenant on public.audit_logs
     and app.has_permission('audit.view')
   );
 
-create policy audit_logs_insert_tenant on public.audit_logs
-  for insert to authenticated
-  with check (organisation_id = app.current_organisation_id());
+-- No insert policy: audit rows are written only through app.record_audit().
 
 -- -----------------------------------------------------------------------------
 -- Privileges
@@ -550,7 +607,14 @@ revoke all on public.organisations, public.business_settings,
 
 grant select, insert, update, delete on public.organisations,
   public.business_settings, public.business_locations, public.profiles,
-  public.roles, public.permissions, public.role_permissions,
-  public.user_roles, public.user_location_access, public.audit_logs to authenticated;
+  public.roles, public.role_permissions, public.user_roles,
+  public.user_location_access to authenticated;
+
+-- Platform reference data is read-only to tenants (D-005).
+grant select on public.permissions to authenticated;
+
+-- audit_logs is read-only to authenticated users; writes go through
+-- app.record_audit().
+grant select on public.audit_logs to authenticated;
 
 commit;

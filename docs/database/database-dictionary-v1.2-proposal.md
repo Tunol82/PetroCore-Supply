@@ -17,8 +17,8 @@
 | Field | Value |
 |---|---|
 | Document | Consolidated Field-Level Database Dictionary v1.2 (Proposal) |
-| Version | 1.2 proposal — review revision 4 (Parts 1–2 complete) |
-| Status | Owner-approved review baseline. Authorised for Migration 1 drafting; **not** physical-schema approval and **not** SQL approval. |
+| Version | 1.2 proposal — review revision 5 (all Milestone 1 decisions approved) |
+| Status | Owner-approved design baseline. Physical model approved 2026-11-15. Draft SQL exists in `supabase/migrations-draft/` but has **not** been applied or executed. |
 | Owner | Product owner (Tunde Oladeji) |
 | Prepared | 2026-11-15 |
 | Repository branch | `docs/database-v1.2-review-proposal` |
@@ -30,7 +30,7 @@
 | v1.1 baseline provenance confirmed | Product owner | 2026-11-15 | v1.2 proposal rev 2 |
 | Field-level v1.2 amendments | Product owner | 2026-11-15 | v1.2 proposal rev 2 |
 | ERD comparison completed | Product owner | 2026-11-15 | Reconstructed ERD rev 2 — original artefact unavailable; re-verify if produced |
-| Authorised for migration drafting | Product owner | 2026-11-15 | Conditional on DR-10 and DR-24 |
+| Authorised for migration drafting | Product owner | 2026-11-15 | DR-10, DR-20 and DR-24 approved; conditional on execution and RLS test sign-off |
 
 **Approval basis:** the product owner approved this review pack in the project conversation on 2026-11-15. Because the original ERD artefact was not available, ERD approval applies to the reconstructed proposal and must be re-verified if the original is produced. Approval authorises drafting Migration 1 against this dictionary; it does not approve physical types, constraints, policies or SQL, and it does not close DR-10, DR-20 or DR-24.
 
@@ -51,11 +51,9 @@ The original ERD v1.2 source artefact was **not located in the current repositor
 ### Decision status
 
 - D-001 to D-005 are recorded as approved logical decisions in the reconciliation report and decision register.
-- DR-16 (canonical naming) and DR-25 (greenfield) are **Approved** as of 2026-11-15; see the Decision Register.
-- DR-20, DR-24 and DR-10 remain **Open** in the current decision register. Nothing in this proposal changes those statuses.
-- Every field marked **Proposed / owner review** is a candidate, not an approved column.
-- Every ownership classification marked **Open — DR-24** remains unresolved.
-- No SQL, migration, seed data, RLS policy or database change is authorised by this document.
+- DR-16 (naming), DR-25 (greenfield), DR-10 (flat locations), DR-20 (approvals deferred) and DR-24 (direct ownership) are **Approved** as of 2026-11-15; see the Decision Register.
+- Field-level amendments remain review items until the physical proposal and Migration 1 draft are signed off.
+- No SQL, migration, seed data, RLS policy or database change has been applied. The draft SQL lives in `supabase/migrations-draft/` and is not executable by tooling.
 
 ### How to interpret the combined dictionary
 
@@ -120,7 +118,7 @@ The complete v1.1 field list is retained in the baseline section below.
 
 **Proposed amendment:** add `organisation_id UUID` as the tenant owner reference, with a unique constraint candidate to enforce one settings record per organisation.
 
-- **Status:** Proposed; requires DR-24 closure and field-level owner approval.
+- **Status:** Approved amendment under DR-24 (direct ownership); field-level definition is implemented in the Migration 1 draft.
 - The existing `id` must not be assumed to equal `organisations.id` without inspection and explicit approval.
 - Confirm whether the relationship is one-to-one and whether the FK should be the primary key or a separate unique column.
 - Keep business configuration fields (currency, timezone, costing preferences, offline setting) on `business_settings`; do not use them as tenant identity.
@@ -129,9 +127,9 @@ The complete v1.1 field list is retained in the baseline section below.
 
 The complete v1.1 field list is retained in the baseline section below.
 
-**Proposed amendment:** add `organisation_id UUID` as a direct tenant owner reference. This is a candidate only; DR-24 remains Open.
+**Approved amendment (DR-24):** add `organisation_id UUID` as a direct tenant owner reference.
 
-The location hierarchy/type question is DR-10 and remains Open. The current v1.1 `location_type` and `is_storage_location` fields remain baseline definitions; do not add parent-location, inherited-access or new location-type columns until DR-10 is approved.
+The location model is DR-10, approved as flat: `business_locations` remains the single tenant-owned location entity with `location_type` and `is_storage_location`. Do not add parent-location or inherited-access columns.
 
 Supplier depots (`supplier_depots`) and customer delivery locations (`customer_locations`) remain separate entities. They must not be merged into tenant-owned `business_locations` merely because they are physical places.
 
@@ -169,7 +167,7 @@ Preserve three distinct measures: supplier quantity, loaded quantity and receive
 
 ### 3.6 `trip_loading_procurement_allocations` — new typed direct-loading table
 
-**Status:** Required by the v1.2 amendment specification; physical field approval and DR-24 ownership mapping remain pending.
+**Status:** Required by the v1.2 amendment specification; DR-24 ownership is resolved (direct `organisation_id`), field-level definition is in the Migration 1 draft.
 
 | Field | Type | Required | Purpose |
 |---|---|---|---|
@@ -226,11 +224,11 @@ Rules retained from v1.2:
 
 A transporter invoice may cover multiple trips. Invoice item totals must reconcile to the header total, with any separately approved adjustments identified. The existing header `trip_id` must not become a competing source of truth. Do not remove it until DR-22 and a migration map are approved.
 
-### 3.9 Approval structures — DR-20 remains Open
+### 3.9 Approval structures — DR-20 approved: deferred to the finance milestone
 
 The v1.1 dictionary contains `approval_records`; the ERD/reconciliation material refers to `approval_rules` and `approval_requests`.
 
-No physical field definitions are proposed for `approval_rules` or `approval_requests` in this draft because the owner has not decided whether Milestone 1 needs a full rule/request/decision split, a single record model or deferred approvals.
+No physical definitions are created for `approval_rules` or `approval_requests` in Migration 1 because DR-20 is approved as deferred: approvals are designed with the finance phase, before any posting that requires them. `audit_logs` records access administration in the meantime.
 
 Do not create both models in parallel. Preserve existing approval history if a future migration is approved. Define separation of duties, approver eligibility, delegation, escalation, rejection, resubmission and audit history before implementation.
 
@@ -271,111 +269,110 @@ Do not introduce a second `payments` table or a generic polymorphic allocation t
 
 Balances remain derived or controlled projections reconciled to authoritative invoices, credit notes, allocations, adjustments and reversals. They must not be freely editable.
 
-## 4. Tenant ownership and RLS classification register — DR-24 remains Open
+## 4. Tenant ownership and RLS classification register — DR-24 approved: direct ownership
 
-D-002 establishes `organisations` as the tenant root and D-005 establishes the principle of platform-global reference data. Neither decision finalises the exact per-table ownership map or RLS predicates.
+D-002 establishes `organisations` as the tenant root and D-005 establishes platform-global reference data. DR-24 (approved 2026-11-15) fixes the ownership model: every tenant-owned table carries `organisation_id` directly, junctions use composite tenant keys, and only explicitly approved reference catalogs are platform-global.
 
-The following inventory is extracted from the v1.1 dictionary's table headings. It is intentionally **not** a proposed ownership approval.
+The inventory below is extracted from the v1.1 Part 1 table headings and classifies each as direct tenant-owned under DR-24. Part 2 tables are listed separately as pending classification for their own migrations.
 
 | Existing v1.1 table | Current classification |
 |---|---|
-| `business_settings` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `business_locations` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `profiles` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `roles` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `permissions` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `role_permissions` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `user_roles` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `user_location_access` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `approval_records` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `suppliers` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `supplier_depots` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `supplier_depot_bays` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `products` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `supplier_products` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `purchase_orders` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `purchase_order_items` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `procurement_batches` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `cost_categories` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `procurement_cost_components` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `cost_allocations` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `procurement_cost_adjustments` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `inventory_cost_adjustments` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `inventory_batches` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `inventory_reservations` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `inventory_reservation_items` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `inventory_issues` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `inventory_movements` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `fifo_allocations` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `inventory_adjustments` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `stock_transfers` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `stock_transfer_items` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `customers` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `customer_locations` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `product_selling_prices` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `customer_product_prices` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `pricing_rules` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `sales_orders` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `sales_order_items` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `pricing_approvals` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `sales_invoices` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `sales_invoice_items` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `sales_credit_notes` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `sales_credit_note_items` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `customer_credit_reviews` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `sales_profitability_snapshots` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `trip_profitability_snapshots` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `profitability_snapshot_allocations` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `transporters` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `transporter_contracts` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `transporter_rate_cards` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `transporter_invoices` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `employees` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `drivers` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `driver_documents` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `driver_compensation_profiles` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `driver_compensation_history` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `driver_salary_records` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `driver_trip_allowances` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `driver_advances` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `driver_expense_retirements` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `trucks` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `truck_ownership_history` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `truck_compartments` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `compartment_calibrations` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `compartment_seals` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `truck_documents` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `truck_assignments` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `truck_maintenance_history` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `truck_fuel_logs` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `truck_odometer_logs` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `truck_tyre_records` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `truck_parts_records` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `trips` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `trip_assignments` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `trip_sales_orders` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `trip_sales_order_items` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `trip_loading_records` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `trip_loading_batch_allocations` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `trip_delivery_records` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `delivery_evidence` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `trip_expenses` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `trip_reconciliations` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `trip_reconciliation_items` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `delivery_discrepancies` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
-| `discrepancy_investigations` | Existing v1.1 entity | **Open — DR-24**; direct vs inherited tenant ownership and exact RLS scope must be approved. |
+| `business_settings` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `business_locations` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `profiles` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `roles` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `permissions` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `role_permissions` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `user_roles` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `user_location_access` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `approval_records` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `suppliers` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `supplier_depots` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `supplier_depot_bays` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `products` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `supplier_products` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `purchase_orders` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `purchase_order_items` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `procurement_batches` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `cost_categories` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `procurement_cost_components` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `cost_allocations` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `procurement_cost_adjustments` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `inventory_cost_adjustments` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `inventory_batches` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `inventory_reservations` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `inventory_reservation_items` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `inventory_issues` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `inventory_movements` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `fifo_allocations` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `inventory_adjustments` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `stock_transfers` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `stock_transfer_items` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `customers` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `customer_locations` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `product_selling_prices` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `customer_product_prices` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `pricing_rules` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `sales_orders` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `sales_order_items` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `pricing_approvals` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `sales_invoices` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `sales_invoice_items` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `sales_credit_notes` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `sales_credit_note_items` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `customer_credit_reviews` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `sales_profitability_snapshots` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `trip_profitability_snapshots` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `profitability_snapshot_allocations` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `transporters` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `transporter_contracts` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `transporter_rate_cards` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `transporter_invoices` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `employees` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `drivers` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `driver_documents` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `driver_compensation_profiles` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `driver_compensation_history` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `driver_salary_records` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `driver_trip_allowances` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `driver_advances` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `driver_expense_retirements` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `trucks` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `truck_ownership_history` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `truck_compartments` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `compartment_calibrations` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `compartment_seals` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `truck_documents` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `truck_assignments` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `truck_maintenance_history` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `truck_fuel_logs` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `truck_odometer_logs` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `truck_tyre_records` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `truck_parts_records` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `trips` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `trip_assignments` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `trip_sales_orders` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `trip_sales_order_items` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `trip_loading_records` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `trip_loading_batch_allocations` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `trip_delivery_records` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `delivery_evidence` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `trip_expenses` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `trip_reconciliations` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `trip_reconciliation_items` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `delivery_discrepancies` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
+| `discrepancy_investigations` | Existing v1.1 entity | **Direct** — organisation_id on the table (DR-24 approved). |
 
-**Part 2 tables pending classification.** The register above was extracted from v1.1 Part 1. The following Part 2 tables are not yet classified and must be added before DR-24 closes: `incidents`, `incident_participants`, `incident_evidence`, `incident_investigations`, `incident_actions`, `insurance_policies`, `insurance_claims`, `compliance_requirements`, `compliance_records`, `product_quality_checks`, `financial_transactions`, `payment_records`, `payment_channels`, `invoice_payment_allocations`, `supplier_payment_allocations`, `transporter_payment_allocations`, `payment_reversals`, `accounts_receivable`, `accounts_payable`, `expense_records`, `documents`, `document_links`, `document_requirements`, `report_definitions`, `saved_report_views`, `report_schedules`, `data_import_jobs`, `data_import_errors`, `notifications`, `notification_preferences`, `notification_delivery_logs`, `document_number_sequences`, `offline_devices`, `offline_sync_sessions`, `offline_operation_log`, `offline_sync_conflicts`, `audit_logs`, `idempotency_records`, `chart_of_accounts`, `accounting_periods`, `journal_entries`, `journal_entry_lines`.
+**Part 2 tables.** DR-24 applies to Part 2 as well: every tenant-owned Part 2 table will carry `organisation_id` directly, and platform-global reference catalogs will be classified explicitly. The following are not yet implemented in a migration: `incidents`, `incident_participants`, `incident_evidence`, `incident_investigations`, `incident_actions`, `insurance_policies`, `insurance_claims`, `compliance_requirements`, `compliance_records`, `product_quality_checks`, `financial_transactions`, `payment_records`, `payment_channels`, `invoice_payment_allocations`, `supplier_payment_allocations`, `transporter_payment_allocations`, `payment_reversals`, `accounts_receivable`, `accounts_payable`, `expense_records`, `documents`, `document_links`, `document_requirements`, `report_definitions`, `saved_report_views`, `report_schedules`, `data_import_jobs`, `data_import_errors`, `notifications`, `notification_preferences`, `notification_delivery_logs`, `document_number_sequences`, `offline_devices`, `offline_sync_sessions`, `offline_operation_log`, `offline_sync_conflicts`, `audit_logs`, `idempotency_records`, `chart_of_accounts`, `accounting_periods`, `journal_entries`, `journal_entry_lines`.
 
-`audit_logs` is provisionally classified as **direct tenant-owned** and is included in the Migration 1a draft. The deferred accounting tables are out of scope for the initial release.
+`audit_logs` is classified as **direct tenant-owned** and is included in the Migration 1a draft. The deferred accounting tables are out of scope for the initial release.
 
-Before any tenant SQL is written, the owner must approve, table by table:
+Under the approved DR-24 model, each new table must satisfy:
 1. direct `organisation_id` ownership;
-2. inherited ownership through a specific parent FK, including how the DB prevents cross-tenant parent references;
-3. platform-global ownership;
-4. external-party/location data that is not owned by a PetroCore tenant but may be referenced by tenant records;
-5. location scope and whether a row is location-bound, tenant-wide or not location-scoped;
-6. exact RLS read/write predicates and trusted server-side access paths.
+2. composite foreign keys to every tenant parent, so cross-tenant references cannot be stored;
+3. an explicit platform-global classification for any table without `organisation_id`;
+4. RLS enabled with deny-by-default predicates and a trusted server-side access path;
+5. location scope stated, and enforced where the row is location-bound.
 
 **Security baseline:** deny by default; no client-supplied tenant ID is authoritative; every tenant-owned row resolves to exactly one organisation; cross-tenant FKs are blocked; location grants are validated within the user's tenant; platform administrators use a separate audited privileged path.
 
@@ -414,7 +411,6 @@ The current Decision Register is authoritative for status. The following remain 
 - DR-07 revenue recognition trigger.
 - DR-08 partial invoicing, cancellation and credit notes.
 - DR-09 offline conflict resolution.
-- DR-10 location model and hierarchy.
 - DR-11 approval thresholds.
 - DR-12 document limits, retention and versioning.
 - DR-13 transporter disputes and liability.
@@ -422,19 +418,17 @@ The current Decision Register is authoritative for status. The following remain 
 - DR-17 quantity model and measurement event history.
 - DR-18 delivery confirmation model.
 - DR-19 discrepancy model.
-- DR-20 approval model.
 - DR-21 cost-allocation target FK model.
 - DR-22 transporter invoice header `trip_id` authority/compatibility.
 - DR-23 payment event model.
-- DR-24 tenant/location ownership coverage and RLS model.
 
-**Approved and therefore not listed above:** D-001 to D-005, DR-16 (retain v1.1 canonical names) and DR-25 (greenfield). DR-10, DR-20 and DR-24 still gate Migration 1.
+**Approved and therefore not listed above:** D-001 to D-005, DR-16 (retain v1.1 names), DR-25 (greenfield), DR-10 (flat locations), DR-20 (approvals deferred) and DR-24 (direct ownership). No Milestone 1 decision remains open.
 
 ## 7. Required approval and implementation sequence
 
 1. ~~Resolve DR-25 (greenfield) and DR-16 (canonical names).~~ **Approved 2026-11-15.**
-2. Product owner resolves DR-10 (location types/hierarchy) and DR-24 (tenant ownership coverage/RLS).
-3. Product owner resolves DR-20 if approval is required in the tenant/access milestone.
+2. ~~Resolve DR-10 (flat locations) and DR-24 (direct ownership).~~ **Approved 2026-11-15.**
+3. ~~Resolve DR-20.~~ **Approved 2026-11-15: deferred to the finance milestone.**
 4. Complete and approve every remaining field-level amendment and relationship/cardinality.
 5. Re-verify this reconstructed ERD against the original ERD v1.2 if that artefact becomes available.
 6. Reconcile the final dictionary and ERD against the Technical Blueprint, PRD and Business Rules & Financial Logic Specification.
@@ -452,6 +446,7 @@ The current Decision Register is authoritative for status. The following remain 
 | 2 | 2026-11-15 | Added document control and approval block; made v1.1 provenance and verification requirements explicit; clarified that all three direct-fulfilment cost sources remain undecided; corrected §3.9 formatting; normalised appendix heading levels and removed pasted transport brackets; added this log. | Repository review |
 | 3 | 2026-11-15 | Recorded product-owner approval of the review baseline, v1.1 provenance, DR-16 (retain v1.1 names) and DR-25 (greenfield); updated the naming section, open-decision gate and implementation sequence to reflect the approvals; kept DR-10, DR-20 and DR-24 open. | Repository review |
 | 4 | 2026-11-15 | Appended the supplied v1.1 Part 2 (sections 12–25) to Appendix A: incidents and compliance, finance and payments, documents, reporting, imports, notifications, numbering, offline sync, audit, idempotency, deferred accounting, constraints and implementation phases. Resolved the earlier Part 2 completeness gap. | Repository review |
+| 5 | 2026-11-15 | Recorded approval of DR-10 (flat locations), DR-20 (approvals deferred) and DR-24 (direct ownership) and the five permission keys; updated decision status, ownership register and implementation sequence. | Repository review |
 
 ---
 

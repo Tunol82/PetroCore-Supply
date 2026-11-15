@@ -18,7 +18,7 @@ Only approved, current versions should be treated as implementation authority. D
 - [AI Agent Handover](AI_HANDOVER.md) — current repository state, approved architecture and business decisions, blockers, source documents and instructions for OpenCode/other coding agents. Read this first when resuming development.
 
 ## Database specifications
-- [Consolidated Field-Level Database Dictionary v1.2](database/database-dictionary-v1.2-proposal.md) — complete v1.1 field-level baseline plus v1.2 amendments; owner-approved review baseline. DR-10, DR-20 and DR-24 remain open and no SQL is authorised.
+- [Consolidated Field-Level Database Dictionary v1.2](database/database-dictionary-v1.2-proposal.md) — complete v1.1 Parts 1–2 baseline plus v1.2 amendments; owner-approved. Draft SQL exists but is not applied.
 - [ERD v1.2 Logical Model](erd/erd-v1.2-proposal.md) — reconstructed logical model; owner-approved with a re-verification condition if the original ERD artefact is produced.
 - [Database v1.2 Reconciliation Report](database/database-v1.2-reconciliation-report.md) — table-by-table mapping, changes, decisions, safeguards and migration gate.
 - [Consolidated Database Dictionary v1.2 — Implementation Specification](database/consolidated-database-dictionary-v1.2.md) — controlled implementation review draft; source wording retained, with repository product/tenant naming clarified.
@@ -27,7 +27,7 @@ Only approved, current versions should be treated as implementation authority. D
 
 ## Business rules and decisions
 
-- [Decision Register](business-rules/decision-register.md) — every business and schema decision with status, options, consequences and owner approval. DR-16 and DR-25 approved; DR-10, DR-20 and DR-24 open.
+- [Decision Register](business-rules/decision-register.md) — every business and schema decision with status, options, consequences and owner approval. All Milestone 1 decisions are approved; the open items are business rules for later phases.
 
 ## Active implementation notes
 - [Milestone 1 — Authentication, Tenant Management & Access Control](implementation/milestone-1-auth-tenant-access.md)
