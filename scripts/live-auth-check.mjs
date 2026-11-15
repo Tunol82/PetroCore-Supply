@@ -81,6 +81,10 @@ async function checkAlpha(browser) {
   await page.getByRole("link", { name: "Manage access" }).click();
   await page.waitForURL("**/workspace/access", { timeout: 30000 });
   const accessHeading = await page.getByRole("heading", { name: /Access for Alpha/ }).innerText();
+  const auditHeadingVisible = await page
+    .getByRole("heading", { name: "Recent access activity" })
+    .isVisible();
+  const auditRows = await page.getByTestId("audit-row").count();
 
   await context.close();
 
@@ -88,7 +92,14 @@ async function checkAlpha(browser) {
     heading,
     manageLinkVisible,
     accessHeading,
-    pass: heading === "Alpha" && manageLinkVisible && accessHeading.includes("Alpha"),
+    auditHeadingVisible,
+    auditRows,
+    pass:
+      heading === "Alpha" &&
+      manageLinkVisible &&
+      accessHeading.includes("Alpha") &&
+      auditHeadingVisible &&
+      auditRows > 0,
     consoleErrors,
   };
 }

@@ -13,6 +13,29 @@ type Role = { id: string; name: string; is_system_role: boolean };
 type UserRole = { id: string; user_id: string; role_id: string };
 type Location = { id: string; location_code: string; location_name: string; status: string };
 type Grant = { id: string; user_id: string; location_id: string; access_level: string; status: string };
+type AuditEvent = {
+  id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  user_id: string | null;
+  created_at: string;
+};
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  "access.role_assigned": "Role assigned",
+  "access.role_revoked": "Role revoked",
+  "access.location_granted": "Location access granted",
+  "access.location_revoked": "Location access revoked",
+};
+
+function formatAuditTime(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Africa/Lagos",
+  }).format(new Date(value));
+}
 
 export default async function AccessPage() {
   if (!getSupabaseConfig()) {
@@ -34,6 +57,10 @@ export default async function AccessPage() {
 
   const { data: canManage } = await supabase.rpc("has_permission", {
     p_permission_key: "users.manage",
+  });
+
+  const { data: canViewAudit } = await supabase.rpc("has_permission", {
+    p_permission_key: "audit.view",
   });
 
   if (!canManage) {
@@ -76,6 +103,19 @@ export default async function AccessPage() {
     userRolesResult.error ??
     locationsResult.error ??
     grantsResult.error;
+
+  let auditEvents: AuditEvent[] = [];
+
+  if (canViewAudit) {
+    const { data: auditData } = await supabase
+      .from("audit_logs")
+      .select("id, action, entity_type, entity_id, user_id, created_at")
+      .like("action", "access.%")
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    auditEvents = (auditData ?? []) as AuditEvent[];
+  }
 
   if (queryError) {
     return (
@@ -235,6 +275,40 @@ export default async function AccessPage() {
             )}
           </div>
         </section>
+
+        {canViewAudit ? (
+          <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">Recent access activity</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Newest first. Audit records are append-only and cannot be edited.
+            </p>
+            <div className="mt-4 divide-y divide-[var(--line)]">
+              {auditEvents.map((event) => {
+                const actor = event.user_id ? memberById.get(event.user_id) : undefined;
+
+                return (
+                  <div
+                    key={event.id}
+                    data-testid="audit-row"
+                    className="flex flex-wrap items-center justify-between gap-2 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">{AUDIT_ACTION_LABELS[event.action] ?? event.action}</p>
+                      <p className="text-xs text-[var(--muted)]">
+                        {actor?.full_name ?? actor?.email ?? "System"} · {event.entity_type}
+                        {event.entity_id ? ` · ${event.entity_id.slice(0, 8)}` : ""}
+                      </p>
+                    </div>
+                    <p className="text-xs text-[var(--muted)]">{formatAuditTime(event.created_at)}</p>
+                  </div>
+                );
+              })}
+              {auditEvents.length === 0 ? (
+                <p className="py-3 text-sm text-[var(--muted)]">No access activity yet.</p>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
         <p className="mt-8 text-xs leading-6 text-[var(--muted)]">
           Every change is enforced by database Row Level Security and recorded against your account. Permission checks
