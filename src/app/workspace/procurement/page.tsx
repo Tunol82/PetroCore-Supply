@@ -510,6 +510,12 @@ function Header() {
           Costs
         </Link>
         <Link
+          href="/workspace/inventory"
+          className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
+        >
+          Inventory
+        </Link>
+        <Link
           href="/workspace"
           className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
         >

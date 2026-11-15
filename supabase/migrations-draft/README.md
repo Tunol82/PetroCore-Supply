@@ -38,3 +38,5 @@ None.
 | `20261115001200_deliveries.sql` | Delivery records and evidence metadata | Applied 2026-11-15; cumulative-quantity, confirmed-quantity and product checks verified |
 | `20261115001300_reconciliation.sql` | Reconciliation headers/items, discrepancies, investigations | Applied 2026-11-15; generated variances and tenant isolation verified |
 | `20261115001400_reconciliation_grants.sql` | Revokes leftover UPDATE grants on reconciliation evidence | Applied 2026-11-15; update now denied |
+| `20261115001500_inventory_receipts.sql` | Inventory batches and append-only movement ledger | Applied 2026-11-15; validation, movement posting and isolation verified |
+| `20261115001600_inventory_cumulative_receipts.sql` | Allows cumulative receipts per procurement batch | Applied 2026-11-15; partial, full and over-receipt checks verified |
