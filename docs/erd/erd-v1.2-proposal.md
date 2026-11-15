@@ -1,6 +1,6 @@
 # PetroCore Supply — ERD v1.2 Logical Proposal
 
-<badge>RECONSTRUCTED PROPOSAL — NOT APPROVED</badge>
+**RECONSTRUCTED PROPOSAL — NOT APPROVED**
 
 **Status:** Product-owner review draft  
 **Prepared:** 2026-11-15  
