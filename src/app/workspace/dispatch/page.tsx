@@ -523,6 +523,12 @@ function Header() {
           Fleet
         </Link>
         <Link
+          href="/workspace/deliveries"
+          className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
+        >
+          Deliveries
+        </Link>
+        <Link
           href="/workspace"
           className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
         >

@@ -123,6 +123,50 @@ export const loadingAllocationSchema = z.object({
   allocatedQuantity: z.coerce.number().positive("Allocated quantity must be greater than zero."),
 });
 
+export const DELIVERY_STATUSES = [
+  "complete",
+  "partial",
+  "rejected",
+  "disputed",
+  "failed",
+] as const;
+
+export const EVIDENCE_TYPES = ["signature", "photo", "waybill", "other"] as const;
+
+export const deliverySchema = z
+  .object({
+    tripId: uuid("Select a trip."),
+    salesOrderItemId: uuid("Select a sales order line."),
+    tripLoadingRecordId: optionalUuid("Select a valid loading record."),
+    customerLocationId: uuid("Select a delivery location."),
+    productId: uuid("Select a product."),
+    deliveredQuantity: z.coerce.number().positive("Delivered quantity must be greater than zero."),
+    customerConfirmedQuantity: z.preprocess(
+      (value) => (value === "" || value === null || value === undefined ? undefined : value),
+      z.coerce.number().min(0, "Confirmed quantity cannot be negative.").optional(),
+    ),
+    deliveryStatus: z.enum(DELIVERY_STATUSES),
+    waybillReference: optionalText(100),
+    customerAcknowledgement: optionalText(150),
+    deliveryDate: optionalDate,
+  })
+  .refine(
+    (value) =>
+      value.customerConfirmedQuantity === undefined ||
+      value.customerConfirmedQuantity <= value.deliveredQuantity,
+    {
+      message: "Customer-confirmed quantity cannot exceed the delivered quantity.",
+      path: ["customerConfirmedQuantity"],
+    },
+  );
+
+export const evidenceSchema = z.object({
+  deliveryRecordId: uuid("Select a delivery record."),
+  evidenceType: z.enum(EVIDENCE_TYPES),
+  filePath: z.string().trim().min(3, "Enter the evidence storage reference.").max(500),
+  notes: optionalText(500),
+});
+
 export type TransporterInput = z.infer<typeof transporterSchema>;
 export type TruckInput = z.infer<typeof truckSchema>;
 export type CompartmentInput = z.infer<typeof compartmentSchema>;

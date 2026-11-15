@@ -2,7 +2,9 @@
 import {
   assignmentSchema,
   compartmentSchema,
+  deliverySchema,
   driverSchema,
+  evidenceSchema,
   loadingAllocationSchema,
   loadingRecordSchema,
   transporterSchema,
@@ -187,6 +189,58 @@ describe("loadingAllocationSchema", () => {
     expect(
       loadingAllocationSchema.safeParse({ ...base, allocatedQuantity: "0" }).success,
     ).toBe(false);
+  });
+});
+
+
+describe("deliverySchema", () => {
+  const base = {
+    tripId,
+    salesOrderItemId: productId,
+    customerLocationId: transporterId,
+    productId,
+    deliveredQuantity: "1000",
+    deliveryStatus: "complete" as const,
+  };
+
+  it("accepts a complete delivery", () => {
+    expect(deliverySchema.parse(base).deliveredQuantity).toBe(1000);
+  });
+
+  it("accepts a confirmed quantity up to the delivered quantity", () => {
+    expect(
+      deliverySchema.safeParse({ ...base, customerConfirmedQuantity: "1000" }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a confirmed quantity above the delivered quantity", () => {
+    expect(
+      deliverySchema.safeParse({ ...base, customerConfirmedQuantity: "1001" }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a zero delivered quantity", () => {
+    expect(deliverySchema.safeParse({ ...base, deliveredQuantity: "0" }).success).toBe(false);
+  });
+});
+
+describe("evidenceSchema", () => {
+  const base = {
+    deliveryRecordId: tripId,
+    evidenceType: "photo" as const,
+    filePath: "deliveries/2026/waybill.jpg",
+  };
+
+  it("accepts evidence metadata", () => {
+    expect(evidenceSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("rejects an empty storage reference", () => {
+    expect(evidenceSchema.safeParse({ ...base, filePath: "" }).success).toBe(false);
+  });
+
+  it("rejects an unknown evidence type", () => {
+    expect(evidenceSchema.safeParse({ ...base, evidenceType: "video" }).success).toBe(false);
   });
 });
 

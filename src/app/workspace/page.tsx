@@ -189,6 +189,12 @@ export default async function WorkspacePage() {
                 >
                   Dispatch
                 </Link>
+                <Link
+                  href="/workspace/deliveries"
+                  className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-medium hover:bg-slate-50"
+                >
+                  Deliveries
+                </Link>
               </>
             ) : null}
             {canManageAccess ? (

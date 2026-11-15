@@ -3,7 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getCurrentTenant, type CurrentTenant } from "@/modules/tenant/current-tenant";
-import { assignmentSchema, loadingAllocationSchema, loadingRecordSchema, tripSchema } from "@/modules/transport/validation";
+import {
+  assignmentSchema,
+  deliverySchema,
+  evidenceSchema,
+  loadingAllocationSchema,
+  loadingRecordSchema,
+  tripSchema,
+} from "@/modules/transport/validation";
 
 export type DispatchActionState = {
   error: string | null;
@@ -248,4 +255,103 @@ function loadingErrorMessage(error: { message?: string; code?: string }): string
   }
 
   return "The record could not be saved. Check the quantities and try again.";
+}
+
+export async function recordDelivery(
+  _previous: DispatchActionState,
+  formData: FormData,
+): Promise<DispatchActionState> {
+  const parsed = deliverySchema.safeParse({
+    tripId: formData.get("tripId"),
+    salesOrderItemId: formData.get("salesOrderItemId"),
+    tripLoadingRecordId: formData.get("tripLoadingRecordId"),
+    customerLocationId: formData.get("customerLocationId"),
+    productId: formData.get("productId"),
+    deliveredQuantity: formData.get("deliveredQuantity"),
+    customerConfirmedQuantity: formData.get("customerConfirmedQuantity"),
+    deliveryStatus: formData.get("deliveryStatus"),
+    waybillReference: formData.get("waybillReference"),
+    customerAcknowledgement: formData.get("customerAcknowledgement"),
+    deliveryDate: formData.get("deliveryDate"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: insertError } = await context.supabase.from("trip_delivery_records").insert({
+    organisation_id: context.tenant.organisationId,
+    trip_id: parsed.data.tripId,
+    sales_order_item_id: parsed.data.salesOrderItemId,
+    trip_loading_record_id: textOrNull(parsed.data.tripLoadingRecordId),
+    customer_location_id: parsed.data.customerLocationId,
+    product_id: parsed.data.productId,
+    delivered_quantity: parsed.data.deliveredQuantity,
+    customer_confirmed_quantity: parsed.data.customerConfirmedQuantity ?? null,
+    delivery_status: parsed.data.deliveryStatus,
+    waybill_reference: textOrNull(parsed.data.waybillReference),
+    customer_acknowledgement: textOrNull(parsed.data.customerAcknowledgement),
+    delivery_time: dateToIso(parsed.data.deliveryDate) ?? new Date().toISOString(),
+    created_by: context.tenant.profileId,
+  });
+
+  if (insertError) {
+    return { error: deliveryErrorMessage(insertError), success: null };
+  }
+
+  revalidatePath("/workspace/deliveries");
+  return { error: null, success: "Delivery recorded." };
+}
+
+export async function addDeliveryEvidence(
+  _previous: DispatchActionState,
+  formData: FormData,
+): Promise<DispatchActionState> {
+  const parsed = evidenceSchema.safeParse({
+    deliveryRecordId: formData.get("deliveryRecordId"),
+    evidenceType: formData.get("evidenceType"),
+    filePath: formData.get("filePath"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: insertError } = await context.supabase.from("delivery_evidence").insert({
+    organisation_id: context.tenant.organisationId,
+    trip_delivery_record_id: parsed.data.deliveryRecordId,
+    evidence_type: parsed.data.evidenceType,
+    file_path: parsed.data.filePath,
+    notes: textOrNull(parsed.data.notes),
+    uploaded_by: context.tenant.profileId,
+  });
+
+  if (insertError) {
+    return { error: "The evidence could not be saved.", success: null };
+  }
+
+  revalidatePath("/workspace/deliveries");
+  return { error: null, success: "Evidence saved." };
+}
+
+function deliveryErrorMessage(error: { message?: string; code?: string }): string {
+  const message = error.message ?? "";
+
+  if (
+    message.includes("does not match") ||
+    message.includes("exceed") ||
+    message.includes("belong") ||
+    message.includes("not found")
+  ) {
+    return message;
+  }
+
+  return "The delivery could not be recorded. Check the quantities and references.";
 }
