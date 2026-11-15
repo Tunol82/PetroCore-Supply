@@ -40,3 +40,5 @@ None.
 | `20261115001400_reconciliation_grants.sql` | Revokes leftover UPDATE grants on reconciliation evidence | Applied 2026-11-15; update now denied |
 | `20261115001500_inventory_receipts.sql` | Inventory batches and append-only movement ledger | Applied 2026-11-15; validation, movement posting and isolation verified |
 | `20261115001600_inventory_cumulative_receipts.sql` | Allows cumulative receipts per procurement batch | Applied 2026-11-15; partial, full and over-receipt checks verified |
+| `20261115001700_inventory_reservations.sql` | Inventory reservations and reservation lines | Applied 2026-11-15; availability, product-match and storage-location checks verified |
+| `20261115001800_inventory_issues_fifo.sql` | Inventory issues, issue lines and FIFO allocations | Applied 2026-11-15; FIFO split, cost preservation, shortfall rollback and isolation verified |

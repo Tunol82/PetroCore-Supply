@@ -447,6 +447,7 @@ The current Decision Register is authoritative for status. The following remain 
 | 3 | 2026-11-15 | Recorded product-owner approval of the review baseline, v1.1 provenance, DR-16 (retain v1.1 names) and DR-25 (greenfield); updated the naming section, open-decision gate and implementation sequence to reflect the approvals; kept DR-10, DR-20 and DR-24 open. | Repository review |
 | 4 | 2026-11-15 | Appended the supplied v1.1 Part 2 (sections 12–25) to Appendix A: incidents and compliance, finance and payments, documents, reporting, imports, notifications, numbering, offline sync, audit, idempotency, deferred accounting, constraints and implementation phases. Resolved the earlier Part 2 completeness gap. | Repository review |
 | 5 | 2026-11-15 | Recorded approval of DR-10 (flat locations), DR-20 (approvals deferred) and DR-24 (direct ownership) and the five permission keys; updated decision status, ownership register and implementation sequence. | Repository review |
+| 6 | 2026-11-15 | Recorded the implemented inventory fulfilment additions: `inventory_issue_lines` (issue intent per sales order line, with product derived from the order line) and the composite tenant key on `inventory_movements` required by FIFO allocation references. Both are physical additions to the proposed schema; the field-level definitions in §6.4 and §6.6 remain unchanged. | Repository review |
 
 ---
 

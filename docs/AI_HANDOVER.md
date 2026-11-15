@@ -110,6 +110,7 @@ Implemented in the scaffold:
 - Deliveries at `/workspace/deliveries`: delivery records linked to a trip, sales order line, customer location and optional loading record, with customer-confirmed quantities, status, waybill reference and evidence metadata.
 - Reconciliation at `/workspace/reconciliation`: trip reconciliation headers and items with generated variances, delivery discrepancies and append-only investigations. Variance is evidence only; it does not create a loss or liability.
 - Inventory at `/workspace/inventory`: verified receipt of storage procurement into a tenant location, creating an inventory batch and an append-only receipt movement. Receipts are cumulative up to the verified quantity.
+- Stock fulfilment at `/workspace/inventory/fulfilment`: reservations that commit stock without moving it, draft issues with lines, and posting that consumes stock FIFO, preserves the batch unit cost in allocations, and fulfils matching reservations.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
@@ -119,7 +120,7 @@ Current verification snapshot (2026-11-15):
 - Live browser sign-in was verified: `/workspace` resolved the organisation `Alpha` (`ORG-A`) from the authenticated membership, with no console errors.
 - `npm run verify:live` verifies three identities end to end: the Alpha administrator (tenant + access administration), a Beta-tenant user (isolation, no admin link, access denied) and a no-membership user (access-pending state). All passed on 2026-11-15.
 - Local Supabase values live in `.env.local`, which is git-ignored. No credentials are committed.
-- No **production** database has been touched. Procurement, sales, dispatch, delivery, reconciliation and inventory receipt flows are implemented against the non-production project only; inventory reservations, issues, FIFO and finance remain unimplemented.
+- No **production** database has been touched. Procurement, sales, dispatch, delivery, reconciliation, inventory receipt, reservation, issue and FIFO allocation flows are implemented against the non-production project only; finance remains unimplemented.
 - No code has been merged into `main`; PR #1 remains draft.
 
 Local development and review work now happens on `chore/verification-and-ci-hardening`, branched from `chore/initial-project-scaffold`.
@@ -165,7 +166,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
 6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
-7. **Milestone 2 in progress.** Procurement, costs, sales orders, fleet, dispatch, loading, deliveries, reconciliation and inventory receipts are implemented. Next: inventory reservations, issues and FIFO allocations, transporter invoices (DR-13), evidence file upload, and double-booking prevention. Tolerances and variance classification remain open (DR-01/DR-03).
+7. **Milestone 2 in progress.** Procurement, costs, sales orders, fleet, dispatch, loading, deliveries, reconciliation, inventory receipts, reservations, issues and FIFO allocations are implemented. Next: transporter invoices (DR-13), evidence file upload, double-booking prevention, and the operational finance layer. Tolerances, variance classification, issue reversals and cost-of-sales posting remain open (DR-01/DR-03/DR-13).
 8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
@@ -206,6 +207,8 @@ Approval state:
 - Migration `20261115001400_reconciliation_grants` revokes leftover UPDATE grants on reconciliation items and investigations.
 - Migration `20261115001500_inventory_receipts` adds inventory batches and an append-only movement ledger, with procurement/product/location/quantity validation and a receipt movement posted by trigger.
 - Migration `20261115001600_inventory_cumulative_receipts` replaces the one-receipt-per-procurement rule with cumulative receipts bounded by the verified quantity, serialised by a row lock.
+- Migration `20261115001700_inventory_reservations` adds reservations and reservation lines; active reservations cannot exceed a batch's remaining quantity and never reduce physical stock.
+- Migration `20261115001800_inventory_issues_fifo` adds issues, issue lines and FIFO allocations plus `post_inventory_issue` and `release_reservation_item` RPCs. Posting locks affected batches, consumes oldest batches first, preserves unit cost and aborts entirely on a shortfall.
 - Batch capture records supplier, loaded and received quantities as supplied and defaults `variance_status` to `not_assessed`; it deliberately does not apply tolerances, temperature correction or variance rules.
 - The single non-production platform admin is bootstrapped with `mfa_required = true`; the happy-path test temporarily disabled it and restored it. MFA enrolment is not yet built into the app, so platform switching currently requires an AAL2 session obtained elsewhere.
 
