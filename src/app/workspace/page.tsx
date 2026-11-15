@@ -131,16 +131,21 @@ export default async function WorkspacePage() {
     { data: canManageProcurement },
     { data: canViewSales },
     { data: canManageSales },
+    { data: canViewTransport },
+    { data: canManageTransport },
   ] = await Promise.all([
     supabase.rpc("has_permission", { p_permission_key: "users.manage" }),
     supabase.rpc("has_permission", { p_permission_key: "procurement.view" }),
     supabase.rpc("has_permission", { p_permission_key: "procurement.manage" }),
     supabase.rpc("has_permission", { p_permission_key: "sales.view" }),
     supabase.rpc("has_permission", { p_permission_key: "sales.manage" }),
+    supabase.rpc("has_permission", { p_permission_key: "transport.view" }),
+    supabase.rpc("has_permission", { p_permission_key: "transport.manage" }),
   ]);
 
   const showProcurement = Boolean(canViewProcurement || canManageProcurement);
   const showSales = Boolean(canViewSales || canManageSales);
+  const showTransport = Boolean(canViewTransport || canManageTransport);
 
   return (
     <Shell>
@@ -169,6 +174,22 @@ export default async function WorkspacePage() {
               >
                 Sales
               </Link>
+            ) : null}
+            {showTransport ? (
+              <>
+                <Link
+                  href="/workspace/fleet"
+                  className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-medium hover:bg-slate-50"
+                >
+                  Fleet
+                </Link>
+                <Link
+                  href="/workspace/dispatch"
+                  className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-medium hover:bg-slate-50"
+                >
+                  Dispatch
+                </Link>
+              </>
             ) : null}
             {canManageAccess ? (
               <Link
