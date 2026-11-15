@@ -2,9 +2,8 @@ name: PetroCore Supply CI
 
 on:
   pull_request:
-    branches: [main]
   push:
-    branches: [main, "chore/**", "feat/**", "fix/**"]
+    branches: [main, "chore/**", "feat/**", "fix/**", "docs/**"]
 
 permissions:
   contents: read
