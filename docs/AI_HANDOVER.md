@@ -2,7 +2,8 @@
 
 **Last updated:** 2026-11-15  
 **Repository:** https://github.com/Tunol82/PetroCore-Supply  
-**Current working branch:** `chore/initial-project-scaffold`  
+**Current working branch at latest verification:** `chore/verification-and-ci-hardening`  
+**Database design review branch:** `docs/database-v1.2-review-proposal`  
 **Pull request:** https://github.com/Tunol82/PetroCore-Supply/pull/1  
 **Product owner:** Tunde Oladeji
 
@@ -154,3 +155,19 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 Start by telling the user what branch and PR you found, what checks you ran, and any blockers. Then propose the smallest safe next implementation slice. Ask the product owner only for decisions that are genuinely required; do not ask them to repeat decisions already recorded here.
 
 **Primary instruction:** Preserve the approved architecture and business boundaries. PetroCore Supply is independent, multi-tenant from day one, and database security/integrity comes before operational feature breadth.
+
+
+## 11. Database design proposal work (2026-11-15)
+
+A separate review branch, `docs/database-v1.2-review-proposal`, contains two **unapproved proposals**:
+
+- `docs/database/database-dictionary-v1.2-proposal.md` — consolidates the complete v1.1 field-level dictionary baseline with proposed v1.2 amendments, candidate tenant/membership fields, an ownership review inventory and explicit open-decision markers.
+- `docs/erd/erd-v1.2-proposal.md` — reconstructed logical ERD based on the v1.1 dictionary, v1.2 amendment specification and repository reconciliation report.
+
+Important limitations and controls:
+- The original owner-supplied ERD v1.2 artefact was not located in the current repository or accessible Library material during preparation. The new ERD is a reconstruction and must be compared with the original before approval.
+- DR-16, DR-20, DR-24, DR-25 and DR-10 remain Open in the Decision Register. The proposals do not change decision status.
+- The proposed `organisations` table fields, `organisation_memberships` candidate and ownership classifications are not approved physical schema.
+- No SQL, migration, seed, trigger or RLS policy was created.
+- Do not merge the proposal branch into the verification branch or main until the product owner reviews the documents and explicitly approves the applicable decisions.
+- The existing `chore/verification-and-ci-hardening` branch and PR #1 remain separate. No changes were made to `main` or StationOs.
