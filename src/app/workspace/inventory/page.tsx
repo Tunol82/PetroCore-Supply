@@ -3,6 +3,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/page-header";
+import { Tabs } from "@/components/ui/tabs";
+import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
 import { ReceiptForm } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +49,8 @@ type ProcurementBatch = {
 type Product = { id: string; product_name: string };
 type Location = { id: string; location_name: string; is_storage_location: boolean };
 
+const TABS = ["stock", "receive", "movements"] as const;
+
 function formatQuantity(value: number) {
   return new Intl.NumberFormat("en-NG", { maximumFractionDigits: 3 }).format(value);
 }
@@ -53,7 +63,11 @@ function formatMoney(value: number) {
   }).format(value);
 }
 
-export default async function InventoryPage() {
+export default async function InventoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   if (!getSupabaseConfig()) {
     redirect("/workspace");
   }
@@ -78,46 +92,43 @@ export default async function InventoryPage() {
 
   if (!canView && !canManage) {
     return (
-      <div>
-        <div className="space-y-6">
-<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Not authorised</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">You cannot view inventory.</h1>
-            <Link href="/workspace" className="mt-6 inline-block text-sm font-semibold text-[var(--brand)]">
-              Return to workspace
-            </Link>
-          </section>
-        </div>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Inventory" title="Not authorised" description="You cannot view inventory." />
+        <ButtonLink href="/workspace">Return to workspace</ButtonLink>
       </div>
     );
   }
 
-  const [batchesResult, movementsResult, procurementResult, productsResult, locationsResult] = await Promise.all([
-    supabase
-      .from("inventory_batches")
-      .select(
-        "id, procurement_batch_id, product_id, location_id, original_quantity, remaining_quantity, landed_cost_per_unit, status, received_at",
-      )
-      .order("received_at", { ascending: false })
-      .limit(30),
-    supabase
-      .from("inventory_movements")
-      .select("id, inventory_batch_id, movement_type, quantity_in, quantity_out, reference_type, movement_date")
-      .order("movement_date", { ascending: false })
-      .limit(40),
-    supabase
-      .from("procurement_batches")
-      .select("id, batch_number, product_id, supplier_quantity, received_quantity, fulfilment_type")
-      .eq("fulfilment_type", "storage_receipt")
-      .order("created_at", { ascending: false })
-      .limit(50),
-    supabase.from("products").select("id, product_name").order("product_name"),
-    supabase
-      .from("business_locations")
-      .select("id, location_name, is_storage_location")
-      .eq("status", "active")
-      .order("location_name"),
-  ]);
+  const params = await searchParams;
+  const tab = TABS.includes((params.tab ?? "") as (typeof TABS)[number]) ? (params.tab as string) : "stock";
+
+  const [batchesResult, movementsResult, procurementResult, productsResult, locationsResult] =
+    await Promise.all([
+      supabase
+        .from("inventory_batches")
+        .select(
+          "id, procurement_batch_id, product_id, location_id, original_quantity, remaining_quantity, landed_cost_per_unit, status, received_at",
+        )
+        .order("received_at", { ascending: false })
+        .limit(100),
+      supabase
+        .from("inventory_movements")
+        .select("id, inventory_batch_id, movement_type, quantity_in, quantity_out, reference_type, movement_date")
+        .order("movement_date", { ascending: false })
+        .limit(100),
+      supabase
+        .from("procurement_batches")
+        .select("id, batch_number, product_id, supplier_quantity, received_quantity, fulfilment_type")
+        .eq("fulfilment_type", "storage_receipt")
+        .order("created_at", { ascending: false })
+        .limit(200),
+      supabase.from("products").select("id, product_name").order("product_name"),
+      supabase
+        .from("business_locations")
+        .select("id, location_name, is_storage_location")
+        .eq("status", "active")
+        .order("location_name"),
+    ]);
 
   const queryError =
     batchesResult.error ??
@@ -128,14 +139,8 @@ export default async function InventoryPage() {
 
   if (queryError) {
     return (
-      <div>
-        <div className="space-y-6">
-<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Unavailable</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">Inventory data could not be loaded.</h1>
-            <p className="mt-3 text-sm leading-7 text-[var(--muted)]">No records were changed. Try again.</p>
-          </section>
-        </div>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Inventory" title="Unavailable" description="Inventory data could not be loaded." />
       </div>
     );
   }
@@ -177,121 +182,188 @@ export default async function InventoryPage() {
     .filter((location) => location.is_storage_location)
     .map((location) => ({ id: location.id, label: location.location_name }));
 
+  const availableBatches = batches.filter((batch) => batch.status === "available");
+  const remainingTotal = batches.reduce((sum, batch) => sum + Number(batch.remaining_quantity), 0);
+  const exhaustedCount = batches.filter((batch) => batch.status === "exhausted").length;
+
+  const tabs = [
+    { href: "/workspace/inventory?tab=stock", label: "Stock on hand", count: batches.length },
+    { href: "/workspace/inventory?tab=receive", label: "Receive", count: receiptOptions.length },
+    { href: "/workspace/inventory?tab=movements", label: "Movements", count: movements.length },
+  ];
+  const activeHref = `/workspace/inventory?tab=${tab}`;
+
   return (
-    <div>
-      <div className="space-y-6">
-<section className="mt-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand)]">Inventory</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">{tenant.organisationName}</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Storage stock received from verified procurement, with an append-only movement ledger.
-          </p>
-        </section>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Inventory"
+        title={tenant.organisationName}
+        description="Storage stock received from verified procurement, with an append-only movement ledger."
+        actions={<ButtonLink href="/workspace/inventory/fulfilment">Fulfilment</ButtonLink>}
+      />
 
-        <section className="mt-8 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Stock batches</h2>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
-                <tr>
-                  <th className="py-2 pr-3">Procurement batch</th>
-                  <th className="py-2 pr-3">Product</th>
-                  <th className="py-2 pr-3">Location</th>
-                  <th className="py-2 pr-3 text-right">Received</th>
-                  <th className="py-2 pr-3 text-right">Remaining</th>
-                  <th className="py-2 pr-3 text-right">Cost / unit</th>
-                  <th className="py-2 pr-3">Status</th>
-                  <th className="py-2">Received</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {batches.map((batch) => (
-                  <tr key={batch.id}>
-                    <td className="py-2 pr-3 font-medium">
-                      {procurementById.get(batch.procurement_batch_id)?.batch_number ?? "—"}
-                    </td>
-                    <td className="py-2 pr-3">{productById.get(batch.product_id)?.product_name ?? "—"}</td>
-                    <td className="py-2 pr-3">{locationById.get(batch.location_id)?.location_name ?? "—"}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(Number(batch.original_quantity))}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(Number(batch.remaining_quantity))}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(Number(batch.landed_cost_per_unit))}</td>
-                    <td className="py-2 pr-3 text-xs">{batch.status}</td>
-                    <td className="py-2 text-xs">{new Date(batch.received_at).toLocaleDateString("en-GB")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {batches.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No stock has been received yet.</p>
-            ) : null}
-          </div>
-          {canManage ? (
-            <div className="mt-6 border-t border-[var(--line)] pt-5">
-              <h3 className="text-sm font-semibold">Receive storage procurement</h3>
-              <div className="mt-3">
-                <ReceiptForm batches={receiptOptions} locations={locationOptions} />
-              </div>
-            </div>
-          ) : null}
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Stock movements</h2>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            Append-only ledger. Movements are posted by trusted database functions, never edited directly.
-          </p>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[700px] text-left text-sm">
-              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
-                <tr>
-                  <th className="py-2 pr-3">Date</th>
-                  <th className="py-2 pr-3">Batch</th>
-                  <th className="py-2 pr-3">Product</th>
-                  <th className="py-2 pr-3">Type</th>
-                  <th className="py-2 pr-3 text-right">In</th>
-                  <th className="py-2 pr-3 text-right">Out</th>
-                  <th className="py-2">Reference</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {movements.map((movement) => {
-                  const batch = inventoryById.get(movement.inventory_batch_id);
-                  return (
-                    <tr key={movement.id}>
-                      <td className="py-2 pr-3 text-xs">
-                        {new Date(movement.movement_date).toLocaleDateString("en-GB")}
-                      </td>
-                      <td className="py-2 pr-3 text-xs">
-                        {batch ? procurementById.get(batch.procurement_batch_id)?.batch_number ?? "—" : "—"}
-                      </td>
-                      <td className="py-2 pr-3">
-                        {batch ? productById.get(batch.product_id)?.product_name ?? "—" : "—"}
-                      </td>
-                      <td className="py-2 pr-3 text-xs">{movement.movement_type}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
-                        {Number(movement.quantity_in) > 0 ? formatQuantity(Number(movement.quantity_in)) : "—"}
-                      </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
-                        {Number(movement.quantity_out) > 0 ? formatQuantity(Number(movement.quantity_out)) : "—"}
-                      </td>
-                      <td className="py-2 text-xs">{movement.reference_type.replaceAll("_", " ")}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {movements.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No stock movements yet.</p>
-            ) : null}
-          </div>
-        </section>
-
-        <p className="mt-8 text-xs leading-6 text-[var(--muted)]">
-          Reservations, issues, FIFO allocations and adjustments are not implemented yet. Until issues are posted,
-          remaining quantity only changes through authorised corrections.
-        </p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Batches in stock" value={availableBatches.length} hint={`${batches.length} received in total`} />
+        <StatCard label="Remaining volume" value={formatQuantity(remainingTotal)} hint="Across all storage locations" tone="brand" />
+        <StatCard label="Exhausted batches" value={exhaustedCount} hint="Fully consumed by issues" />
       </div>
+
+      <Tabs items={tabs} active={activeHref} />
+
+      {tab === "stock" ? (
+        <Card>
+          <CardHeader
+            title="Stock batches"
+            description="Oldest received first when issuing."
+            action={<ButtonLink href="/workspace/inventory?tab=receive" size="sm">Receive stock</ButtonLink>}
+          />
+          <CardBody>
+            {batches.length === 0 ? (
+              <EmptyState
+                title="No stock has been received yet"
+                description="Receive a storage procurement batch to create the first inventory layer."
+                action={<ButtonLink href="/workspace/inventory?tab=receive" size="sm">Go to Receive</ButtonLink>}
+              />
+            ) : (
+              <TableScroll>
+                <Table minWidth={860}>
+                  <THead>
+                    <TR>
+                      <TH>Batch</TH>
+                      <TH>Product</TH>
+                      <TH>Location</TH>
+                      <TH align="right">Received</TH>
+                      <TH align="right">Remaining</TH>
+                      <TH align="right">Cost / unit</TH>
+                      <TH>Status</TH>
+                      <TH>Received</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {batches.map((batch) => {
+                      const procurement = procurementById.get(batch.procurement_batch_id);
+
+                      return (
+                        <TR key={batch.id}>
+                          <TD>
+                            <Link
+                              href={`/workspace/inventory/batches/${batch.id}`}
+                              className="font-medium text-[var(--brand)] hover:underline"
+                            >
+                              {procurement?.batch_number ?? "batch"}
+                            </Link>
+                          </TD>
+                          <TD>{productById.get(batch.product_id)?.product_name ?? "—"}</TD>
+                          <TD className="text-[var(--muted)]">
+                            {locationById.get(batch.location_id)?.location_name ?? "—"}
+                          </TD>
+                          <TD align="right">{formatQuantity(Number(batch.original_quantity))}</TD>
+                          <TD align="right">{formatQuantity(Number(batch.remaining_quantity))}</TD>
+                          <TD align="right">{formatMoney(Number(batch.landed_cost_per_unit))}</TD>
+                          <TD>
+                            <StatusBadge status={batch.status} />
+                          </TD>
+                          <TD className="text-xs text-[var(--muted)]">
+                            {new Date(batch.received_at).toLocaleDateString("en-GB")}
+                          </TD>
+                        </TR>
+                      );
+                    })}
+                  </TBody>
+                </Table>
+              </TableScroll>
+            )}
+          </CardBody>
+        </Card>
+      ) : null}
+
+      {tab === "receive" ? (
+        <Card>
+          <CardHeader
+            title="Receive storage procurement"
+            description="Only storage-receipt procurement can create stock. Receipts are cumulative up to the verified quantity."
+          />
+          <CardBody>
+            {canManage ? (
+              <ReceiptForm batches={receiptOptions} locations={locationOptions} />
+            ) : (
+              <EmptyState title="Read-only access" description="You can view stock but not receive it." />
+            )}
+          </CardBody>
+        </Card>
+      ) : null}
+
+      {tab === "movements" ? (
+        <Card>
+          <CardHeader
+            title="Stock movements"
+            description="Append-only ledger. Movements are posted by trusted database functions, never edited."
+          />
+          <CardBody>
+            {movements.length === 0 ? (
+              <EmptyState title="No movements yet" description="A receipt creates the first movement." />
+            ) : (
+              <TableScroll>
+                <Table minWidth={820}>
+                  <THead>
+                    <TR>
+                      <TH>Date</TH>
+                      <TH>Batch</TH>
+                      <TH>Product</TH>
+                      <TH>Type</TH>
+                      <TH align="right">In</TH>
+                      <TH align="right">Out</TH>
+                      <TH>Reference</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {movements.map((movement) => {
+                      const batch = inventoryById.get(movement.inventory_batch_id);
+                      const procurement = batch ? procurementById.get(batch.procurement_batch_id) : undefined;
+
+                      return (
+                        <TR key={movement.id}>
+                          <TD className="text-xs text-[var(--muted)]">
+                            {new Date(movement.movement_date).toLocaleDateString("en-GB")}
+                          </TD>
+                          <TD>
+                            {batch ? (
+                              <Link
+                                href={`/workspace/inventory/batches/${batch.id}`}
+                                className="text-[var(--brand)] hover:underline"
+                              >
+                                {procurement?.batch_number ?? "batch"}
+                              </Link>
+                            ) : (
+                              "—"
+                            )}
+                          </TD>
+                          <TD>{batch ? productById.get(batch.product_id)?.product_name ?? "—" : "—"}</TD>
+                          <TD>
+                            <StatusBadge status={movement.movement_type} />
+                          </TD>
+                          <TD align="right">
+                            {Number(movement.quantity_in) > 0 ? formatQuantity(Number(movement.quantity_in)) : "—"}
+                          </TD>
+                          <TD align="right">
+                            {Number(movement.quantity_out) > 0 ? formatQuantity(Number(movement.quantity_out)) : "—"}
+                          </TD>
+                          <TD className="text-xs text-[var(--muted)]">{movement.reference_type.replaceAll("_", " ")}</TD>
+                        </TR>
+                      );
+                    })}
+                  </TBody>
+                </Table>
+              </TableScroll>
+            )}
+          </CardBody>
+        </Card>
+      ) : null}
+
+      <p className="text-xs leading-6 text-[var(--muted)]">
+        Reservations, issues and FIFO allocations live in Fulfilment. Reversals post compensating movements; nothing is
+        edited in place.
+      </p>
     </div>
   );
 }
-
