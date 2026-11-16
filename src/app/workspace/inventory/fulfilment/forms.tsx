@@ -20,7 +20,7 @@ const fieldClass =
   "w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10";
 const labelClass = "mb-1 block text-xs font-medium text-[var(--muted)]";
 const buttonClass =
-  "rounded-lg bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-lg bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-[var(--surface-3)] disabled:text-[var(--muted)] disabled:shadow-none";
 
 function Feedback({ state }: { state: FulfilmentActionState }) {
   if (state.error) {
@@ -81,18 +81,18 @@ export function ReservationForm({
 
   return (
     <form action={formAction} className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="rs-number" className={labelClass}>Reservation number</label>
           <input id="rs-number" name="reservationNumber" required className={fieldClass} placeholder="RES-2026-0001" />
         </div>
-        <Select id="rs-order" name="salesOrderId" label="Sales order" options={salesOrders} placeholder="Select a sales order" />
-        <Select id="rs-location" name="locationId" label="Storage location" options={locations} placeholder="Select a storage location" />
+        <Select id="rs-order" name="salesOrderId" label="Sales order" options={salesOrders} placeholder="Select an order" />
+        <Select id="rs-location" name="locationId" label="Storage location" options={locations} placeholder="Select a location" />
         <div>
           <label htmlFor="rs-expiry" className={labelClass}>Expires on (optional)</label>
           <input id="rs-expiry" name="expiryAt" type="date" className={fieldClass} />
         </div>
-        <div>
+        <div className="sm:col-span-2">
           <label htmlFor="rs-notes" className={labelClass}>Notes</label>
           <input id="rs-notes" name="notes" className={fieldClass} />
         </div>
