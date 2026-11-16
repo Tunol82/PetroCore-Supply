@@ -7,8 +7,12 @@ import { getCurrentTenant } from "@/modules/tenant/current-tenant";
 import {
   DiscrepancyForm,
   InvestigationForm,
+  DeleteToleranceRuleForm,
+  LiabilityForm,
   ReconciliationForm,
   ReconciliationItemForm,
+  RejectLiabilityForm,
+  ToleranceRuleForm,
 } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +33,26 @@ type Item = {
   delivered_quantity: number;
   variance_quantity: number;
   reconciliation_status: string;
+  tolerance_quantity: number | null;
+};
+
+type QuantityChainRow = {
+  trip_id: string;
+  trip_number: string | null;
+  product_id: string;
+  supplier_quantity: number | null;
+  loaded_quantity: number | null;
+  delivered_quantity: number | null;
+  supplier_to_loaded_variance: number | null;
+  loaded_to_delivered_variance: number | null;
+};
+
+type ToleranceRule = {
+  id: string;
+  product_id: string | null;
+  basis: string;
+  percentage: number | null;
+  absolute_quantity: number | null;
 };
 
 type Discrepancy = {
@@ -39,6 +63,10 @@ type Discrepancy = {
   actual_quantity: number;
   variance: number;
   status: string;
+  liability_status: string;
+  liability_basis: string | null;
+  liability_unit_cost: number | null;
+  liability_amount: number | null;
 };
 
 type Investigation = {
@@ -53,10 +81,15 @@ type Investigation = {
 type Trip = { id: string; trip_number: string };
 type Product = { id: string; product_name: string };
 type LoadingRecord = { id: string; trip_id: string; product_id: string; loaded_quantity: number };
+type Invoice = { id: string; invoice_number: string; trip_id: string | null };
 type Delivery = { id: string; trip_id: string; product_id: string; delivered_quantity: number };
 
 function formatQuantity(value: number) {
   return new Intl.NumberFormat("en-NG", { maximumFractionDigits: 3 }).format(value);
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(value);
 }
 
 export default async function ReconciliationPage() {
@@ -108,6 +141,9 @@ export default async function ReconciliationPage() {
     productsResult,
     loadingResult,
     deliveriesResult,
+    invoicesResult,
+    toleranceResult,
+    chainResult,
   ] = await Promise.all([
     supabase
       .from("trip_reconciliations")
@@ -116,12 +152,12 @@ export default async function ReconciliationPage() {
       .limit(20),
     supabase
       .from("trip_reconciliation_items")
-      .select("id, reconciliation_id, product_id, loaded_quantity, delivered_quantity, variance_quantity, reconciliation_status")
+      .select("id, reconciliation_id, product_id, loaded_quantity, delivered_quantity, variance_quantity, tolerance_quantity, reconciliation_status")
       .order("created_at", { ascending: false })
       .limit(30),
     supabase
       .from("delivery_discrepancies")
-      .select("id, reconciliation_item_id, discrepancy_type, expected_quantity, actual_quantity, variance, status")
+      .select("id, reconciliation_item_id, discrepancy_type, expected_quantity, actual_quantity, variance, status, liability_status, liability_basis, liability_unit_cost, liability_amount")
       .order("created_at", { ascending: false })
       .limit(30),
     supabase
@@ -141,6 +177,16 @@ export default async function ReconciliationPage() {
       .select("id, trip_id, product_id, delivered_quantity")
       .order("delivery_time", { ascending: false })
       .limit(30),
+    supabase
+      .from("transporter_invoices")
+      .select("id, invoice_number, trip_id")
+      .order("invoice_date", { ascending: false })
+      .limit(50),
+    supabase.from("tolerance_rules").select("id, product_id, basis, percentage, absolute_quantity").order("created_at", { ascending: false }),
+    supabase
+      .from("trip_quantity_chain")
+      .select("trip_id, trip_number, product_id, supplier_quantity, loaded_quantity, delivered_quantity, supplier_to_loaded_variance, loaded_to_delivered_variance")
+      .limit(40),
   ]);
 
   const queryError =
@@ -151,7 +197,10 @@ export default async function ReconciliationPage() {
     tripsResult.error ??
     productsResult.error ??
     loadingResult.error ??
-    deliveriesResult.error;
+    deliveriesResult.error ??
+    invoicesResult.error ??
+    toleranceResult.error ??
+    chainResult.error;
 
   if (queryError) {
     return (
@@ -175,6 +224,9 @@ export default async function ReconciliationPage() {
   const products = (productsResult.data ?? []) as Product[];
   const loadingRecords = (loadingResult.data ?? []) as LoadingRecord[];
   const deliveries = (deliveriesResult.data ?? []) as Delivery[];
+  const invoices = (invoicesResult.data ?? []) as Invoice[];
+  const toleranceRules = (toleranceResult.data ?? []) as ToleranceRule[];
+  const quantityChain = (chainResult.data ?? []) as QuantityChainRow[];
 
   const tripById = new Map(trips.map((trip) => [trip.id, trip]));
   const productById = new Map(products.map((product) => [product.id, product]));
@@ -278,6 +330,7 @@ export default async function ReconciliationPage() {
                   <th className="py-2 pr-3 text-right">Loaded</th>
                   <th className="py-2 pr-3 text-right">Delivered</th>
                   <th className="py-2 pr-3 text-right">Variance</th>
+                  <th className="py-2 pr-3 text-right">Tolerance</th>
                   <th className="py-2">Status</th>
                 </tr>
               </thead>
@@ -285,12 +338,15 @@ export default async function ReconciliationPage() {
                 {items.map((item) => (
                   <tr key={item.id}>
                     <td className="py-2 pr-3 text-xs">
-                      {reconciliationById.get(item.reconciliation_id)?.reconciliation_number ?? "—"}
+                      {reconciliationById.get(item.reconciliation_id)?.reconciliation_number ?? "-"}
                     </td>
-                    <td className="py-2 pr-3">{productById.get(item.product_id)?.product_name ?? "—"}</td>
+                    <td className="py-2 pr-3">{productById.get(item.product_id)?.product_name ?? "-"}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(Number(item.loaded_quantity))}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(Number(item.delivered_quantity))}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(Number(item.variance_quantity))}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">
+                      {item.tolerance_quantity === null ? "—" : formatQuantity(Number(item.tolerance_quantity))}
+                    </td>
                     <td className="py-2 text-xs">{item.reconciliation_status.replaceAll("_", " ")}</td>
                   </tr>
                 ))}
@@ -316,6 +372,109 @@ export default async function ReconciliationPage() {
         </section>
 
         <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold">Quantity chain</h2>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Both measurement points: supplier to loaded, and loaded to delivered. Supplier quantity is apportioned by the
+            loading allocations.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
+                <tr>
+                  <th className="py-2 pr-3">Trip</th>
+                  <th className="py-2 pr-3">Product</th>
+                  <th className="py-2 pr-3 text-right">Supplier</th>
+                  <th className="py-2 pr-3 text-right">Loaded</th>
+                  <th className="py-2 pr-3 text-right">Delivered</th>
+                  <th className="py-2 pr-3 text-right">Supplier → loaded</th>
+                  <th className="py-2 text-right">Loaded → delivered</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--line)]">
+                {quantityChain.map((row) => (
+                  <tr key={`${row.trip_id}-${row.product_id}`}>
+                    <td className="py-2 pr-3 font-medium">{row.trip_number ?? "—"}</td>
+                    <td className="py-2 pr-3 text-xs">{productById.get(row.product_id)?.product_name ?? "—"}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">
+                      {row.supplier_quantity === null ? "—" : formatQuantity(Number(row.supplier_quantity))}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums">
+                      {row.loaded_quantity === null ? "—" : formatQuantity(Number(row.loaded_quantity))}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums">
+                      {row.delivered_quantity === null ? "—" : formatQuantity(Number(row.delivered_quantity))}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums">
+                      {row.supplier_to_loaded_variance === null
+                        ? "—"
+                        : formatQuantity(Number(row.supplier_to_loaded_variance))}
+                    </td>
+                    <td className="py-2 text-right tabular-nums">
+                      {row.loaded_to_delivered_variance === null
+                        ? "—"
+                        : formatQuantity(Number(row.loaded_to_delivered_variance))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {quantityChain.length === 0 ? (
+              <p className="py-3 text-sm text-[var(--muted)]">No trips with quantities recorded yet.</p>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold">Tolerance rules</h2>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Optional. With no rule, items keep the status chosen by the user and no tolerance is recorded.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
+                <tr>
+                  <th className="py-2 pr-3">Product</th>
+                  <th className="py-2 pr-3">Basis</th>
+                  <th className="py-2 pr-3 text-right">Percentage</th>
+                  <th className="py-2 pr-3 text-right">Absolute</th>
+                  <th className="py-2">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--line)]">
+                {toleranceRules.map((rule) => (
+                  <tr key={rule.id}>
+                    <td className="py-2 pr-3">
+                      {rule.product_id ? productById.get(rule.product_id)?.product_name ?? "—" : "All products"}
+                    </td>
+                    <td className="py-2 pr-3 text-xs">{rule.basis.replaceAll("_", " ")}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">
+                      {rule.percentage === null ? "—" : `${Number(rule.percentage)}%`}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums">
+                      {rule.absolute_quantity === null ? "—" : formatQuantity(Number(rule.absolute_quantity))}
+                    </td>
+                    <td className="py-2 text-xs">
+                      {canManage ? <DeleteToleranceRuleForm ruleId={rule.id} /> : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {toleranceRules.length === 0 ? (
+              <p className="py-3 text-sm text-[var(--muted)]">No tolerance rules configured.</p>
+            ) : null}
+          </div>
+          {canManage ? (
+            <div className="mt-6 border-t border-[var(--line)] pt-5">
+              <h3 className="text-sm font-semibold">Add tolerance rule</h3>
+              <div className="mt-3">
+                <ToleranceRuleForm products={productOptions} />
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold">Discrepancies</h2>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[700px] text-left text-sm">
@@ -326,22 +485,58 @@ export default async function ReconciliationPage() {
                   <th className="py-2 pr-3 text-right">Expected</th>
                   <th className="py-2 pr-3 text-right">Actual</th>
                   <th className="py-2 pr-3 text-right">Variance</th>
-                  <th className="py-2">Status</th>
+                  <th className="py-2 pr-3">Status</th>
+                  <th className="py-2 pr-3">Liability</th>
+                  <th className="py-2">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--line)]">
-                {discrepancies.map((item) => (
-                  <tr key={item.id}>
-                    <td className="py-2 pr-3 text-xs">{item.discrepancy_type.replaceAll("_", " ")}</td>
-                    <td className="py-2 pr-3 text-xs">
-                      {productById.get(itemById.get(item.reconciliation_item_id)?.product_id ?? "")?.product_name ?? "—"}
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(Number(item.expected_quantity))}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(Number(item.actual_quantity))}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(Number(item.variance))}</td>
-                    <td className="py-2 text-xs">{item.status.replaceAll("_", " ")}</td>
-                  </tr>
-                ))}
+                {discrepancies.map((item) => {
+                  const reconciliationTripId = reconciliationById.get(
+                    itemById.get(item.reconciliation_item_id)?.reconciliation_id ?? "",
+                  )?.trip_id;
+                  const invoiceOptions = invoices
+                    .filter((invoice) => invoice.trip_id === reconciliationTripId)
+                    .map((invoice) => ({ id: invoice.id, label: invoice.invoice_number }));
+
+                  return (
+                    <tr key={item.id}>
+                      <td className="py-2 pr-3 text-xs">{item.discrepancy_type.replaceAll("_", " ")}</td>
+                      <td className="py-2 pr-3 text-xs">
+                        {productById.get(itemById.get(item.reconciliation_item_id)?.product_id ?? "")?.product_name ?? "-"}
+                      </td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(Number(item.expected_quantity))}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(Number(item.actual_quantity))}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(Number(item.variance))}</td>
+                      <td className="py-2 pr-3 text-xs">{item.status.replaceAll("_", " ")}</td>
+                      <td className="py-2 pr-3 text-xs">
+                        {item.liability_status === "confirmed" ? (
+                          <>
+                            <span className="font-semibold">{formatMoney(Number(item.liability_amount))}</span>
+                            <span className="block text-[var(--muted)]">
+                              {item.liability_basis === "landed_cost" ? "landed cost" : "manual"} ·{" "}
+                              {formatMoney(Number(item.liability_unit_cost))}/unit
+                            </span>
+                          </>
+                        ) : item.liability_status === "rejected" ? (
+                          <span className="text-[var(--muted)]">rejected</span>
+                        ) : (
+                          <span className="text-[var(--muted)]">not assessed</span>
+                        )}
+                      </td>
+                      <td className="py-2 text-xs">
+                        {canManage && item.liability_status === "not_assessed" ? (
+                          <div className="space-y-2">
+                            <LiabilityForm discrepancyId={item.id} invoices={invoiceOptions} />
+                            <RejectLiabilityForm discrepancyId={item.id} />
+                          </div>
+                        ) : (
+                          <span className="text-[var(--muted)]">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {discrepancies.length === 0 ? (

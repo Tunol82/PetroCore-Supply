@@ -248,7 +248,27 @@ export function LoadingRecordForm({
           <label htmlFor="ld-date" className={labelClass}>Loading date</label>
           <input id="ld-date" name="loadingDate" type="date" className={fieldClass} />
         </div>
+        <div>
+          <label htmlFor="ld-temp" className={labelClass}>Observed temperature (°C)</label>
+          <input id="ld-temp" name="observedTemperatureC" type="number" step="0.01" className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="ld-density" className={labelClass}>Density at 15 °C</label>
+          <input id="ld-density" name="density15c" type="number" step="0.01" min="0" className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="ld-method" className={labelClass}>Correction method</label>
+          <input id="ld-method" name="correctionMethod" className={fieldClass} placeholder="Optional" />
+        </div>
+        <div>
+          <label htmlFor="ld-factor" className={labelClass}>Correction factor</label>
+          <input id="ld-factor" name="correctionFactor" type="number" step="0.000001" min="0" className={fieldClass} />
+        </div>
       </div>
+      <p className="text-xs text-[var(--muted)]">
+        Measurement fields are optional. A corrected quantity is derived when a factor is supplied; no method is applied
+        automatically.
+      </p>
       <Feedback state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Recording…" : "Record loading"}

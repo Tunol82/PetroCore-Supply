@@ -51,3 +51,6 @@ None.
 | `20261115002500_payments_profitability.sql` | Payment records and the operational profitability view | Applied 2026-11-16; receipt, payment, party constraint, append-only and margin checks verified |
 | `20261115002600_least_privilege_sweep.sql` | Revokes anonymous RPC execution, TRUNCATE, unused DELETE and view writes, plus direct stock updates | Applied 2026-11-16; see `docs/database/security-audit-2026-11-16.md` |
 | `20261115002700_revoke_public_execute.sql` | Revokes EXECUTE inherited from PUBLIC | Applied 2026-11-16; `anon` now executes no function |
+| `20261115002800_transporter_liability.sql` | Liability confirmation at landed cost and optional recovery | Applied 2026-11-16; manual and derived cost, shortage-only, rejection and isolation verified |
+| `20261115002900_tolerance_rules.sql` | Optional tolerance rules and computed classification | Applied 2026-11-16; greater-of tolerance computed, inside and outside cases verified |
+| `20261115003000_measurement_chain.sql` | Optional temperature/density fields and the supplier-to-delivered chain view | Applied 2026-11-16; chain view and derived corrected quantity verified |

@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   assignmentSchema,
   compartmentSchema,
@@ -8,11 +8,14 @@ import {
   evidenceFileExtension,
   evidenceSchema,
   investigationSchema,
+  liabilityConfirmationSchema,
+  liabilityRejectionSchema,
   loadingAllocationSchema,
   loadingRecordSchema,
   reconciliationItemSchema,
   reconciliationSchema,
   releaseAssignmentSchema,
+  toleranceRuleSchema,
   transporterSchema,
   tripSchema,
   truckSchema,
@@ -354,3 +357,57 @@ describe("releaseAssignmentSchema", () => {
   });
 });
 
+
+describe("liabilityConfirmationSchema", () => {
+  const base = { discrepancyId: tripId, recoveryMethod: "none" as const };
+
+  it("accepts a manual unit cost", () => {
+    expect(liabilityConfirmationSchema.parse({ ...base, unitCost: "850" }).unitCost).toBe(850);
+  });
+
+  it("treats a blank unit cost as absent", () => {
+    expect(liabilityConfirmationSchema.parse({ ...base, unitCost: "" }).unitCost).toBeUndefined();
+  });
+
+  it("rejects an unknown recovery method", () => {
+    expect(liabilityConfirmationSchema.safeParse({ ...base, recoveryMethod: "cash" }).success).toBe(false);
+  });
+
+  it("rejects a negative unit cost", () => {
+    expect(liabilityConfirmationSchema.safeParse({ ...base, unitCost: "-1" }).success).toBe(false);
+  });
+});
+
+describe("liabilityRejectionSchema", () => {
+  it("accepts a reason", () => {
+    expect(liabilityRejectionSchema.safeParse({ discrepancyId: tripId, note: "Misread tank" }).success).toBe(true);
+  });
+
+  it("rejects a short reason", () => {
+    expect(liabilityRejectionSchema.safeParse({ discrepancyId: tripId, note: "x" }).success).toBe(false);
+  });
+});
+
+describe("toleranceRuleSchema", () => {
+  it("accepts a percentage rule", () => {
+    expect(toleranceRuleSchema.safeParse({ basis: "percentage", percentage: "0.25" }).success).toBe(true);
+  });
+
+  it("accepts a greater-of rule", () => {
+    expect(
+      toleranceRuleSchema.safeParse({ basis: "greater_of", percentage: "0.25", absoluteQuantity: "50" }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a percentage rule without a percentage", () => {
+    expect(toleranceRuleSchema.safeParse({ basis: "percentage" }).success).toBe(false);
+  });
+
+  it("rejects an absolute rule without an absolute tolerance", () => {
+    expect(toleranceRuleSchema.safeParse({ basis: "absolute", percentage: "1" }).success).toBe(false);
+  });
+
+  it("rejects a percentage above 100", () => {
+    expect(toleranceRuleSchema.safeParse({ basis: "percentage", percentage: "150" }).success).toBe(false);
+  });
+});

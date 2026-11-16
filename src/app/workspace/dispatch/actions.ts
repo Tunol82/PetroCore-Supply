@@ -216,6 +216,10 @@ export async function createLoadingRecord(
     loadingTicket: formData.get("loadingTicket"),
     sealNumber: formData.get("sealNumber"),
     loadingDate: formData.get("loadingDate"),
+    observedTemperatureC: formData.get("observedTemperatureC"),
+    density15c: formData.get("density15c"),
+    correctionMethod: formData.get("correctionMethod"),
+    correctionFactor: formData.get("correctionFactor"),
   });
 
   if (!parsed.success) {
@@ -234,6 +238,10 @@ export async function createLoadingRecord(
     loading_ticket: textOrNull(parsed.data.loadingTicket),
     seal_number: textOrNull(parsed.data.sealNumber),
     loading_time: dateToIso(parsed.data.loadingDate) ?? new Date().toISOString(),
+    observed_temperature_c: parsed.data.observedTemperatureC ?? null,
+    density_15c: parsed.data.density15c ?? null,
+    correction_method: textOrNull(parsed.data.correctionMethod),
+    correction_factor: parsed.data.correctionFactor ?? null,
     officer_id: context.tenant.profileId,
   });
 
@@ -318,6 +326,10 @@ export async function recordDelivery(
     waybillReference: formData.get("waybillReference"),
     customerAcknowledgement: formData.get("customerAcknowledgement"),
     deliveryDate: formData.get("deliveryDate"),
+    observedTemperatureC: formData.get("observedTemperatureC"),
+    density15c: formData.get("density15c"),
+    correctionMethod: formData.get("correctionMethod"),
+    correctionFactor: formData.get("correctionFactor"),
   });
 
   if (!parsed.success) {
@@ -340,6 +352,10 @@ export async function recordDelivery(
     waybill_reference: textOrNull(parsed.data.waybillReference),
     customer_acknowledgement: textOrNull(parsed.data.customerAcknowledgement),
     delivery_time: dateToIso(parsed.data.deliveryDate) ?? new Date().toISOString(),
+    observed_temperature_c: parsed.data.observedTemperatureC ?? null,
+    density_15c: parsed.data.density15c ?? null,
+    correction_method: textOrNull(parsed.data.correctionMethod),
+    correction_factor: parsed.data.correctionFactor ?? null,
     created_by: context.tenant.profileId,
   });
 

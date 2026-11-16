@@ -4,10 +4,14 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getCurrentTenant, type CurrentTenant } from "@/modules/tenant/current-tenant";
 import {
+  deleteToleranceRuleSchema,
   discrepancySchema,
   investigationSchema,
+  liabilityConfirmationSchema,
+  liabilityRejectionSchema,
   reconciliationItemSchema,
   reconciliationSchema,
+  toleranceRuleSchema,
 } from "@/modules/transport/validation";
 
 export type ReconciliationActionState = {
@@ -222,4 +226,155 @@ export async function recordInvestigation(
 
   revalidatePath("/workspace/reconciliation");
   return { error: null, success: "Investigation recorded." };
+}
+
+export async function confirmLiability(
+  _previous: ReconciliationActionState,
+  formData: FormData,
+): Promise<ReconciliationActionState> {
+  const parsed = liabilityConfirmationSchema.safeParse({
+    discrepancyId: formData.get("discrepancyId"),
+    unitCost: formData.get("unitCost"),
+    recoveryMethod: formData.get("recoveryMethod"),
+    invoiceId: formData.get("invoiceId"),
+    note: formData.get("note"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: rpcError } = await context.supabase.rpc("confirm_discrepancy_liability", {
+    p_discrepancy_id: parsed.data.discrepancyId,
+    p_unit_cost: parsed.data.unitCost ?? null,
+    p_recovery_method: parsed.data.recoveryMethod,
+    p_invoice_id: textOrNull(parsed.data.invoiceId),
+    p_note: textOrNull(parsed.data.note),
+  });
+
+  if (rpcError) {
+    if (rpcError.message.includes("only a shortage")) {
+      return { error: "Only a shortage can become a liability.", success: null };
+    }
+
+    if (rpcError.message.includes("no landed cost is available")) {
+      return { error: "No landed cost is available for this trip. Enter a unit cost.", success: null };
+    }
+
+    if (rpcError.message.includes("not linked to the reconciled trip")) {
+      return { error: "That invoice is not linked to the reconciled trip.", success: null };
+    }
+
+    if (rpcError.message.includes("already has a confirmed liability")) {
+      return { error: "That discrepancy already has a confirmed liability.", success: null };
+    }
+
+    return { error: "The liability could not be confirmed.", success: null };
+  }
+
+  revalidatePath("/workspace/reconciliation");
+  return { error: null, success: "Liability confirmed at the recorded cost." };
+}
+
+export async function rejectLiability(
+  _previous: ReconciliationActionState,
+  formData: FormData,
+): Promise<ReconciliationActionState> {
+  const parsed = liabilityRejectionSchema.safeParse({
+    discrepancyId: formData.get("discrepancyId"),
+    note: formData.get("note"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: rpcError } = await context.supabase.rpc("reject_discrepancy_liability", {
+    p_discrepancy_id: parsed.data.discrepancyId,
+    p_note: parsed.data.note,
+  });
+
+  if (rpcError) {
+    if (rpcError.message.includes("confirmed liability")) {
+      return { error: "A confirmed liability cannot be rejected.", success: null };
+    }
+
+    return { error: "The liability could not be rejected.", success: null };
+  }
+
+  revalidatePath("/workspace/reconciliation");
+  return { error: null, success: "Liability rejected with a reason." };
+}
+
+export async function createToleranceRule(
+  _previous: ReconciliationActionState,
+  formData: FormData,
+): Promise<ReconciliationActionState> {
+  const parsed = toleranceRuleSchema.safeParse({
+    productId: formData.get("productId"),
+    basis: formData.get("basis"),
+    percentage: formData.get("percentage"),
+    absoluteQuantity: formData.get("absoluteQuantity"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: insertError } = await context.supabase.from("tolerance_rules").insert({
+    organisation_id: context.tenant.organisationId,
+    product_id: textOrNull(parsed.data.productId),
+    basis: parsed.data.basis,
+    percentage: parsed.data.basis === "absolute" ? null : parsed.data.percentage ?? null,
+    absolute_quantity: parsed.data.basis === "percentage" ? null : parsed.data.absoluteQuantity ?? null,
+    created_by: context.tenant.profileId,
+  });
+
+  if (insertError) {
+    return {
+      error:
+        insertError.code === "23505"
+          ? "A tolerance rule already exists for that product."
+          : "The tolerance rule could not be saved.",
+      success: null,
+    };
+  }
+
+  revalidatePath("/workspace/reconciliation");
+  return { error: null, success: "Tolerance rule saved. New reconciliation items are classified automatically." };
+}
+
+export async function deleteToleranceRule(
+  _previous: ReconciliationActionState,
+  formData: FormData,
+): Promise<ReconciliationActionState> {
+  const parsed = deleteToleranceRuleSchema.safeParse({ ruleId: formData.get("ruleId") });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: deleteError } = await context.supabase
+    .from("tolerance_rules")
+    .delete()
+    .eq("id", parsed.data.ruleId);
+
+  if (deleteError) {
+    return { error: "The tolerance rule could not be removed.", success: null };
+  }
+
+  revalidatePath("/workspace/reconciliation");
+  return { error: null, success: "Tolerance rule removed." };
 }

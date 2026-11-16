@@ -15,6 +15,19 @@ const optionalDate = z.preprocess(
   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date.").optional(),
 );
 
+const optionalNumber = z.preprocess(
+  (value) => (value === "" || value === null || value === undefined ? undefined : value),
+  z.coerce.number().optional(),
+);
+const optionalTemperature = optionalNumber.refine(
+  (value) => value === undefined || (value >= -30 && value <= 90),
+  "Temperature must be between -30 and 90 °C.",
+);
+const optionalPositiveNumber = optionalNumber.refine(
+  (value) => value === undefined || value > 0,
+  "Enter a value greater than zero.",
+);
+
 export const OWNERSHIP_TYPES = ["company", "third_party"] as const;
 export const TRUCK_STATUSES = ["active", "inactive", "maintenance", "retired"] as const;
 export const DRIVER_TYPES = ["employee", "third_party"] as const;
@@ -117,6 +130,10 @@ export const loadingRecordSchema = z.object({
   loadingTicket: optionalText(100),
   sealNumber: optionalText(100),
   loadingDate: optionalDate,
+  observedTemperatureC: optionalTemperature,
+  density15c: optionalPositiveNumber,
+  correctionMethod: optionalText(40),
+  correctionFactor: optionalPositiveNumber,
 });
 
 export const loadingAllocationSchema = z.object({
@@ -153,6 +170,10 @@ export const deliverySchema = z
     waybillReference: optionalText(100),
     customerAcknowledgement: optionalText(150),
     deliveryDate: optionalDate,
+    observedTemperatureC: optionalTemperature,
+    density15c: optionalPositiveNumber,
+    correctionMethod: optionalText(40),
+    correctionFactor: optionalPositiveNumber,
   })
   .refine(
     (value) =>
@@ -268,9 +289,60 @@ export const investigationSchema = z.object({
   resolution: optionalText(1000),
 });
 
+export const RECOVERY_METHODS = ["none", "invoice_deduction", "debit_note"] as const;
+
+export const liabilityConfirmationSchema = z.object({
+  discrepancyId: uuid("Select a discrepancy."),
+  unitCost: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? undefined : value),
+    z.coerce.number().min(0, "Unit cost cannot be negative.").optional(),
+  ),
+  recoveryMethod: z.enum(RECOVERY_METHODS),
+  invoiceId: optionalUuid("Select a valid invoice."),
+  note: optionalText(500),
+});
+
+export const liabilityRejectionSchema = z.object({
+  discrepancyId: uuid("Select a discrepancy."),
+  note: z.string().trim().min(3, "Give a reason for rejecting the liability.").max(500),
+});
+
 export type TransporterInput = z.infer<typeof transporterSchema>;
 export type TruckInput = z.infer<typeof truckSchema>;
 export type CompartmentInput = z.infer<typeof compartmentSchema>;
 export type DriverInput = z.infer<typeof driverSchema>;
 export type TripInput = z.infer<typeof tripSchema>;
 export type AssignmentInput = z.infer<typeof assignmentSchema>;
+
+export const TOLERANCE_BASES = ["percentage", "absolute", "greater_of"] as const;
+
+const optionalPositive = (message: string) =>
+  z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? undefined : value),
+    z.coerce.number().positive(message).optional(),
+  );
+
+export const toleranceRuleSchema = z
+  .object({
+    productId: optionalUuid("Select a valid product."),
+    basis: z.enum(TOLERANCE_BASES),
+    percentage: optionalPositive("Percentage must be greater than zero."),
+    absoluteQuantity: optionalPositive("Absolute tolerance must be greater than zero."),
+  })
+  .superRefine((value, ctx) => {
+    if (value.basis !== "absolute" && !value.percentage) {
+      ctx.addIssue({ code: "custom", message: "Enter a percentage.", path: ["percentage"] });
+    }
+
+    if (value.basis !== "percentage" && !value.absoluteQuantity) {
+      ctx.addIssue({ code: "custom", message: "Enter an absolute tolerance.", path: ["absoluteQuantity"] });
+    }
+
+    if (value.percentage && value.percentage > 100) {
+      ctx.addIssue({ code: "custom", message: "Percentage cannot exceed 100.", path: ["percentage"] });
+    }
+  });
+
+export const deleteToleranceRuleSchema = z.object({
+  ruleId: uuid("Select a tolerance rule."),
+});

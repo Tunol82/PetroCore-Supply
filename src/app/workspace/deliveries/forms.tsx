@@ -130,9 +130,26 @@ export function DeliveryForm({
           <label htmlFor="dl-date" className={labelClass}>Delivery date</label>
           <input id="dl-date" name="deliveryDate" type="date" className={fieldClass} />
         </div>
+        <div>
+          <label htmlFor="dl-temp" className={labelClass}>Observed temperature (°C)</label>
+          <input id="dl-temp" name="observedTemperatureC" type="number" step="0.01" className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="dl-density" className={labelClass}>Density at 15 °C</label>
+          <input id="dl-density" name="density15c" type="number" step="0.01" min="0" className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="dl-method" className={labelClass}>Correction method</label>
+          <input id="dl-method" name="correctionMethod" className={fieldClass} placeholder="Optional" />
+        </div>
+        <div>
+          <label htmlFor="dl-factor" className={labelClass}>Correction factor</label>
+          <input id="dl-factor" name="correctionFactor" type="number" step="0.000001" min="0" className={fieldClass} />
+        </div>
       </div>
       <p className="text-xs text-[var(--muted)]">
         Cumulative deliveries cannot exceed the ordered quantity. Confirmed quantity cannot exceed delivered quantity.
+        Measurement fields are optional.
       </p>
       <Feedback state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>

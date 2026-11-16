@@ -3,8 +3,12 @@
 import { useActionState } from "react";
 import {
   addReconciliationItem,
+  confirmLiability,
   createReconciliation,
+  createToleranceRule,
+  deleteToleranceRule,
   recordInvestigation,
+  rejectLiability,
   reportDiscrepancy,
   type ReconciliationActionState,
 } from "./actions";
@@ -266,6 +270,163 @@ export function InvestigationForm({ discrepancies }: { discrepancies: Option[] }
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Recording…" : "Record investigation"}
       </button>
+    </form>
+  );
+}
+
+export function LiabilityForm({
+  discrepancyId,
+  invoices,
+}: {
+  discrepancyId: string;
+  invoices: Option[];
+}) {
+  const [state, formAction, pending] = useActionState(confirmLiability, initialState);
+
+  return (
+    <form action={formAction} className="space-y-2">
+      <input type="hidden" name="discrepancyId" value={discrepancyId} />
+      <div className="flex flex-wrap items-end gap-2">
+        <div>
+          <label htmlFor={`lb-cost-${discrepancyId}`} className="mb-1 block text-[10px] font-medium text-[var(--muted)]">
+            Unit cost (optional)
+          </label>
+          <input
+            id={`lb-cost-${discrepancyId}`}
+            name="unitCost"
+            type="number"
+            step="0.0001"
+            min="0"
+            placeholder="From FIFO"
+            className="w-28 rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+          />
+        </div>
+        <div>
+          <label htmlFor={`lb-method-${discrepancyId}`} className="mb-1 block text-[10px] font-medium text-[var(--muted)]">
+            Recovery
+          </label>
+          <select
+            id={`lb-method-${discrepancyId}`}
+            name="recoveryMethod"
+            defaultValue="none"
+            className="rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+          >
+            <option value="none">None</option>
+            <option value="invoice_deduction">Invoice deduction</option>
+            <option value="debit_note">Debit note</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor={`lb-invoice-${discrepancyId}`} className="mb-1 block text-[10px] font-medium text-[var(--muted)]">
+            Invoice (optional)
+          </label>
+          <select
+            id={`lb-invoice-${discrepancyId}`}
+            name="invoiceId"
+            defaultValue=""
+            className="max-w-40 rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+          >
+            <option value="">Not linked</option>
+            {invoices.map((invoice) => (
+              <option key={invoice.id} value={invoice.id}>{invoice.label}</option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="submit"
+          className="rounded-lg border border-[var(--brand)] px-2 py-1 text-xs font-semibold text-[var(--brand)] transition hover:bg-[var(--brand)]/5 disabled:opacity-50"
+          disabled={pending}
+        >
+          {pending ? "Confirming…" : "Confirm liability"}
+        </button>
+      </div>
+      {state.error ? <span className="block text-xs text-red-700">{state.error}</span> : null}
+      {state.success ? <span className="block text-xs text-emerald-700">{state.success}</span> : null}
+    </form>
+  );
+}
+
+export function RejectLiabilityForm({ discrepancyId }: { discrepancyId: string }) {
+  const [state, formAction, pending] = useActionState(rejectLiability, initialState);
+
+  return (
+    <form action={formAction} className="flex items-center gap-2">
+      <input type="hidden" name="discrepancyId" value={discrepancyId} />
+      <input
+        name="note"
+        required
+        minLength={3}
+        maxLength={500}
+        placeholder="Reason"
+        aria-label="Rejection reason"
+        className="w-32 rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+      />
+      <button
+        type="submit"
+        className="text-xs font-semibold text-red-700 disabled:opacity-50"
+        disabled={pending}
+      >
+        {pending ? "Rejecting…" : "Reject"}
+      </button>
+      {state.error ? <span className="text-xs text-red-700">{state.error}</span> : null}
+      {state.success ? <span className="text-xs text-emerald-700">{state.success}</span> : null}
+    </form>
+  );
+}
+
+export function ToleranceRuleForm({ products }: { products: Option[] }) {
+  const [state, formAction, pending] = useActionState(createToleranceRule, initialState);
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-4">
+        <div>
+          <label htmlFor="tr-product" className={labelClass}>Product</label>
+          <select id="tr-product" name="productId" className={fieldClass} defaultValue="">
+            <option value="">All products</option>
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>{product.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="tr-basis" className={labelClass}>Basis</label>
+          <select id="tr-basis" name="basis" className={fieldClass} defaultValue="greater_of">
+            <option value="percentage">Percentage of loaded</option>
+            <option value="absolute">Absolute quantity</option>
+            <option value="greater_of">Greater of both</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="tr-percentage" className={labelClass}>Percentage</label>
+          <input id="tr-percentage" name="percentage" type="number" step="0.001" min="0" max="100" className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="tr-absolute" className={labelClass}>Absolute tolerance</label>
+          <input id="tr-absolute" name="absoluteQuantity" type="number" step="0.001" min="0" className={fieldClass} />
+        </div>
+      </div>
+      <p className="text-xs text-[var(--muted)]">
+        Optional. Without a rule, items keep the status chosen by the user and no tolerance is recorded.
+      </p>
+      <Feedback state={state} />
+      <button type="submit" className={buttonClass} disabled={pending}>
+        {pending ? "Saving…" : "Save tolerance rule"}
+      </button>
+    </form>
+  );
+}
+
+export function DeleteToleranceRuleForm({ ruleId }: { ruleId: string }) {
+  const [state, formAction, pending] = useActionState(deleteToleranceRule, initialState);
+
+  return (
+    <form action={formAction} className="inline-flex items-center gap-2">
+      <input type="hidden" name="ruleId" value={ruleId} />
+      <button type="submit" className="text-xs font-semibold text-red-700 disabled:opacity-50" disabled={pending}>
+        {pending ? "Removing…" : "Remove"}
+      </button>
+      {state.error ? <span className="text-xs text-red-700">{state.error}</span> : null}
     </form>
   );
 }

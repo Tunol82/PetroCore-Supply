@@ -17,7 +17,8 @@
     "verify:live:fulfilment": "node scripts/live-fulfilment-check.mjs",
     "verify:live:dispatch": "node scripts/live-dispatch-check.mjs",
     "verify:live:evidence": "node scripts/live-evidence-check.mjs",
-    "verify:live:finance": "node scripts/live-finance-check.mjs"
+    "verify:live:finance": "node scripts/live-finance-check.mjs",
+    "verify:live:liability": "node scripts/live-liability-check.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",

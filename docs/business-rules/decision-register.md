@@ -102,6 +102,29 @@ Already approved: D-001 tenancy and switching, D-002 tenant master, D-003 Super 
 | Conditions | Introducing hierarchy later requires a new decision and a migration with backfill. |
 | Recorded in | Migration 1 physical proposal §2; dictionary §3.3; ERD §5. |
 
+### DR-13 — Transporter liability and charges (approved subset)
+
+| Field | Detail |
+|---|---|
+| Status | **Approved in part** — 2026-11-16 |
+| Question | When a shortage occurs, who owes what, at what value, and how is it recovered? |
+| Decision | Liability is confirmed manually and audited, valued at **landed cost**, and recovery is **optional** — either a deduction against the transporter invoice or a debit note. Only a shortage can become a liability. Excess is never a negative liability. |
+| Basis of landed cost | The FIFO allocations actually consumed on that trip for that product: issue cost minus reversal cost, divided by net quantity. If the trip has no posted issue, the confirmer must supply a unit cost and the record is marked `manual`. |
+| Recovery | One full-amount recovery per discrepancy, recorded against the confirmed liability. A confirmed liability cannot be rejected, and a discrepancy with a recovery cannot be rejected. |
+| Conditions | No automatic liability. No employee deduction. No payment mutation. No journal entry. Transporter invoice charge categories and approval thresholds (DR-11) remain open. |
+| Recorded in | Migration `20261115002800_transporter_liability`; `/workspace/reconciliation`; paper `decision-paper-dr-13-transporter-liability.md`. |
+
+### DR-01, DR-02, DR-03 — Measurement and tolerances (approved subset)
+
+| Field | Detail |
+|---|---|
+| Status | **Approved in part** — 2026-11-16 |
+| DR-01 | Variance is measured at **both** boundaries: supplier to loaded, and loaded to delivered. Supplier quantity is apportioned by the loading allocations. No recorded quantity is restated. |
+| DR-02 | Temperature and density correction is an **optional feature**. Observed temperature, density at 15 °C, a method and a factor may be recorded; a corrected quantity is derived only when a factor is supplied. No method is applied by the system. |
+| DR-03 | Tolerance classification is an **optional feature**. Rules may be percentage, absolute, or the greater of both, per product or organisation-wide. With no rule, items keep the user's status and no tolerance is recorded. |
+| Conditions | Threshold values are supplied by the owner as configuration, not code. No historic quantity is corrected or restated. Trip closure rules (DR-14) remain open. |
+| Recorded in | Migrations `20261115002900_tolerance_rules` and `20261115003000_measurement_chain`; `/workspace/reconciliation`; paper `decision-paper-dr-01-03-measurement-tolerances.md`. |
+
 ## 3. Remaining blockers
 
 No Milestone 1 decision remains open. What remains is environmental and documentary:
@@ -136,9 +159,9 @@ These come from the v1.2 specification §8. None may be encoded in code or schem
 
 | ID | Decision | Why it blocks |
 |---|---|---|
-| DR-01 | Petroleum measurement basis and quantity precision | Determines quantity columns, rounding and tolerances. |
-| DR-02 | Temperature/density correction and approved method | Changes recorded volumes and conversion logic. |
-| DR-03 | Shortage/excess tolerance thresholds | Determines when a variance becomes a discrepancy. |
+| DR-01 | Petroleum measurement basis and quantity precision (**both boundaries approved 2026-11-16**) | Determines quantity columns, rounding and tolerances. |
+| DR-02 | Temperature/density correction and approved method (**optional recording approved 2026-11-16**; method open) | Changes recorded volumes and conversion logic. |
+| DR-03 | Shortage/excess tolerance thresholds (**optional rules approved 2026-11-16**; values open) | Determines when a variance becomes a discrepancy. |
 | DR-04 | Reservation timing, expiry and release | Determines stock availability semantics. |
 | DR-05 | Direct-fulfilment cost recognition | Determines revenue and cost postings. |
 | DR-06 | Landed-cost adjustment treatment | Determines how consumed vs remaining inventory is costed. |
@@ -147,7 +170,7 @@ These come from the v1.2 specification §8. None may be encoded in code or schem
 | DR-09 | Offline conflict resolution by transaction type | Determines sync authority and overrides. |
 | DR-11 | Approval thresholds (monetary, margin, risk) | Determines approval routing. |
 | DR-12 | Document limits, retention and versioning | Determines storage and evidence rules. |
-| DR-13 | Transporter dispute and liability treatment | Determines when a dispute becomes a liability. |
+| DR-13 | Transporter dispute and liability treatment (**core approved 2026-11-16**; charge categories and thresholds open) | Determines when a dispute becomes a liability. |
 | DR-14 | Operational reconciliation tolerances | Determines trip closure rules. |
 
 ### 4.1 Decision papers prepared
