@@ -159,6 +159,8 @@ Do not guess these or encode irreversible assumptions:
 
 Milestone 1 is complete and applied to the non-production project. The remaining decisions above belong to Milestone 2 and later. The reconciliation report's implementation gate remains binding for production: **no production deployment until the operational modules are implemented against the approved rules.**
 
+Two decision papers are ready for the owner: transporter liability and charges (DR-13) and measurement, temperature correction and tolerances (DR-01/DR-02/DR-03). Both list options, consequences, data-model impact and a blank decision record, and neither encodes a rule. Until they are approved, the system records evidence only.
+
 ## 9. Recommended next steps for the coding agent
 
 Work in small, reviewable commits on a feature branch. Do not merge PR #1 or create production migrations just to make visible progress.
@@ -168,7 +170,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 3. Review the scaffold for accessibility, error handling, session handling and Next.js/Supabase SSR correctness. Add tests where needed. **Done 2026-11-15:** signed-in `/login` redirect, unconfigured-Supabase state, per-field validation with accessible errors, focus handling, loading, error boundary, and the access-pending state are implemented.
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
-6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
+6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001-T-014 passed; browser sign-in verified.
 7. **Milestone 2 in progress.** Procurement, costs, sales orders, fleet, dispatch with double-booking prevention, loading, deliveries with evidence uploads, reconciliation, inventory receipts, reservations, issues with reversals and FIFO allocations, transporter invoices and payment records with operational profitability are implemented. Remaining: approved liability and deduction rules (DR-13), tolerances and variance classification (DR-01/DR-03), automatic payment allocation and ageing, and statutory accounting.
 8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
@@ -183,8 +185,11 @@ Start by telling the user what branch and PR you found, what checks you ran, and
 
 The design review pack was merged from `docs/database-v1.2-review-proposal` (PR #2) into `chore/verification-and-ci-hardening` on 2026-11-15.
 
-- `docs/database/database-dictionary-v1.2-proposal.md` — complete v1.1 field-level baseline plus proposed v1.2 amendments, candidate tenant/membership fields and an ownership review inventory.
-- `docs/erd/erd-v1.2-proposal.md` — reconstructed logical ERD based on the v1.1 dictionary, v1.2 amendment specification and reconciliation report.
+- `docs/database/database-dictionary-v1.2-proposal.md` - complete v1.1 field-level baseline plus proposed v1.2 amendments, candidate tenant/membership fields and an ownership review inventory.
+- `docs/erd/erd-v1.2-proposal.md` - reconstructed logical ERD based on the v1.1 dictionary, v1.2 amendment specification and reconciliation report.
+- `docs/business-rules/decision-paper-dr-13-transporter-liability.md` - options and consequences for transporter liability, valuation, recovery and charge categories.
+- `docs/business-rules/decision-paper-dr-01-03-measurement-tolerances.md` - options and consequences for measurement points, precision, temperature correction and tolerance bands.
+- `docs/database/security-audit-2026-11-16.md` - schema-wide privilege audit, fixes and deliberate exceptions.
 
 Approval state:
 - The product owner approved the review pack as the working design baseline on 2026-11-15.

@@ -150,6 +150,15 @@ These come from the v1.2 specification §8. None may be encoded in code or schem
 | DR-13 | Transporter dispute and liability treatment | Determines when a dispute becomes a liability. |
 | DR-14 | Operational reconciliation tolerances | Determines trip closure rules. |
 
+### 4.1 Decision papers prepared
+
+Two papers turn the highest-value open decisions into answerable questions. Each lists options, consequences, data-model impact, sub-questions and a blank decision record. They are proposals, not approvals.
+
+| Paper | Covers | Status |
+|---|---|---|
+| `docs/business-rules/decision-paper-dr-13-transporter-liability.md` | DR-13, with DR-11 (thresholds) | Awaiting owner |
+| `docs/business-rules/decision-paper-dr-01-03-measurement-tolerances.md` | DR-01, DR-02, DR-03, with DR-14 | Awaiting owner |
+
 ## 5. Schema decisions still open
 
 | ID | Decision | Status |
