@@ -11,6 +11,7 @@ import {
   liabilityRejectionSchema,
   reconciliationItemSchema,
   reconciliationSchema,
+  recoverySchema,
   toleranceRuleSchema,
 } from "@/modules/transport/validation";
 
@@ -234,6 +235,7 @@ export async function confirmLiability(
 ): Promise<ReconciliationActionState> {
   const parsed = liabilityConfirmationSchema.safeParse({
     discrepancyId: formData.get("discrepancyId"),
+    recoveryAmount: formData.get("recoveryAmount"),
     unitCost: formData.get("unitCost"),
     recoveryMethod: formData.get("recoveryMethod"),
     invoiceId: formData.get("invoiceId"),
@@ -253,6 +255,7 @@ export async function confirmLiability(
     p_recovery_method: parsed.data.recoveryMethod,
     p_invoice_id: textOrNull(parsed.data.invoiceId),
     p_note: textOrNull(parsed.data.note),
+    p_recovery_amount: parsed.data.recoveryAmount ?? null,
   });
 
   if (rpcError) {
@@ -377,4 +380,51 @@ export async function deleteToleranceRule(
 
   revalidatePath("/workspace/reconciliation");
   return { error: null, success: "Tolerance rule removed." };
+}
+
+export async function recordRecovery(
+  _previous: ReconciliationActionState,
+  formData: FormData,
+): Promise<ReconciliationActionState> {
+  const parsed = recoverySchema.safeParse({
+    discrepancyId: formData.get("discrepancyId"),
+    amount: formData.get("amount"),
+    method: formData.get("method"),
+    invoiceId: formData.get("invoiceId"),
+    note: formData.get("note"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: rpcError } = await context.supabase.rpc("record_liability_recovery", {
+    p_discrepancy_id: parsed.data.discrepancyId,
+    p_amount: parsed.data.amount,
+    p_method: parsed.data.method,
+    p_invoice_id: textOrNull(parsed.data.invoiceId),
+    p_note: textOrNull(parsed.data.note),
+  });
+
+  if (rpcError) {
+    if (rpcError.message.includes("fully recovered")) {
+      return { error: "That liability is already fully recovered.", success: null };
+    }
+
+    if (rpcError.message.includes("outstanding balance")) {
+      return { error: "The recovery exceeds the outstanding balance.", success: null };
+    }
+
+    if (rpcError.message.includes("must be confirmed")) {
+      return { error: "Confirm the liability before recording a recovery.", success: null };
+    }
+
+    return { error: "The recovery could not be recorded.", success: null };
+  }
+
+  revalidatePath("/workspace/reconciliation");
+  return { error: null, success: "Recovery recorded." };
 }

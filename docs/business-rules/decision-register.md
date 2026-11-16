@@ -110,8 +110,8 @@ Already approved: D-001 tenancy and switching, D-002 tenant master, D-003 Super 
 | Question | When a shortage occurs, who owes what, at what value, and how is it recovered? |
 | Decision | Liability is confirmed manually and audited, valued at **landed cost**, and recovery is **optional** — either a deduction against the transporter invoice or a debit note. Only a shortage can become a liability. Excess is never a negative liability. |
 | Basis of landed cost | The FIFO allocations actually consumed on that trip for that product: issue cost minus reversal cost, divided by net quantity. If the trip has no posted issue, the confirmer must supply a unit cost and the record is marked `manual`. |
-| Recovery | One full-amount recovery per discrepancy, recorded against the confirmed liability. A confirmed liability cannot be rejected, and a discrepancy with a recovery cannot be rejected. |
-| Conditions | No automatic liability. No employee deduction. No payment mutation. No journal entry. Transporter invoice charge categories and approval thresholds (DR-11) remain open. |
+| Recovery | Recovery may be full or partial. The confirmation can record any amount up to the liability, and further recoveries may be recorded later up to the outstanding balance. A confirmed liability cannot be rejected, and a discrepancy with a recovery cannot be rejected. |
+| Conditions | No automatic liability. No employee deduction. No payment mutation. No journal entry. Invoice charge categories are optional (haulage, loading, waiting, demurrage, other) and never required. No approval threshold is enforced; any `transport.manage` user may confirm, and a threshold remains a future configuration decision (DR-11). |
 | Recorded in | Migration `20261115002800_transporter_liability`; `/workspace/reconciliation`; paper `decision-paper-dr-13-transporter-liability.md`. |
 
 ### DR-01, DR-02, DR-03 — Measurement and tolerances (approved subset)
@@ -121,8 +121,8 @@ Already approved: D-001 tenancy and switching, D-002 tenant master, D-003 Super 
 | Status | **Approved in part** — 2026-11-16 |
 | DR-01 | Variance is measured at **both** boundaries: supplier to loaded, and loaded to delivered. Supplier quantity is apportioned by the loading allocations. No recorded quantity is restated. |
 | DR-02 | Temperature and density correction is an **optional feature**. Observed temperature, density at 15 °C, a method and a factor may be recorded; a corrected quantity is derived only when a factor is supplied. No method is applied by the system. |
-| DR-03 | Tolerance classification is an **optional feature**. Rules may be percentage, absolute, or the greater of both, per product or organisation-wide. With no rule, items keep the user's status and no tolerance is recorded. |
-| Conditions | Threshold values are supplied by the owner as configuration, not code. No historic quantity is corrected or restated. Trip closure rules (DR-14) remain open. |
+| DR-03 | Tolerance classification is an **optional feature**. Rules may be percentage, absolute, or the greater of both, per product or organisation-wide. With no rule, items keep the user's status and no tolerance is recorded. No default rule is seeded; the owner supplies values when ready. |
+| Conditions | Threshold values are supplied by the owner as configuration, not code. No historic quantity is corrected or restated. Trip closure stays flexible: there is no automatic closure and no block on closing with an open variance. DR-14 remains open. |
 | Recorded in | Migrations `20261115002900_tolerance_rules` and `20261115003000_measurement_chain`; `/workspace/reconciliation`; paper `decision-paper-dr-01-03-measurement-tolerances.md`. |
 
 ## 3. Remaining blockers

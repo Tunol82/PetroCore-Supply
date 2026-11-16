@@ -116,6 +116,7 @@ export async function addTransporterInvoiceLine(
     description: formData.get("description"),
     quantity: formData.get("quantity"),
     unitRate: formData.get("unitRate"),
+    chargeCategory: formData.get("chargeCategory"),
   });
 
   if (!parsed.success) {
@@ -131,6 +132,7 @@ export async function addTransporterInvoiceLine(
     description: parsed.data.description,
     quantity: parsed.data.quantity,
     unit_rate: parsed.data.unitRate,
+    charge_category: textOrNull(parsed.data.chargeCategory),
   });
 
   if (insertError) {

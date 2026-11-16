@@ -11,6 +11,7 @@ import {
   LiabilityForm,
   ReconciliationForm,
   ReconciliationItemForm,
+  RecoveryForm,
   RejectLiabilityForm,
   ToleranceRuleForm,
 } from "./forms";
@@ -35,6 +36,8 @@ type Item = {
   reconciliation_status: string;
   tolerance_quantity: number | null;
 };
+
+type Recovery = { id: string; discrepancy_id: string; amount: number };
 
 type QuantityChainRow = {
   trip_id: string;
@@ -144,6 +147,7 @@ export default async function ReconciliationPage() {
     invoicesResult,
     toleranceResult,
     chainResult,
+    recoveriesResult,
   ] = await Promise.all([
     supabase
       .from("trip_reconciliations")
@@ -187,6 +191,9 @@ export default async function ReconciliationPage() {
       .from("trip_quantity_chain")
       .select("trip_id, trip_number, product_id, supplier_quantity, loaded_quantity, delivered_quantity, supplier_to_loaded_variance, loaded_to_delivered_variance")
       .limit(40),
+    supabase.from("transporter_recoveries").select("id, discrepancy_id, amount")
+      .order("recorded_at", { ascending: false })
+      .limit(100),
   ]);
 
   const queryError =
@@ -200,7 +207,8 @@ export default async function ReconciliationPage() {
     deliveriesResult.error ??
     invoicesResult.error ??
     toleranceResult.error ??
-    chainResult.error;
+    chainResult.error ??
+    recoveriesResult.error;
 
   if (queryError) {
     return (
@@ -227,6 +235,7 @@ export default async function ReconciliationPage() {
   const invoices = (invoicesResult.data ?? []) as Invoice[];
   const toleranceRules = (toleranceResult.data ?? []) as ToleranceRule[];
   const quantityChain = (chainResult.data ?? []) as QuantityChainRow[];
+  const recoveries = (recoveriesResult.data ?? []) as Recovery[];
 
   const tripById = new Map(trips.map((trip) => [trip.id, trip]));
   const productById = new Map(products.map((product) => [product.id, product]));
@@ -498,6 +507,10 @@ export default async function ReconciliationPage() {
                   const invoiceOptions = invoices
                     .filter((invoice) => invoice.trip_id === reconciliationTripId)
                     .map((invoice) => ({ id: invoice.id, label: invoice.invoice_number }));
+                  const recovered = recoveries
+                    .filter((recovery) => recovery.discrepancy_id === item.id)
+                    .reduce((sum, recovery) => sum + Number(recovery.amount), 0);
+                  const outstanding = Number(item.liability_amount ?? 0) - recovered;
 
                   return (
                     <tr key={item.id}>
@@ -517,6 +530,10 @@ export default async function ReconciliationPage() {
                               {item.liability_basis === "landed_cost" ? "landed cost" : "manual"} ·{" "}
                               {formatMoney(Number(item.liability_unit_cost))}/unit
                             </span>
+                            <span className="block text-[var(--muted)]">
+                              recovered {formatMoney(recovered)}
+                              {outstanding > 0 ? ` · outstanding ${formatMoney(outstanding)}` : " · settled"}
+                            </span>
                           </>
                         ) : item.liability_status === "rejected" ? (
                           <span className="text-[var(--muted)]">rejected</span>
@@ -530,6 +547,12 @@ export default async function ReconciliationPage() {
                             <LiabilityForm discrepancyId={item.id} invoices={invoiceOptions} />
                             <RejectLiabilityForm discrepancyId={item.id} />
                           </div>
+                        ) : canManage && item.liability_status === "confirmed" && outstanding > 0 ? (
+                          <RecoveryForm
+                            discrepancyId={item.id}
+                            invoices={invoiceOptions}
+                            outstanding={outstanding}
+                          />
                         ) : (
                           <span className="text-[var(--muted)]">—</span>
                         )}

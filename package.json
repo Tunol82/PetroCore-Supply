@@ -18,7 +18,8 @@
     "verify:live:dispatch": "node scripts/live-dispatch-check.mjs",
     "verify:live:evidence": "node scripts/live-evidence-check.mjs",
     "verify:live:finance": "node scripts/live-finance-check.mjs",
-    "verify:live:liability": "node scripts/live-liability-check.mjs"
+    "verify:live:liability": "node scripts/live-liability-check.mjs",
+    "verify:live:reset": "node scripts/live-reset-check.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",

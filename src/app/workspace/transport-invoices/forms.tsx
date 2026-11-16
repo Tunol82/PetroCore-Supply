@@ -122,6 +122,17 @@ export function InvoiceLineForm({ invoices }: { invoices: Option[] }) {
           <label htmlFor="il-rate" className={labelClass}>Unit rate (NGN)</label>
           <input id="il-rate" name="unitRate" type="number" step="0.01" min="0" required className={fieldClass} />
         </div>
+        <div>
+          <label htmlFor="il-category" className={labelClass}>Charge category (optional)</label>
+          <select id="il-category" name="chargeCategory" className={fieldClass} defaultValue="">
+            <option value="">Not specified</option>
+            <option value="haulage">Haulage</option>
+            <option value="loading">Loading</option>
+            <option value="waiting">Waiting</option>
+            <option value="demurrage">Demurrage</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
       </div>
       <Feedback state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>

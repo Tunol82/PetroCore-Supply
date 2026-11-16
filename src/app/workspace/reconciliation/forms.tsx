@@ -8,6 +8,7 @@ import {
   createToleranceRule,
   deleteToleranceRule,
   recordInvestigation,
+  recordRecovery,
   rejectLiability,
   reportDiscrepancy,
   type ReconciliationActionState,
@@ -317,6 +318,20 @@ export function LiabilityForm({
           </select>
         </div>
         <div>
+          <label htmlFor={`lb-amount-${discrepancyId}`} className="mb-1 block text-[10px] font-medium text-[var(--muted)]">
+            Recover now (optional)
+          </label>
+          <input
+            id={`lb-amount-${discrepancyId}`}
+            name="recoveryAmount"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="Full amount"
+            className="w-28 rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+          />
+        </div>
+        <div>
           <label htmlFor={`lb-invoice-${discrepancyId}`} className="mb-1 block text-[10px] font-medium text-[var(--muted)]">
             Invoice (optional)
           </label>
@@ -427,6 +442,81 @@ export function DeleteToleranceRuleForm({ ruleId }: { ruleId: string }) {
         {pending ? "Removing…" : "Remove"}
       </button>
       {state.error ? <span className="text-xs text-red-700">{state.error}</span> : null}
+    </form>
+  );
+}
+
+export function RecoveryForm({
+  discrepancyId,
+  invoices,
+  outstanding,
+}: {
+  discrepancyId: string;
+  invoices: Option[];
+  outstanding: number;
+}) {
+  const [state, formAction, pending] = useActionState(recordRecovery, initialState);
+
+  return (
+    <form action={formAction} className="space-y-2">
+      <input type="hidden" name="discrepancyId" value={discrepancyId} />
+      <div className="flex flex-wrap items-end gap-2">
+        <div>
+          <label htmlFor={`rc-amount-${discrepancyId}`} className="mb-1 block text-[10px] font-medium text-[var(--muted)]">
+            Recover amount
+          </label>
+          <input
+            id={`rc-amount-${discrepancyId}`}
+            name="amount"
+            type="number"
+            step="0.01"
+            min="0.01"
+            max={outstanding}
+            defaultValue={outstanding}
+            required
+            className="w-28 rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+          />
+        </div>
+        <div>
+          <label htmlFor={`rc-method-${discrepancyId}`} className="mb-1 block text-[10px] font-medium text-[var(--muted)]">
+            Method
+          </label>
+          <select
+            id={`rc-method-${discrepancyId}`}
+            name="method"
+            defaultValue="debit_note"
+            className="rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+          >
+            <option value="invoice_deduction">Invoice deduction</option>
+            <option value="debit_note">Debit note</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor={`rc-invoice-${discrepancyId}`} className="mb-1 block text-[10px] font-medium text-[var(--muted)]">
+            Invoice (optional)
+          </label>
+          <select
+            id={`rc-invoice-${discrepancyId}`}
+            name="invoiceId"
+            defaultValue=""
+            className="max-w-40 rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+          >
+            <option value="">Not linked</option>
+            {invoices.map((invoice) => (
+              <option key={invoice.id} value={invoice.id}>{invoice.label}</option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="submit"
+          className="rounded-lg border border-[var(--brand)] px-2 py-1 text-xs font-semibold text-[var(--brand)] transition hover:bg-[var(--brand)]/5 disabled:opacity-50"
+          disabled={pending}
+        >
+          {pending ? "Recording…" : "Record recovery"}
+        </button>
+      </div>
+      {state.error ? <span className="block text-xs text-red-700">{state.error}</span> : null}
+      {state.success ? <span className="block text-xs text-emerald-700">{state.success}</span> : null}
     </form>
   );
 }

@@ -32,11 +32,14 @@ export const transporterInvoiceSchema = z.object({
   notes: optionalText(500),
 });
 
+export const CHARGE_CATEGORIES = ["haulage", "loading", "waiting", "demurrage", "other"] as const;
+
 export const transporterInvoiceLineSchema = z.object({
   invoiceId: uuid("Select an invoice."),
   description: z.string().trim().min(2, "Enter a description.").max(200),
   quantity: z.coerce.number().positive("Quantity must be greater than zero."),
   unitRate: money("Unit rate cannot be negative."),
+  chargeCategory: z.enum(CHARGE_CATEGORIES).optional().or(z.literal("")),
 });
 
 export const paymentSchema = z

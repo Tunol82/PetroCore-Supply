@@ -113,6 +113,7 @@ Implemented in the scaffold:
 - Stock fulfilment at `/workspace/inventory/fulfilment`: reservations that commit stock without moving it, draft issues with lines, posting that consumes stock FIFO and preserves the batch unit cost, and audited reversals that post compensating movements and allocations.
 - Transporter invoices at `/workspace/transport-invoices`: invoices and lines recorded as submitted, with liability status fixed at `not_assessed` until DR-13 is approved.
 - Finance at `/workspace/finance`: customer receipts and supplier or transporter payments recorded as supplied with explicit links, plus an operational profitability view of order revenue against net FIFO cost of sales.
+- Settings at `/workspace/settings`: organisation summary and a danger zone that clears demo transactions after typing the organisation code, keeping users, master data and audit history.
 - Dispatch at `/workspace/dispatch`: trips, truck/driver assignments with double-booking prevention, explicit release of an assignment, and automatic release when a trip is cancelled.
 
 Current verification snapshot (2026-11-15):
@@ -229,6 +230,8 @@ Approval state:
 - Migration `20261115002800_transporter_liability` adds liability confirmation at landed cost (derived from the trip's FIFO allocations, or manual when no issue exists) and optional recovery by invoice deduction or debit note.
 - Migration `20261115002900_tolerance_rules` adds optional tolerance rules (percentage, absolute, greater of both) and computes classification when a rule matches.
 - Migration `20261115003000_measurement_chain` adds optional temperature/density/correction fields to loading and delivery records and the `trip_quantity_chain` view covering both measurement boundaries.
+- Migration `20261115003100_demo_reset` adds `reset_organisation_demo_data`, a single-transaction organisation reset behind a typed organisation-code confirmation and `organisation.manage`; the audit trail and master data are preserved.
+- Migration `20261115003200_charge_categories_partial_recovery` adds optional invoice charge categories and partial liability recoveries with an outstanding-balance guard.
 - Batch capture records supplier, loaded and received quantities as supplied and defaults `variance_status` to `not_assessed`; it deliberately does not apply tolerances, temperature correction or variance rules.
 - The single non-production platform admin is bootstrapped with `mfa_required = true`; the happy-path test temporarily disabled it and restored it. MFA enrolment is not yet built into the app, so platform switching currently requires an AAL2 session obtained elsewhere.
 

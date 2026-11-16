@@ -28,6 +28,7 @@ type InvoiceLine = {
   quantity: number;
   unit_rate: number;
   line_total: number;
+  charge_category: string | null;
 };
 
 type Transporter = { id: string; business_name: string; transporter_code: string };
@@ -87,7 +88,7 @@ export default async function TransportInvoicesPage() {
       .limit(30),
     supabase
       .from("transporter_invoice_lines")
-      .select("id, invoice_id, description, quantity, unit_rate, line_total")
+      .select("id, invoice_id, description, quantity, unit_rate, line_total, charge_category")
       .order("created_at", { ascending: true })
       .limit(80),
     supabase.from("transporters").select("id, business_name, transporter_code").order("business_name"),
@@ -224,6 +225,7 @@ export default async function TransportInvoicesPage() {
                 <tr>
                   <th className="py-2 pr-3">Invoice</th>
                   <th className="py-2 pr-3">Description</th>
+                  <th className="py-2 pr-3">Category</th>
                   <th className="py-2 pr-3 text-right">Quantity</th>
                   <th className="py-2 pr-3 text-right">Unit rate</th>
                   <th className="py-2 text-right">Line total</th>
@@ -234,6 +236,9 @@ export default async function TransportInvoicesPage() {
                   <tr key={line.id}>
                     <td className="py-2 pr-3 text-xs">{invoiceById.get(line.invoice_id)?.invoice_number ?? "—"}</td>
                     <td className="py-2 pr-3">{line.description}</td>
+                    <td className="py-2 pr-3 text-xs">
+                      {line.charge_category ? line.charge_category.replaceAll("_", " ") : "—"}
+                    </td>
                     <td className="py-2 pr-3 text-right tabular-nums">
                       {new Intl.NumberFormat("en-NG", { maximumFractionDigits: 3 }).format(Number(line.quantity))}
                     </td>

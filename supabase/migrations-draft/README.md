@@ -54,3 +54,5 @@ None.
 | `20261115002800_transporter_liability.sql` | Liability confirmation at landed cost and optional recovery | Applied 2026-11-16; manual and derived cost, shortage-only, rejection and isolation verified |
 | `20261115002900_tolerance_rules.sql` | Optional tolerance rules and computed classification | Applied 2026-11-16; greater-of tolerance computed, inside and outside cases verified |
 | `20261115003000_measurement_chain.sql` | Optional temperature/density fields and the supplier-to-delivered chain view | Applied 2026-11-16; chain view and derived corrected quantity verified |
+| `20261115003100_demo_reset.sql` | Organisation demo-data reset with typed confirmation | Applied 2026-11-16; 159 records cleared, master data kept, wrong confirmation and non-admin blocked |
+| `20261115003200_charge_categories_partial_recovery.sql` | Optional invoice charge categories and partial recoveries | Applied 2026-11-16; category insert, partial recovery and over-recovery guard verified |

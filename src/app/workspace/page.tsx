@@ -238,6 +238,14 @@ export default async function WorkspacePage() {
                 Manage access
               </Link>
             ) : null}
+            {canManageAccess ? (
+              <Link
+                href="/workspace/settings"
+                className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-medium hover:bg-slate-50"
+              >
+                Settings
+              </Link>
+            ) : null}
             <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">Active</span>
           </div>
         </div>

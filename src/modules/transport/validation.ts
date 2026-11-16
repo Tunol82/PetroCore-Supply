@@ -293,11 +293,23 @@ export const RECOVERY_METHODS = ["none", "invoice_deduction", "debit_note"] as c
 
 export const liabilityConfirmationSchema = z.object({
   discrepancyId: uuid("Select a discrepancy."),
+  recoveryAmount: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? undefined : value),
+    z.coerce.number().positive("Recovery amount must be greater than zero.").optional(),
+  ),
   unitCost: z.preprocess(
     (value) => (value === "" || value === null || value === undefined ? undefined : value),
     z.coerce.number().min(0, "Unit cost cannot be negative.").optional(),
   ),
   recoveryMethod: z.enum(RECOVERY_METHODS),
+  invoiceId: optionalUuid("Select a valid invoice."),
+  note: optionalText(500),
+});
+
+export const recoverySchema = z.object({
+  discrepancyId: uuid("Select a discrepancy."),
+  amount: z.coerce.number().positive("Recovery amount must be greater than zero."),
+  method: z.enum(["invoice_deduction", "debit_note"]),
   invoiceId: optionalUuid("Select a valid invoice."),
   note: optionalText(500),
 });
