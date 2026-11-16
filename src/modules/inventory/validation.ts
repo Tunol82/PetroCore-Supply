@@ -83,5 +83,10 @@ export const postIssueSchema = z.object({
   issueId: uuid("Select a draft issue."),
 });
 
+export const reverseIssueSchema = z.object({
+  issueId: uuid("Select an issue."),
+  reason: z.string().trim().min(3, "Give a reason for the reversal.").max(500),
+});
+
 export type ReservationInput = z.infer<typeof reservationSchema>;
 export type IssueInput = z.infer<typeof issueSchema>;

@@ -10,6 +10,7 @@ import {
   releaseReservationSchema,
   reservationItemSchema,
   reservationSchema,
+  reverseIssueSchema,
 } from "@/modules/inventory/validation";
 
 export type FulfilmentActionState = {
@@ -351,4 +352,46 @@ export async function postIssue(
   revalidatePath("/workspace/inventory/fulfilment");
   revalidatePath("/workspace/inventory");
   return { error: null, success: "Issue posted. Stock and FIFO allocations were recorded." };
+}
+
+export async function reverseIssue(
+  _previous: FulfilmentActionState,
+  formData: FormData,
+): Promise<FulfilmentActionState> {
+  const parsed = reverseIssueSchema.safeParse({
+    issueId: formData.get("issueId"),
+    reason: formData.get("reason"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: rpcError } = await context.supabase.rpc("reverse_inventory_issue", {
+    p_issue_id: parsed.data.issueId,
+    p_reason: parsed.data.reason,
+  });
+
+  if (rpcError) {
+    if (rpcError.message.includes("already been reversed")) {
+      return { error: "That issue has already been reversed.", success: null };
+    }
+
+    if (rpcError.message.includes("a reversal reason is required")) {
+      return { error: "Give a reason for the reversal.", success: null };
+    }
+
+    if (rpcError.message.includes("only a posted issue")) {
+      return { error: "Only a posted issue can be reversed.", success: null };
+    }
+
+    return { error: "The issue could not be reversed.", success: null };
+  }
+
+  revalidatePath("/workspace/inventory/fulfilment");
+  revalidatePath("/workspace/inventory");
+  return { error: null, success: "Issue reversed. Stock and cost were compensated." };
 }

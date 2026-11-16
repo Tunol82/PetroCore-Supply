@@ -6,6 +6,7 @@ import {
   releaseReservationSchema,
   reservationItemSchema,
   reservationSchema,
+  reverseIssueSchema,
 } from "./validation";
 
 const batchId = "11111111-1111-1111-1111-111111111111";
@@ -112,6 +113,20 @@ describe("issueLineSchema", () => {
 
   it("rejects a negative issue quantity", () => {
     expect(issueLineSchema.safeParse({ issueId: batchId, salesOrderItemId: locationId, requestedQuantity: "-1" }).success).toBe(false);
+  });
+});
+
+describe("reverseIssueSchema", () => {
+  it("accepts a reversal with a reason", () => {
+    expect(reverseIssueSchema.safeParse({ issueId: batchId, reason: "Wrong order line" }).success).toBe(true);
+  });
+
+  it("rejects a missing reason", () => {
+    expect(reverseIssueSchema.safeParse({ issueId: batchId, reason: "  " }).success).toBe(false);
+  });
+
+  it("rejects a reason shorter than three characters", () => {
+    expect(reverseIssueSchema.safeParse({ issueId: batchId, reason: "x" }).success).toBe(false);
   });
 });
 

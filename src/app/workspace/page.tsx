@@ -188,6 +188,14 @@ export default async function WorkspacePage() {
                 Inventory
               </Link>
             ) : null}
+            {showProcurement || showSales ? (
+              <Link
+                href="/workspace/finance"
+                className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-medium hover:bg-slate-50"
+              >
+                Finance
+              </Link>
+            ) : null}
             {showTransport ? (
               <>
                 <Link
@@ -213,6 +221,12 @@ export default async function WorkspacePage() {
                   className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-medium hover:bg-slate-50"
                 >
                   Reconciliation
+                </Link>
+                <Link
+                  href="/workspace/transport-invoices"
+                  className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-medium hover:bg-slate-50"
+                >
+                  Transporter invoices
                 </Link>
               </>
             ) : null}

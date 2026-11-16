@@ -11,6 +11,7 @@ import {
   ReleaseForm,
   ReservationForm,
   ReservationItemForm,
+  ReverseIssueForm,
 } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,7 @@ type Allocation = {
   sales_order_item_id: string;
   allocated_quantity: number;
   allocated_unit_cost: number;
+  allocation_type: string;
   total_cost: number;
   allocation_date: string;
 };
@@ -170,7 +172,7 @@ export default async function FulfilmentPage() {
     supabase
       .from("fifo_allocations")
       .select(
-        "id, inventory_movement_id, inventory_batch_id, sales_order_item_id, allocated_quantity, allocated_unit_cost, total_cost, allocation_date",
+        "id, inventory_movement_id, inventory_batch_id, sales_order_item_id, allocated_quantity, allocated_unit_cost, allocation_type, total_cost, allocation_date",
       )
       .order("allocation_date", { ascending: false })
       .limit(40),
@@ -474,8 +476,12 @@ export default async function FulfilmentPage() {
                     <td className="py-2 text-xs">
                       {canManage && issue.status === "draft" ? (
                         <PostIssueForm issueId={issue.id} />
+                      ) : canManage && issue.status === "posted" ? (
+                        <ReverseIssueForm issueId={issue.id} />
                       ) : (
-                        <span className="text-[var(--muted)]">—</span>
+                        <span className="text-[var(--muted)]">
+                          {issue.status === "reversed" ? "reversed" : "—"}
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -553,6 +559,7 @@ export default async function FulfilmentPage() {
               <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
                 <tr>
                   <th className="py-2 pr-3">Date</th>
+                  <th className="py-2 pr-3">Type</th>
                   <th className="py-2 pr-3">Batch</th>
                   <th className="py-2 pr-3">Sales order line</th>
                   <th className="py-2 pr-3 text-right">Quantity</th>
@@ -567,6 +574,13 @@ export default async function FulfilmentPage() {
                     <tr key={allocation.id}>
                       <td className="py-2 pr-3 text-xs">
                         {new Date(allocation.allocation_date).toLocaleDateString("en-GB")}
+                      </td>
+                      <td className="py-2 pr-3 text-xs">
+                        {allocation.allocation_type === "reversal" ? (
+                          <span className="font-semibold text-red-700">reversal</span>
+                        ) : (
+                          "issue"
+                        )}
                       </td>
                       <td className="py-2 pr-3 text-xs">
                         {batch ? procurementById.get(batch.procurement_batch_id)?.batch_number ?? "—" : "—"}
@@ -593,8 +607,9 @@ export default async function FulfilmentPage() {
         </section>
 
         <p className="mt-8 text-xs leading-6 text-[var(--muted)]">
-          Reversals, credit notes and cost-of-sales posting are not implemented. A posted issue is immutable; corrections
-          will use reversal entries once that rule is approved.
+          Reversals post compensating movements and allocations; a reversed issue is never edited. Net cost of sales is
+          issue cost minus reversal cost, and no journal entry or credit note is raised. Tolerances and variance
+          classification remain open decisions.
         </p>
       </div>
     </main>

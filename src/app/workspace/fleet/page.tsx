@@ -251,6 +251,12 @@ function Header() {
       </div>
       <div className="flex items-center gap-2">
         <Link
+          href="/workspace/transport-invoices"
+          className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
+        >
+          Invoices
+        </Link>
+        <Link
           href="/workspace/dispatch"
           className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
         >

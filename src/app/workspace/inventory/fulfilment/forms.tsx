@@ -8,6 +8,7 @@ import {
   createReservation,
   postIssue,
   releaseReservationItem,
+  reverseIssue,
   type FulfilmentActionState,
 } from "./actions";
 
@@ -238,6 +239,34 @@ export function PostIssueForm({ issueId }: { issueId: string }) {
         disabled={pending}
       >
         {pending ? "Posting…" : "Post issue"}
+      </button>
+      {state.error ? <span className="block text-xs text-red-700">{state.error}</span> : null}
+      {state.success ? <span className="block text-xs text-emerald-700">{state.success}</span> : null}
+    </form>
+  );
+}
+
+export function ReverseIssueForm({ issueId }: { issueId: string }) {
+  const [state, formAction, pending] = useActionState(reverseIssue, initialState);
+
+  return (
+    <form action={formAction} className="space-y-2">
+      <input type="hidden" name="issueId" value={issueId} />
+      <input
+        name="reason"
+        required
+        minLength={3}
+        maxLength={500}
+        placeholder="Reversal reason"
+        aria-label="Reversal reason"
+        className="w-48 rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+      />
+      <button
+        type="submit"
+        className="rounded-lg border border-red-300 px-2 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+        disabled={pending}
+      >
+        {pending ? "Reversing…" : "Reverse issue"}
       </button>
       {state.error ? <span className="block text-xs text-red-700">{state.error}</span> : null}
       {state.success ? <span className="block text-xs text-emerald-700">{state.success}</span> : null}

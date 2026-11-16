@@ -46,3 +46,6 @@ None.
 | `20261115002000_assignment_release_grants.sql` | Revokes direct UPDATE on trip assignments | Applied 2026-11-16; direct release now denied |
 | `20261115002100_cancelled_trip_assignments.sql` | Rejects new assignments on a cancelled trip | Applied 2026-11-16; cancellation now blocks assignment |
 | `20261115002200_evidence_storage.sql` | Private delivery-evidence bucket, tenant-scoped storage policies, evidence file metadata | Applied 2026-11-16; upload, signed download, cross-tenant denial and isolation verified |
+| `20261115002300_issue_reversals.sql` | Issue reversal with compensating movements and allocations | Applied 2026-11-16; stock return, reservation reinstatement, duplicate reversal and privilege checks verified |
+| `20261115002400_transporter_invoices.sql` | Transporter invoices and lines, liability unassessed | Applied 2026-11-16; record, generated totals and isolation verified |
+| `20261115002500_payments_profitability.sql` | Payment records and the operational profitability view | Applied 2026-11-16; receipt, payment, party constraint, append-only and margin checks verified |

@@ -110,7 +110,9 @@ Implemented in the scaffold:
 - Deliveries at `/workspace/deliveries`: delivery records linked to a trip, sales order line, customer location and optional loading record, with customer-confirmed quantities, status, waybill reference and evidence uploads to private tenant storage with signed links.
 - Reconciliation at `/workspace/reconciliation`: trip reconciliation headers and items with generated variances, delivery discrepancies and append-only investigations. Variance is evidence only; it does not create a loss or liability.
 - Inventory at `/workspace/inventory`: verified receipt of storage procurement into a tenant location, creating an inventory batch and an append-only receipt movement. Receipts are cumulative up to the verified quantity.
-- Stock fulfilment at `/workspace/inventory/fulfilment`: reservations that commit stock without moving it, draft issues with lines, and posting that consumes stock FIFO, preserves the batch unit cost in allocations, and fulfils matching reservations.
+- Stock fulfilment at `/workspace/inventory/fulfilment`: reservations that commit stock without moving it, draft issues with lines, posting that consumes stock FIFO and preserves the batch unit cost, and audited reversals that post compensating movements and allocations.
+- Transporter invoices at `/workspace/transport-invoices`: invoices and lines recorded as submitted, with liability status fixed at `not_assessed` until DR-13 is approved.
+- Finance at `/workspace/finance`: customer receipts and supplier or transporter payments recorded as supplied with explicit links, plus an operational profitability view of order revenue against net FIFO cost of sales.
 - Dispatch at `/workspace/dispatch`: trips, truck/driver assignments with double-booking prevention, explicit release of an assignment, and automatic release when a trip is cancelled.
 
 Current verification snapshot (2026-11-15):
@@ -167,7 +169,7 @@ Work in small, reviewable commits on a feature branch. Do not merge PR #1 or cre
 4. Continue Milestone 1 only within the approved database gate: prepare a detailed schema reconciliation checklist and non-production setup plan; do not invent SQL fields or tenant membership tables. **Done 2026-11-15:** `docs/database/migration-1-tenant-access-checklist.md` and `docs/implementation/non-production-supabase-plan.md`.
 5. Turn every unresolved business rule into a named decision record with options, consequences and an explicit owner approval requirement. **Done 2026-11-15:** `docs/business-rules/decision-register.md`. All Milestone 1 decisions are approved.
 6. ~~Apply the tenant/access migration and run the isolation tests.~~ Done 2026-11-15: version `20261115000100` applied to the non-production project; T-001–T-014 passed; browser sign-in verified.
-7. **Milestone 2 in progress.** Procurement, costs, sales orders, fleet, dispatch with double-booking prevention, loading, deliveries with evidence uploads, reconciliation, inventory receipts, reservations, issues and FIFO allocations are implemented. Next: transporter invoices (DR-13) and the operational finance layer. Tolerances, variance classification, issue reversals and cost-of-sales posting remain open (DR-01/DR-03/DR-13).
+7. **Milestone 2 in progress.** Procurement, costs, sales orders, fleet, dispatch with double-booking prevention, loading, deliveries with evidence uploads, reconciliation, inventory receipts, reservations, issues with reversals and FIFO allocations, transporter invoices and payment records with operational profitability are implemented. Remaining: approved liability and deduction rules (DR-13), tolerances and variance classification (DR-01/DR-03), automatic payment allocation and ageing, and statutory accounting.
 8. Keep PR descriptions, docs and this handover current. Mark assumptions and unverified integrations clearly.
 
 ## 10. How the next agent should begin
@@ -214,6 +216,9 @@ Approval state:
 - Migration `20261115002000_assignment_release_grants` revokes direct UPDATE on trip assignments so release always goes through the audited function.
 - Migration `20261115002100_cancelled_trip_assignments` rejects new assignments on a cancelled trip.
 - Migration `20261115002200_evidence_storage` creates the private `delivery-evidence` bucket (5 MB; JPEG, PNG, WebP, PDF), adds file metadata columns to `delivery_evidence`, and restricts storage objects to the caller's organisation folder with transport permissions. Evidence has no update or delete policy.
+- Migration `20261115002300_issue_reversals` adds `reverse_inventory_issue`: a posted issue is reversed by a compensating movement and allocation per consumed batch, stock returns at the preserved cost, reservation fulfilment is undone, and the issue is frozen as `reversed` with a reason.
+- Migration `20261115002400_transporter_invoices` adds append-only transporter invoices and lines with generated totals; liability stays `not_assessed` until DR-13.
+- Migration `20261115002500_payments_profitability` adds append-only payment records (receipts need `sales.manage`, payments need `procurement.manage`) and the `security_invoker` view `sales_order_profitability` combining order revenue, net FIFO cost of sales and recorded receipts.
 - Batch capture records supplier, loaded and received quantities as supplied and defaults `variance_status` to `not_assessed`; it deliberately does not apply tolerances, temperature correction or variance rules.
 - The single non-production platform admin is bootstrapped with `mfa_required = true`; the happy-path test temporarily disabled it and restored it. MFA enrolment is not yet built into the app, so platform switching currently requires an AAL2 session obtained elsewhere.
 
