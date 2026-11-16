@@ -42,6 +42,10 @@ const aliases: Record<string, Tone> = {
   planned: "neutral",
   in_transit: "brand",
   delivered: "success",
+  receipt: "brand",
+  issue: "accent",
+  reversal: "danger",
+  adjustment: "warning",
 };
 
 export function Badge({ children, tone }: { children: ReactNode; tone?: Tone }) {
