@@ -173,13 +173,13 @@ export function IssueForm({
 
   return (
     <form action={formAction} className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="is-number" className={labelClass}>Issue number</label>
           <input id="is-number" name="issueNumber" required className={fieldClass} placeholder="ISS-2026-0001" />
         </div>
-        <Select id="is-order" name="salesOrderId" label="Sales order" options={salesOrders} placeholder="Select a sales order" />
-        <Select id="is-location" name="locationId" label="Issue location" options={locations} placeholder="Select a storage location" />
+        <Select id="is-order" name="salesOrderId" label="Sales order" options={salesOrders} placeholder="Select an order" />
+        <Select id="is-location" name="locationId" label="Issue location" options={locations} placeholder="Select a location" />
         <div>
           <label htmlFor="is-trip" className={labelClass}>Trip (optional)</label>
           <select id="is-trip" name="tripId" className={fieldClass} defaultValue="">
@@ -193,7 +193,7 @@ export function IssueForm({
           <label htmlFor="is-date" className={labelClass}>Issue date (optional)</label>
           <input id="is-date" name="issueDate" type="date" className={fieldClass} />
         </div>
-        <div>
+        <div className="sm:col-span-2">
           <label htmlFor="is-notes" className={labelClass}>Notes</label>
           <input id="is-notes" name="notes" className={fieldClass} />
         </div>
@@ -211,10 +211,10 @@ export function IssueLineForm({ issues, orderItems }: { issues: Option[]; orderI
 
   return (
     <form action={formAction} className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Select id="il-issue" name="issueId" label="Draft issue" options={issues} placeholder="Select a draft issue" />
-        <Select id="il-item" name="salesOrderItemId" label="Sales order line" options={orderItems} placeholder="Select a sales order line" />
-        <div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Select id="il-issue" name="issueId" label="Draft issue" options={issues} placeholder="Select an issue" />
+        <Select id="il-item" name="salesOrderItemId" label="Sales order line" options={orderItems} placeholder="Select an order line" />
+        <div className="sm:col-span-2">
           <label htmlFor="il-quantity" className={labelClass}>Quantity to issue</label>
           <input id="il-quantity" name="requestedQuantity" type="number" step="0.001" min="0" required className={fieldClass} />
         </div>

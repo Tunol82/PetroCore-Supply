@@ -152,7 +152,11 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ id
   const procurement = (procurementResult.data ?? null) as Procurement | null;
   const productName = productResult.data?.product_name ?? "Product";
   const locationName = locationResult.data?.location_name ?? "Location";
-  const movements = (movementsResult.data ?? []) as Movement[];
+  const movements = ((movementsResult.data ?? []) as Movement[]).sort(
+    (a, b) =>
+      new Date(a.movement_date).getTime() - new Date(b.movement_date).getTime() ||
+      Number(b.quantity_in) - Number(a.quantity_in),
+  );
   const allocations = (allocationsResult.data ?? []) as Allocation[];
 
   const supplierResult = procurement

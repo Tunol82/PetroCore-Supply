@@ -287,7 +287,7 @@ export function LiabilityForm({
   return (
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="discrepancyId" value={discrepancyId} />
-      <div className="flex flex-wrap items-end gap-2">
+      <div className="grid min-w-[320px] gap-2 sm:grid-cols-2">
         <div>
           <label htmlFor={`lb-cost-${discrepancyId}`} className="mb-1 block text-[10px] font-medium text-[var(--muted)]">
             Unit cost (optional)
@@ -299,7 +299,7 @@ export function LiabilityForm({
             step="0.0001"
             min="0"
             placeholder="From FIFO"
-            className="w-28 rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+            className="w-full rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
           />
         </div>
         <div>
@@ -328,7 +328,7 @@ export function LiabilityForm({
             step="0.01"
             min="0"
             placeholder="Full amount"
-            className="w-28 rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+            className="w-full rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
           />
         </div>
         <div>
@@ -339,7 +339,7 @@ export function LiabilityForm({
             id={`lb-invoice-${discrepancyId}`}
             name="invoiceId"
             defaultValue=""
-            className="max-w-40 rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+            className="w-full rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
           >
             <option value="">Not linked</option>
             {invoices.map((invoice) => (
@@ -349,7 +349,7 @@ export function LiabilityForm({
         </div>
         <button
           type="submit"
-          className="rounded-lg border border-[var(--brand)] px-2 py-1 text-xs font-semibold text-[var(--brand)] transition hover:bg-[var(--brand)]/5 disabled:opacity-50"
+          className="rounded-lg border border-[var(--brand)] px-2 py-1 text-xs font-semibold text-[var(--brand)] transition hover:bg-[var(--brand)]/5 disabled:opacity-50 sm:col-span-2"
           disabled={pending}
         >
           {pending ? "Confirming…" : "Confirm liability"}
@@ -460,7 +460,7 @@ export function RecoveryForm({
   return (
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="discrepancyId" value={discrepancyId} />
-      <div className="flex flex-wrap items-end gap-2">
+      <div className="grid min-w-[320px] gap-2 sm:grid-cols-2">
         <div>
           <label htmlFor={`rc-amount-${discrepancyId}`} className="mb-1 block text-[10px] font-medium text-[var(--muted)]">
             Recover amount
@@ -474,7 +474,7 @@ export function RecoveryForm({
             max={outstanding}
             defaultValue={outstanding}
             required
-            className="w-28 rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+            className="w-full rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
           />
         </div>
         <div>
@@ -499,7 +499,7 @@ export function RecoveryForm({
             id={`rc-invoice-${discrepancyId}`}
             name="invoiceId"
             defaultValue=""
-            className="max-w-40 rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
+            className="w-full rounded-lg border border-[var(--line)] px-2 py-1 text-xs"
           >
             <option value="">Not linked</option>
             {invoices.map((invoice) => (
@@ -509,7 +509,7 @@ export function RecoveryForm({
         </div>
         <button
           type="submit"
-          className="rounded-lg border border-[var(--brand)] px-2 py-1 text-xs font-semibold text-[var(--brand)] transition hover:bg-[var(--brand)]/5 disabled:opacity-50"
+          className="rounded-lg border border-[var(--brand)] px-2 py-1 text-xs font-semibold text-[var(--brand)] transition hover:bg-[var(--brand)]/5 disabled:opacity-50 sm:col-span-2"
           disabled={pending}
         >
           {pending ? "Recording…" : "Record recovery"}

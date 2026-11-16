@@ -210,7 +210,7 @@ export default async function ReconciliationDetailPage({
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Items" value={items.length} hint="Products reconciled" />
-        <StatCard label="Total variance" value={formatQuantity(totalVariance)} hint="Absolute, all products" tone="accent" />
+        <StatCard label="Total variance" value={formatQuantity(totalVariance)} hint="Absolute, all products" />
         <StatCard label="Discrepancies" value={discrepancies.length} hint={`${investigations.length} investigations`} />
         <StatCard label="Confirmed liability" value={formatMoney(confirmedLiability)} hint="At landed cost" tone="danger" />
       </div>
