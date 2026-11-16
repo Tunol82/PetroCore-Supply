@@ -219,6 +219,8 @@ Approval state:
 - Migration `20261115002300_issue_reversals` adds `reverse_inventory_issue`: a posted issue is reversed by a compensating movement and allocation per consumed batch, stock returns at the preserved cost, reservation fulfilment is undone, and the issue is frozen as `reversed` with a reason.
 - Migration `20261115002400_transporter_invoices` adds append-only transporter invoices and lines with generated totals; liability stays `not_assessed` until DR-13.
 - Migration `20261115002500_payments_profitability` adds append-only payment records (receipts need `sales.manage`, payments need `procurement.manage`) and the `security_invoker` view `sales_order_profitability` combining order revenue, net FIFO cost of sales and recorded receipts.
+- Migration `20261115002600_least_privilege_sweep` revokes anonymous execution of tenant RPCs, TRUNCATE on all tables, DELETE where no policy allows it, writes on views, and direct UPDATE on inventory batches.
+- Migration `20261115002700_revoke_public_execute` removes EXECUTE inherited from PUBLIC so `anon` can call no function. The full findings are in `docs/database/security-audit-2026-11-16.md`.
 - Batch capture records supplier, loaded and received quantities as supplied and defaults `variance_status` to `not_assessed`; it deliberately does not apply tolerances, temperature correction or variance rules.
 - The single non-production platform admin is bootstrapped with `mfa_required = true`; the happy-path test temporarily disabled it and restored it. MFA enrolment is not yet built into the app, so platform switching currently requires an AAL2 session obtained elsewhere.
 

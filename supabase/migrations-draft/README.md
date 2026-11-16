@@ -49,3 +49,5 @@ None.
 | `20261115002300_issue_reversals.sql` | Issue reversal with compensating movements and allocations | Applied 2026-11-16; stock return, reservation reinstatement, duplicate reversal and privilege checks verified |
 | `20261115002400_transporter_invoices.sql` | Transporter invoices and lines, liability unassessed | Applied 2026-11-16; record, generated totals and isolation verified |
 | `20261115002500_payments_profitability.sql` | Payment records and the operational profitability view | Applied 2026-11-16; receipt, payment, party constraint, append-only and margin checks verified |
+| `20261115002600_least_privilege_sweep.sql` | Revokes anonymous RPC execution, TRUNCATE, unused DELETE and view writes, plus direct stock updates | Applied 2026-11-16; see `docs/database/security-audit-2026-11-16.md` |
+| `20261115002700_revoke_public_execute.sql` | Revokes EXECUTE inherited from PUBLIC | Applied 2026-11-16; `anon` now executes no function |
