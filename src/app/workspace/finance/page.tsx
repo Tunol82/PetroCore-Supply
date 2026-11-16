@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { signOut } from "@/app/workspace/actions";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
@@ -79,10 +78,9 @@ export default async function FinancePage() {
 
   if (!canView) {
     return (
-      <main className="min-h-screen px-5 py-12">
-        <div className="mx-auto max-w-3xl">
-          <Header />
-          <section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
+      <div>
+        <div className="space-y-6">
+<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Not authorised</p>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight">You cannot view finance records.</h1>
             <Link href="/workspace" className="mt-6 inline-block text-sm font-semibold text-[var(--brand)]">
@@ -90,7 +88,7 @@ export default async function FinancePage() {
             </Link>
           </section>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -140,16 +138,15 @@ export default async function FinancePage() {
 
   if (queryError) {
     return (
-      <main className="min-h-screen px-5 py-12">
-        <div className="mx-auto max-w-3xl">
-          <Header />
-          <section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
+      <div>
+        <div className="space-y-6">
+<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Unavailable</p>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight">Finance records could not be loaded.</h1>
             <p className="mt-3 text-sm leading-7 text-[var(--muted)]">No records were changed. Try again.</p>
           </section>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -179,11 +176,9 @@ export default async function FinancePage() {
   const canRecordPayment = Boolean(canManageProcurement);
 
   return (
-    <main className="min-h-screen px-5 py-12">
-      <div className="mx-auto max-w-6xl">
-        <Header />
-
-        <section className="mt-10">
+    <div>
+      <div className="space-y-6">
+<section className="mt-10">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand)]">Finance</p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">{tenant.organisationName}</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
@@ -324,47 +319,7 @@ export default async function FinancePage() {
           rules remain open. Gross margin is operational evidence, not an audited result.
         </p>
       </div>
-    </main>
+    </div>
   );
 }
 
-function Header() {
-  return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] pb-5">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand)] text-sm font-bold text-white">
-          P
-        </div>
-        <div>
-          <p className="text-sm font-bold tracking-tight">PETROCORE SUPPLY</p>
-          <p className="text-xs text-[var(--muted)]">Finance</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Link
-          href="/workspace/sales"
-          className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
-        >
-          Sales
-        </Link>
-        <Link
-          href="/workspace/procurement"
-          className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
-        >
-          Procurement
-        </Link>
-        <Link
-          href="/workspace"
-          className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
-        >
-          Workspace
-        </Link>
-        <form action={signOut}>
-          <button className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50" type="submit">
-            Sign out
-          </button>
-        </form>
-      </div>
-    </header>
-  );
-}

@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  // The dev overlay badge overlaps the sidebar footer in screenshots.
+  devIndicators: false,
   experimental: {
     // Delivery evidence uploads are capped at 5 MB by the bucket; allow a little
     // headroom for multipart overhead.

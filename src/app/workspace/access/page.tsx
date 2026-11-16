@@ -4,7 +4,6 @@ import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
 import { AssignRoleForm, GrantAccessForm, RevokeForm } from "./access-forms";
-import { signOut } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -65,10 +64,9 @@ export default async function AccessPage() {
 
   if (!canManage) {
     return (
-      <main className="min-h-screen px-5 py-12">
-        <div className="mx-auto max-w-3xl">
-          <Header />
-          <section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
+      <div>
+        <div className="space-y-6">
+<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Not authorised</p>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight">You cannot manage access for this workspace.</h1>
             <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
@@ -80,7 +78,7 @@ export default async function AccessPage() {
             </Link>
           </section>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -119,10 +117,9 @@ export default async function AccessPage() {
 
   if (queryError) {
     return (
-      <main className="min-h-screen px-5 py-12">
-        <div className="mx-auto max-w-3xl">
-          <Header />
-          <section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
+      <div>
+        <div className="space-y-6">
+<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Unavailable</p>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight">Access data could not be loaded.</h1>
             <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
@@ -130,7 +127,7 @@ export default async function AccessPage() {
             </p>
           </section>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -165,11 +162,9 @@ export default async function AccessPage() {
     }));
 
   return (
-    <main className="min-h-screen px-5 py-12">
+    <div>
       <div className="mx-auto max-w-5xl">
-        <Header />
-
-        <section className="mt-10 flex flex-wrap items-end justify-between gap-3">
+<section className="mt-10 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand)]">Tenant administration</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight">Access for {tenant.organisationName}</h1>
@@ -315,27 +310,7 @@ export default async function AccessPage() {
           run on the server; the browser cannot grant itself a role or location.
         </p>
       </div>
-    </main>
+    </div>
   );
 }
 
-function Header() {
-  return (
-    <header className="flex items-center justify-between border-b border-[var(--line)] pb-5">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand)] text-sm font-bold text-white">
-          P
-        </div>
-        <div>
-          <p className="text-sm font-bold tracking-tight">PETROCORE SUPPLY</p>
-          <p className="text-xs text-[var(--muted)]">Access administration</p>
-        </div>
-      </div>
-      <form action={signOut}>
-        <button className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50" type="submit">
-          Sign out
-        </button>
-      </form>
-    </header>
-  );
-}

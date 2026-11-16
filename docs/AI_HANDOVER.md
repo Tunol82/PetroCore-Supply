@@ -114,6 +114,8 @@ Implemented in the scaffold:
 - Transporter invoices at `/workspace/transport-invoices`: invoices and lines recorded as submitted, with liability status fixed at `not_assessed` until DR-13 is approved.
 - Finance at `/workspace/finance`: customer receipts and supplier or transporter payments recorded as supplied with explicit links, plus an operational profitability view of order revenue against net FIFO cost of sales.
 - Settings at `/workspace/settings`: organisation summary and a danger zone that clears demo transactions after typing the organisation code, keeping users, master data and audit history.
+
+**UI foundation (2026-11-16):** every workspace page is wrapped by an app shell (`src/app/workspace/layout.tsx`, `src/components/shell/app-shell.tsx`) with permission-filtered sidebar navigation, a top bar, and a mobile drawer. Design tokens live in `src/app/globals.css` (deep petrol-green brand, warm paper neutrals, brass accent, tabular numerals). Reusable primitives live in `src/components/ui` (Button, Card, Field/Input/Select/Textarea, Badge/StatusBadge, Alert, StatCard, PageHeader, EmptyState, Table). `/workspace/styleguide` is the living reference. Legacy page bodies were stripped of their duplicate headers; their forms and tables adopt the new tokens, and are being migrated to the primitives module by module.
 - Dispatch at `/workspace/dispatch`: trips, truck/driver assignments with double-booking prevention, explicit release of an assignment, and automatic release when a trip is cancelled.
 
 Current verification snapshot (2026-11-15):

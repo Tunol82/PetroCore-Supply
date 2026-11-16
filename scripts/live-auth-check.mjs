@@ -76,9 +76,9 @@ async function checkAlpha(browser) {
   const { page, consoleErrors } = await signIn(context, accounts[0]);
 
   const heading = await page.locator("h1").first().innerText();
-  const manageLinkVisible = await page.getByRole("link", { name: "Manage access" }).isVisible();
+  const accessLinkVisible = await page.getByRole("link", { name: "Access", exact: true }).first().isVisible();
 
-  await page.getByRole("link", { name: "Manage access" }).click();
+  await page.getByRole("link", { name: "Access", exact: true }).first().click();
   await page.waitForURL("**/workspace/access", { timeout: 30000 });
   const accessHeading = await page.getByRole("heading", { name: /Access for Alpha/ }).innerText();
   const auditHeadingVisible = await page
@@ -90,13 +90,13 @@ async function checkAlpha(browser) {
 
   return {
     heading,
-    manageLinkVisible,
+    accessLinkVisible,
     accessHeading,
     auditHeadingVisible,
     auditRows,
     pass:
       heading === "Alpha" &&
-      manageLinkVisible &&
+      accessLinkVisible &&
       accessHeading.includes("Alpha") &&
       auditHeadingVisible &&
       auditRows > 0,
@@ -110,7 +110,7 @@ async function checkBeta(browser) {
 
   const heading = await page.locator("h1").first().innerText();
   const body = await page.evaluate(() => document.body.textContent ?? "");
-  const manageLinkCount = await page.getByRole("link", { name: "Manage access" }).count();
+  const accessLinkCount = await page.getByRole("link", { name: "Access", exact: true }).count();
 
   await page.goto(`${baseUrl}/workspace/access`, { waitUntil: "networkidle" });
   const denied = await page
@@ -122,9 +122,9 @@ async function checkBeta(browser) {
   return {
     heading,
     leaksAlpha: body.includes("Alpha"),
-    manageLinkCount,
+    accessLinkCount,
     accessDenied: denied,
-    pass: heading === "Beta" && !body.includes("Alpha") && manageLinkCount === 0 && denied,
+    pass: heading === "Beta" && !body.includes("Alpha") && accessLinkCount === 0 && denied,
     consoleErrors,
   };
 }
