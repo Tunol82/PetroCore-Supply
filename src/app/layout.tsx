@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   },
   description:
     "Petroleum procurement, sales, dispatch, haulage and delivery operations platform.",
+  applicationName: "PetroCore Supply",
+};
+
+export const viewport = {
+  themeColor: "#1e40af",
 };
 
 export default function RootLayout({

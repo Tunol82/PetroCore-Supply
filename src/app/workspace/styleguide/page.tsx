@@ -17,6 +17,8 @@ const swatches = [
   { name: "Ink", token: "--ink", className: "bg-[var(--ink)]" },
   { name: "Muted", token: "--muted", className: "bg-[var(--muted)]" },
   { name: "Brand", token: "--brand", className: "bg-[var(--brand)]" },
+  { name: "Brand mid", token: "--brand-mid", className: "bg-[var(--brand-mid)]" },
+  { name: "Sidebar", token: "--sidebar", className: "bg-[var(--sidebar)]" },
   { name: "Accent", token: "--accent", className: "bg-[var(--accent)]" },
   { name: "Success", token: "--success", className: "bg-[var(--success)]" },
   { name: "Warning", token: "--warning", className: "bg-[var(--warning)]" },

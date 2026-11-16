@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { SignInForm } from "./sign-in-form";
+import { BrandMark } from "@/components/shell/brand-mark";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -25,7 +26,7 @@ export default async function LoginPage() {
       <div className="grid w-full max-w-5xl overflow-hidden rounded-3xl border border-[var(--line)] bg-white shadow-sm lg:grid-cols-2">
         <section className="flex flex-col justify-between bg-[var(--brand)] p-8 text-white sm:p-12">
           <div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-lg font-bold">P</div>
+            <BrandMark size={44} />
             <p className="mt-8 text-xs font-semibold uppercase tracking-[0.2em] text-white/65">Petroleum operations platform</p>
             <h1 className="mt-4 text-3xl font-semibold leading-tight sm:text-4xl">Every movement. Accounted for.</h1>
             <p className="mt-4 max-w-sm text-sm leading-7 text-white/75">

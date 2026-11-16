@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { signOut } from "@/app/workspace/actions";
+import { BrandMark } from "./brand-mark";
 
 export type NavItem = { href: string; label: string };
 export type NavGroup = { label: string; items: NavItem[] };
@@ -70,13 +71,11 @@ export function AppShell({
   );
 
   return (
-    <div className="min-h-screen lg:pl-[var(--sidebar)]">
+    <div className="min-h-screen lg:pl-[var(--sidebar-w)]">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[var(--sidebar)] flex-col bg-[var(--brand)] lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[var(--sidebar-w)] flex-col bg-[var(--sidebar)] lg:flex">
         <div className="flex items-center gap-3 px-4 py-4">
-          <span className="grid h-9 w-9 place-items-center rounded-[var(--radius-sm)] bg-white/10 text-sm font-bold text-white">
-            P
-          </span>
+          <BrandMark size={36} />
           <div>
             <p className="text-[13px] font-bold tracking-tight text-white">PETROCORE SUPPLY</p>
             <p className="text-[11px] text-white/50">Operations</p>
@@ -98,12 +97,10 @@ export function AppShell({
             className="absolute inset-0 bg-black/40"
             onClick={() => setOpen(false)}
           />
-          <aside className="relative flex h-full w-72 max-w-[85%] flex-col bg-[var(--brand)]">
+          <aside className="relative flex h-full w-72 max-w-[85%] flex-col bg-[var(--sidebar)]">
             <div className="flex items-center justify-between px-4 py-4">
               <div className="flex items-center gap-3">
-                <span className="grid h-9 w-9 place-items-center rounded-[var(--radius-sm)] bg-white/10 text-sm font-bold text-white">
-                  P
-                </span>
+                <BrandMark size={36} />
                 <div>
                   <p className="text-[13px] font-bold tracking-tight text-white">PETROCORE SUPPLY</p>
                   <p className="text-[11px] text-white/50">Operations</p>

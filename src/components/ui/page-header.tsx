@@ -15,7 +15,7 @@ export function PageHeader({
     <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--line)] pb-5">
       <div>
         {eyebrow ? (
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-mid)]">
             {eyebrow}
           </p>
         ) : null}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight, Boxes, ClipboardList, Fuel, Route, ShieldCheck } from "lucide-react";
+import { BrandMark } from "@/components/shell/brand-mark";
 
 const areas = [
   { title: "Procurement", detail: "Suppliers, depots, purchase orders and procurement batches", icon: ClipboardList },
@@ -14,7 +15,7 @@ export default function HomePage() {
       <header className="border-b border-[var(--line)] bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand)] text-sm font-bold text-white">P</div>
+            <BrandMark size={40} />
             <div>
               <p className="text-sm font-bold tracking-tight">PETROCORE SUPPLY</p>
               <p className="text-xs text-[var(--muted)]">Supply · Haulage · Delivery</p>
