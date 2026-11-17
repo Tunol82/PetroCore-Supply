@@ -1,9 +1,23 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
-import { BatchForm, DepotForm, ProductForm, PurchaseOrderForm, PurchaseOrderItemForm, SupplierForm, SupplierProductForm } from "./procurement-forms";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { Tabs } from "@/components/ui/tabs";
+import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
+import {
+  BatchForm,
+  DepotForm,
+  ProductForm,
+  PurchaseOrderForm,
+  PurchaseOrderItemForm,
+  SupplierForm,
+  SupplierProductForm,
+} from "./procurement-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +25,7 @@ type Supplier = { id: string; supplier_code: string; name: string; status: strin
 type Depot = { id: string; supplier_id: string; depot_code: string; name: string };
 type Product = { id: string; product_code: string; product_name: string; unit_of_measure: string };
 type Location = { id: string; location_name: string; location_code: string; status: string };
+
 type Batch = {
   id: string;
   batch_number: string;
@@ -55,12 +70,21 @@ type SupplierProduct = {
   status: string;
 };
 
-function formatQuantity(value: number | null) {
-  if (value === null || value === undefined) return "—";
+const TABS = ["orders", "batches", "suppliers", "catalogue"] as const;
+
+function formatQuantity(value: number) {
   return new Intl.NumberFormat("en-NG", { maximumFractionDigits: 3 }).format(value);
 }
 
-export default async function ProcurementPage() {
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+}
+
+export default async function ProcurementPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   if (!getSupabaseConfig()) {
     redirect("/workspace");
   }
@@ -85,23 +109,15 @@ export default async function ProcurementPage() {
 
   if (!canView && !canManage) {
     return (
-      <div>
-        <div className="space-y-6">
-<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Not authorised</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">You cannot view procurement for this workspace.</h1>
-            <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-              Procurement requires the <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">procurement.view</code> or{" "}
-              <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">procurement.manage</code> permission.
-            </p>
-            <Link href="/workspace" className="mt-6 inline-block text-sm font-semibold text-[var(--brand)]">
-              Return to workspace
-            </Link>
-          </section>
-        </div>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Procurement" title="Not authorised" description="You cannot view procurement." />
+        <ButtonLink href="/workspace">Return to workspace</ButtonLink>
       </div>
     );
   }
+
+  const params = await searchParams;
+  const tab = TABS.includes((params.tab ?? "") as (typeof TABS)[number]) ? (params.tab as string) : "orders";
 
   const [
     suppliersResult,
@@ -127,12 +143,12 @@ export default async function ProcurementPage() {
         "id, batch_number, supplier_id, supplier_depot_id, product_id, purchase_order_item_id, supplier_quantity, loaded_quantity, received_quantity, total_quantity_variance, fulfilment_type, variance_status, created_at",
       )
       .order("created_at", { ascending: false })
-      .limit(20),
+      .limit(50),
     supabase
       .from("purchase_orders")
       .select("id, po_number, supplier_id, order_date, expected_date, status, currency")
       .order("order_date", { ascending: false })
-      .limit(20),
+      .limit(50),
     supabase
       .from("purchase_order_items")
       .select("id, purchase_order_id, product_id, ordered_quantity, agreed_unit_price, discount_amount, line_total")
@@ -141,7 +157,7 @@ export default async function ProcurementPage() {
       .from("supplier_products")
       .select("id, supplier_id, product_id, supplier_product_code, status")
       .order("created_at", { ascending: false })
-      .limit(30),
+      .limit(100),
   ]);
 
   const queryError =
@@ -156,14 +172,8 @@ export default async function ProcurementPage() {
 
   if (queryError) {
     return (
-      <div>
-        <div className="space-y-6">
-<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Unavailable</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">Procurement data could not be loaded.</h1>
-            <p className="mt-3 text-sm leading-7 text-[var(--muted)]">No records were changed. Try again.</p>
-          </section>
-        </div>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Procurement" title="Unavailable" description="Procurement data could not be loaded." />
       </div>
     );
   }
@@ -225,83 +235,224 @@ export default async function ProcurementPage() {
     label: `${depot.name} (${depot.depot_code})`,
   }));
 
-  return (
-    <div>
-      <div className="space-y-6">
-<section className="mt-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand)]">Procurement</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">{tenant.organisationName}</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Suppliers, products, depots and procurement batches. Quantities are recorded as measured; measurement
-            policy is pending.
-          </p>
-        </section>
+  const orderValue = orderItems.reduce((sum, item) => sum + Number(item.line_total), 0);
+  const storageBatches = batches.filter((batch) => batch.fulfilment_type === "storage_receipt").length;
 
-        <section className="mt-8 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Procurement batches</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Latest 20. Batches are append-only; corrections will use a separate adjustment workflow.
-          </p>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
-                <tr>
-                  <th className="py-2 pr-3">Batch</th>
-                  <th className="py-2 pr-3">Product</th>
-                  <th className="py-2 pr-3">Order</th>
-                  <th className="py-2 pr-3">Supplier / depot</th>
-                  <th className="py-2 pr-3 text-right">Supplier</th>
-                  <th className="py-2 pr-3 text-right">Loaded</th>
-                  <th className="py-2 pr-3 text-right">Received</th>
-                  <th className="py-2 pr-3">Path</th>
-                  <th className="py-2">Variance</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {batches.map((batch) => (
-                  <tr key={batch.id}>
-                    <td className="py-2 pr-3 font-medium">{batch.batch_number}</td>
-                    <td className="py-2 pr-3">{productById.get(batch.product_id)?.product_name ?? "—"}</td>
-                    <td className="py-2 pr-3 text-xs">
-                      {batch.purchase_order_item_id
-                        ? orderById.get(
-                            orderItemById.get(batch.purchase_order_item_id)?.purchase_order_id ?? "",
-                          )?.po_number ?? "—"
-                        : "—"}
-                    </td>
-                    <td className="py-2 pr-3">
-                      {supplierById.get(batch.supplier_id)?.name ?? "—"}
-                      <span className="block text-xs text-[var(--muted)]">
-                        {depotById.get(batch.supplier_depot_id)?.name ?? "—"}
-                      </span>
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(batch.supplier_quantity)}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(batch.loaded_quantity)}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(batch.received_quantity)}</td>
-                    <td className="py-2 pr-3 text-xs">
-                      {batch.fulfilment_type === "storage_receipt" ? "Storage" : "Direct"}
-                    </td>
-                    <td className="py-2 text-xs">
-                      {batch.variance_status.replaceAll("_", " ")}
-                      {batch.total_quantity_variance !== null ? (
-                        <span className="block text-[var(--muted)]">
-                          {formatQuantity(batch.total_quantity_variance)}
-                        </span>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {batches.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No procurement batches recorded yet.</p>
-            ) : null}
-          </div>
+  const tabs = [
+    { href: "/workspace/procurement?tab=orders", label: "Purchase orders", count: orders.length },
+    { href: "/workspace/procurement?tab=batches", label: "Batches", count: batches.length },
+    { href: "/workspace/procurement?tab=suppliers", label: "Suppliers", count: suppliers.length },
+    { href: "/workspace/procurement?tab=catalogue", label: "Catalogue", count: products.length },
+  ];
+  const activeHref = `/workspace/procurement?tab=${tab}`;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Procurement"
+        title={tenant.organisationName}
+        description="Suppliers, depots, products, purchase orders and procurement batches. Quantities are recorded as measured."
+        actions={
+          <>
+            <ButtonLink href="/workspace/procurement/costs">Costs</ButtonLink>
+            <ButtonLink href="/workspace/inventory">Inventory</ButtonLink>
+          </>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Purchase orders" value={orders.length} hint={`${formatMoney(orderValue)} total`} tone="brand" />
+        <StatCard label="Procurement batches" value={batches.length} hint={`${storageBatches} storage receipt${storageBatches === 1 ? "" : "s"}`} />
+        <StatCard label="Suppliers" value={suppliers.length} hint={`${depots.length} depots`} />
+        <StatCard label="Products" value={products.length} hint={`${supplierProducts.length} supplier link${supplierProducts.length === 1 ? "" : "s"}`} />
+      </div>
+
+      <Tabs items={tabs} active={activeHref} />
+
+      {tab === "orders" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader
+              title="Purchase orders"
+              description="Commitments only. Creating a purchase order does not create inventory."
+            />
+            <CardBody>
+              {orders.length === 0 ? (
+                <EmptyState title="No purchase orders yet" description="Create one below." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={860}>
+                    <THead>
+                      <TR>
+                        <TH>PO</TH>
+                        <TH>Supplier</TH>
+                        <TH>Order date</TH>
+                        <TH>Expected</TH>
+                        <TH>Status</TH>
+                        <TH align="right">Lines</TH>
+                        <TH align="right">Value</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {orders.map((order) => {
+                        const lines = itemsByOrder.get(order.id) ?? [];
+                        const total = lines.reduce((sum, line) => sum + Number(line.line_total), 0);
+
+                        return (
+                          <TR key={order.id}>
+                            <TD className="font-medium">{order.po_number}</TD>
+                            <TD>{supplierById.get(order.supplier_id)?.name ?? "—"}</TD>
+                            <TD className="text-xs text-[var(--muted)]">{order.order_date}</TD>
+                            <TD className="text-xs text-[var(--muted)]">{order.expected_date ?? "—"}</TD>
+                            <TD>
+                              <StatusBadge status={order.status} />
+                            </TD>
+                            <TD align="right">{lines.length}</TD>
+                            <TD align="right">{formatMoney(total)}</TD>
+                          </TR>
+                        );
+                      })}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader title="Order lines" description="Ordered quantity, agreed price, discount and line total." />
+            <CardBody>
+              {orderItems.length === 0 ? (
+                <EmptyState title="No order lines" description="Add a line to a purchase order below." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={920}>
+                    <THead>
+                      <TR>
+                        <TH>PO</TH>
+                        <TH>Product</TH>
+                        <TH align="right">Ordered</TH>
+                        <TH align="right">Unit price</TH>
+                        <TH align="right">Discount</TH>
+                        <TH align="right">Line total</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {orderItems.map((item) => (
+                        <TR key={item.id}>
+                          <TD className="text-xs">{orderById.get(item.purchase_order_id)?.po_number ?? "—"}</TD>
+                          <TD>{productById.get(item.product_id)?.product_name ?? "—"}</TD>
+                          <TD align="right">{formatQuantity(Number(item.ordered_quantity))}</TD>
+                          <TD align="right">{formatMoney(Number(item.agreed_unit_price))}</TD>
+                          <TD align="right">{formatMoney(Number(item.discount_amount))}</TD>
+                          <TD align="right">{formatMoney(Number(item.line_total))}</TD>
+                        </TR>
+                      ))}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
 
           {canManage ? (
-            <div className="mt-6 border-t border-[var(--line)] pt-5">
-              <h3 className="text-sm font-semibold">Record a batch</h3>
-              <div className="mt-3">
+            <div className="grid gap-6 xl:grid-cols-2">
+              <Card>
+                <CardHeader title="Create purchase order" description="Depot options follow the chosen supplier." />
+                <CardBody>
+                  <PurchaseOrderForm suppliers={supplierOptions} depots={depotOptions} />
+                </CardBody>
+              </Card>
+              <Card>
+                <CardHeader title="Add order line" description="Price and discount are recorded as agreed." />
+                <CardBody>
+                  {orders.length === 0 ? (
+                    <EmptyState title="No purchase order yet" description="Create one before adding lines." />
+                  ) : (
+                    <PurchaseOrderItemForm orders={orderOptions} products={productOptions} />
+                  )}
+                </CardBody>
+              </Card>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {tab === "batches" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader
+              title="Procurement batches"
+              description="Append-only. Corrections will use a separate adjustment workflow."
+            />
+            <CardBody>
+              {batches.length === 0 ? (
+                <EmptyState title="No batches recorded" description="Record one below." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={1040}>
+                    <THead>
+                      <TR>
+                        <TH>Batch</TH>
+                        <TH>Product</TH>
+                        <TH>Order</TH>
+                        <TH>Supplier / depot</TH>
+                        <TH align="right">Supplier</TH>
+                        <TH align="right">Loaded</TH>
+                        <TH align="right">Received</TH>
+                        <TH>Path</TH>
+                        <TH>Variance</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {batches.map((batch) => (
+                        <TR key={batch.id}>
+                          <TD className="font-medium">{batch.batch_number}</TD>
+                          <TD>{productById.get(batch.product_id)?.product_name ?? "—"}</TD>
+                          <TD className="text-xs">
+                            {batch.purchase_order_item_id
+                              ? orderById.get(
+                                  orderItemById.get(batch.purchase_order_item_id)?.purchase_order_id ?? "",
+                                )?.po_number ?? "—"
+                              : "—"}
+                          </TD>
+                          <TD>
+                            {supplierById.get(batch.supplier_id)?.name ?? "—"}
+                            <span className="block text-xs text-[var(--muted)]">
+                              {depotById.get(batch.supplier_depot_id)?.name ?? "—"}
+                            </span>
+                          </TD>
+                          <TD align="right">{formatQuantity(Number(batch.supplier_quantity))}</TD>
+                          <TD align="right">
+                            {batch.loaded_quantity === null ? "—" : formatQuantity(Number(batch.loaded_quantity))}
+                          </TD>
+                          <TD align="right">
+                            {batch.received_quantity === null ? "—" : formatQuantity(Number(batch.received_quantity))}
+                          </TD>
+                          <TD className="text-xs">
+                            {batch.fulfilment_type === "storage_receipt" ? "Storage" : "Direct"}
+                          </TD>
+                          <TD className="text-xs">
+                            {batch.variance_status.replaceAll("_", " ")}
+                            {batch.total_quantity_variance !== null ? (
+                              <span className="block text-[var(--muted)]">
+                                {formatQuantity(Number(batch.total_quantity_variance))}
+                              </span>
+                            ) : null}
+                          </TD>
+                        </TR>
+                      ))}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
+
+          {canManage ? (
+            <Card>
+              <CardHeader title="Record a batch" description="Storage receipts can later be received into inventory." />
+              <CardBody>
                 <BatchForm
                   suppliers={supplierOptions}
                   depots={depotOptions}
@@ -309,179 +460,196 @@ export default async function ProcurementPage() {
                   locations={locationOptions}
                   purchaseOrderLines={purchaseOrderLineOptions}
                 />
-              </div>
-            </div>
+              </CardBody>
+            </Card>
           ) : null}
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Purchase orders</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Commitments only. Creating a purchase order does not create inventory.
-          </p>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
-                <tr>
-                  <th className="py-2 pr-3">PO</th>
-                  <th className="py-2 pr-3">Supplier</th>
-                  <th className="py-2 pr-3">Order date</th>
-                  <th className="py-2 pr-3">Expected</th>
-                  <th className="py-2 pr-3">Status</th>
-                  <th className="py-2 pr-3 text-right">Lines</th>
-                  <th className="py-2 text-right">Value</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {orders.map((order) => {
-                  const lines = itemsByOrder.get(order.id) ?? [];
-                  const total = lines.reduce((sum, line) => sum + Number(line.line_total), 0);
-
-                  return (
-                    <tr key={order.id}>
-                      <td className="py-2 pr-3 font-medium">{order.po_number}</td>
-                      <td className="py-2 pr-3">{supplierById.get(order.supplier_id)?.name ?? "—"}</td>
-                      <td className="py-2 pr-3">{order.order_date}</td>
-                      <td className="py-2 pr-3">{order.expected_date ?? "—"}</td>
-                      <td className="py-2 pr-3 text-xs">{order.status}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">{lines.length}</td>
-                      <td className="py-2 text-right tabular-nums">
-                        {new Intl.NumberFormat("en-NG", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        }).format(total)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {orders.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No purchase orders yet.</p>
-            ) : null}
-          </div>
-
-          {canManage ? (
-            <div className="mt-6 grid gap-6 border-t border-[var(--line)] pt-5 lg:grid-cols-2">
-              <div>
-                <h3 className="text-sm font-semibold">Create purchase order</h3>
-                <div className="mt-3">
-                  <PurchaseOrderForm suppliers={supplierOptions} depots={depotOptions} />
-                </div>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Add order line</h3>
-                <div className="mt-3">
-                  <PurchaseOrderItemForm orders={orderOptions} products={productOptions} />
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </section>
-
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">Suppliers</h2>
-            <div className="mt-3 divide-y divide-[var(--line)]">
-              {suppliers.map((supplier) => (
-                <div key={supplier.id} className="flex items-center justify-between gap-3 py-2">
-                  <div>
-                    <p className="text-sm font-medium">{supplier.name}</p>
-                    <p className="text-xs text-[var(--muted)]">{supplier.supplier_code}</p>
-                  </div>
-                  <span className="text-xs text-[var(--muted)]">{supplier.status}</span>
-                </div>
-              ))}
-              {suppliers.length === 0 ? <p className="py-2 text-sm text-[var(--muted)]">No suppliers.</p> : null}
-            </div>
-            {canManage ? (
-              <div className="mt-4 border-t border-[var(--line)] pt-4">
-                <SupplierForm />
-              </div>
-            ) : null}
-          </section>
-
-          <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">Products</h2>
-            <div className="mt-3 divide-y divide-[var(--line)]">
-              {products.map((product) => (
-                <div key={product.id} className="flex items-center justify-between gap-3 py-2">
-                  <div>
-                    <p className="text-sm font-medium">{product.product_name}</p>
-                    <p className="text-xs text-[var(--muted)]">
-                      {product.product_code} · {product.unit_of_measure}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {products.length === 0 ? <p className="py-2 text-sm text-[var(--muted)]">No products.</p> : null}
-            </div>
-            {canManage ? (
-              <div className="mt-4 border-t border-[var(--line)] pt-4">
-                <ProductForm />
-              </div>
-            ) : null}
-          </section>
         </div>
+      ) : null}
 
-        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Supplier depots</h2>
-          <div className="mt-3 divide-y divide-[var(--line)]">
-            {depots.map((depot) => (
-              <div key={depot.id} className="flex items-center justify-between gap-3 py-2">
-                <div>
-                  <p className="text-sm font-medium">{depot.name}</p>
-                  <p className="text-xs text-[var(--muted)]">
-                    {depot.depot_code} · {supplierById.get(depot.supplier_id)?.name ?? "Unknown supplier"}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {depots.length === 0 ? <p className="py-2 text-sm text-[var(--muted)]">No depots.</p> : null}
+      {tab === "suppliers" ? (
+        <div className="space-y-6">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader title="Suppliers" description="Codes and status." />
+              <CardBody>
+                {suppliers.length === 0 ? (
+                  <EmptyState title="No suppliers yet" description="Add one below." />
+                ) : (
+                  <TableScroll>
+                    <Table minWidth={520}>
+                      <THead>
+                        <TR>
+                          <TH>Code</TH>
+                          <TH>Name</TH>
+                          <TH>Status</TH>
+                        </TR>
+                      </THead>
+                      <TBody>
+                        {suppliers.map((supplier) => (
+                          <TR key={supplier.id}>
+                            <TD className="font-medium">{supplier.supplier_code}</TD>
+                            <TD>{supplier.name}</TD>
+                            <TD>
+                              <StatusBadge status={supplier.status} />
+                            </TD>
+                          </TR>
+                        ))}
+                      </TBody>
+                    </Table>
+                  </TableScroll>
+                )}
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader title="Supplier depots" description="Collection points per supplier." />
+              <CardBody>
+                {depots.length === 0 ? (
+                  <EmptyState title="No depots yet" description="Add one below." />
+                ) : (
+                  <TableScroll>
+                    <Table minWidth={560}>
+                      <THead>
+                        <TR>
+                          <TH>Supplier</TH>
+                          <TH>Depot</TH>
+                          <TH>Code</TH>
+                        </TR>
+                      </THead>
+                      <TBody>
+                        {depots.map((depot) => (
+                          <TR key={depot.id}>
+                            <TD className="text-xs">{supplierById.get(depot.supplier_id)?.name ?? "—"}</TD>
+                            <TD>{depot.name}</TD>
+                            <TD className="text-xs text-[var(--muted)]">{depot.depot_code}</TD>
+                          </TR>
+                        ))}
+                      </TBody>
+                    </Table>
+                  </TableScroll>
+                )}
+              </CardBody>
+            </Card>
           </div>
+
           {canManage ? (
-            <div className="mt-4 border-t border-[var(--line)] pt-4">
-              <DepotForm suppliers={supplierOptions} />
+            <div className="grid gap-6 xl:grid-cols-2">
+              <Card>
+                <CardHeader title="Add supplier" description="Code must be unique for this company." />
+                <CardBody>
+                  <SupplierForm />
+                </CardBody>
+              </Card>
+              <Card>
+                <CardHeader title="Add supplier depot" description="Linked to an existing supplier." />
+                <CardBody>
+                  {suppliers.length === 0 ? (
+                    <EmptyState title="No supplier yet" description="Add a supplier before a depot." />
+                  ) : (
+                    <DepotForm suppliers={supplierOptions} />
+                  )}
+                </CardBody>
+              </Card>
             </div>
           ) : null}
-        </section>
+        </div>
+      ) : null}
 
-        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Supplier pricing</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Products each supplier can supply. Agreed prices are recorded on purchase-order lines.
-          </p>
-          <div className="mt-3 divide-y divide-[var(--line)]">
-            {supplierProducts.map((link) => (
-              <div key={link.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
-                <div>
-                  <p className="text-sm font-medium">
-                    {supplierById.get(link.supplier_id)?.name ?? "Unknown supplier"} ·{" "}
-                    {productById.get(link.product_id)?.product_name ?? "Unknown product"}
-                  </p>
-                  <p className="text-xs text-[var(--muted)]">
-                    {link.supplier_product_code ?? "No supplier product code"} · {link.status}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {supplierProducts.length === 0 ? (
-              <p className="py-2 text-sm text-[var(--muted)]">No supplier product links.</p>
-            ) : null}
+      {tab === "catalogue" ? (
+        <div className="space-y-6">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader title="Products" description="Shared product catalogue for this company." />
+              <CardBody>
+                {products.length === 0 ? (
+                  <EmptyState title="No products yet" description="Add one below." />
+                ) : (
+                  <TableScroll>
+                    <Table minWidth={520}>
+                      <THead>
+                        <TR>
+                          <TH>Code</TH>
+                          <TH>Product</TH>
+                          <TH>Unit</TH>
+                        </TR>
+                      </THead>
+                      <TBody>
+                        {products.map((product) => (
+                          <TR key={product.id}>
+                            <TD className="font-medium">{product.product_code}</TD>
+                            <TD>{product.product_name}</TD>
+                            <TD className="text-xs text-[var(--muted)]">{product.unit_of_measure}</TD>
+                          </TR>
+                        ))}
+                      </TBody>
+                    </Table>
+                  </TableScroll>
+                )}
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader title="Supplier pricing" description="Supplier product codes and link status." />
+              <CardBody>
+                {supplierProducts.length === 0 ? (
+                  <EmptyState title="No supplier links" description="Add one below." />
+                ) : (
+                  <TableScroll>
+                    <Table minWidth={620}>
+                      <THead>
+                        <TR>
+                          <TH>Supplier</TH>
+                          <TH>Product</TH>
+                          <TH>Supplier code</TH>
+                          <TH>Status</TH>
+                        </TR>
+                      </THead>
+                      <TBody>
+                        {supplierProducts.map((link) => (
+                          <TR key={link.id}>
+                            <TD className="text-xs">{supplierById.get(link.supplier_id)?.name ?? "—"}</TD>
+                            <TD>{productById.get(link.product_id)?.product_name ?? "—"}</TD>
+                            <TD className="text-xs text-[var(--muted)]">{link.supplier_product_code ?? "—"}</TD>
+                            <TD>
+                              <StatusBadge status={link.status} />
+                            </TD>
+                          </TR>
+                        ))}
+                      </TBody>
+                    </Table>
+                  </TableScroll>
+                )}
+              </CardBody>
+            </Card>
           </div>
+
           {canManage ? (
-            <div className="mt-4 border-t border-[var(--line)] pt-4">
-              <SupplierProductForm suppliers={supplierOptions} products={productOptions} />
+            <div className="grid gap-6 xl:grid-cols-2">
+              <Card>
+                <CardHeader title="Add product" description="Unit defaults to litres." />
+                <CardBody>
+                  <ProductForm />
+                </CardBody>
+              </Card>
+              <Card>
+                <CardHeader title="Link supplier to product" description="Optional supplier product code." />
+                <CardBody>
+                  {suppliers.length === 0 || products.length === 0 ? (
+                    <EmptyState title="Supplier and product required" description="Add both before linking." />
+                  ) : (
+                    <SupplierProductForm suppliers={supplierOptions} products={productOptions} />
+                  )}
+                </CardBody>
+              </Card>
             </div>
           ) : null}
-        </section>
+        </div>
+      ) : null}
 
-        <p className="mt-8 text-xs leading-6 text-[var(--muted)]">
-          Every record is tenant-scoped and enforced by Row Level Security. Procurement batches are append-only and
-          audited. Tolerances, temperature correction and variance assessment remain pending business decisions.
-        </p>
-      </div>
+      <p className="text-xs leading-6 text-[var(--muted)]">
+        Quantities are recorded as supplied; measurement tolerances and variance classification remain open decisions.
+        Procurement never creates inventory until a storage receipt is received in Inventory.
+      </p>
     </div>
   );
 }
-
