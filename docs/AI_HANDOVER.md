@@ -116,7 +116,7 @@ Implemented in the scaffold:
 - Settings at `/workspace/settings`: organisation summary and a danger zone that clears demo transactions after typing the organisation code, keeping users, master data and audit history.
 
 **UI foundation (2026-11-16):** every workspace page is wrapped by an app shell (`src/app/workspace/layout.tsx`, `src/components/shell/app-shell.tsx`) with permission-filtered sidebar navigation, a top bar, and a mobile drawer. Design tokens live in `src/app/globals.css` and mirror the PetroCore.app brand: blue primary (`#1e40af`/`#2563eb`), navy sidebar (`#0b1f3a`), green positive accent (`#1d9e75`), slate neutrals and DM Sans/DM Mono. Supply is tuned denser than the retail app but shares the family palette, logo mark and typography. Reusable primitives live in `src/components/ui` (Button, Card, Field/Input/Select/Textarea, Badge/StatusBadge, Alert, StatCard, PageHeader, EmptyState, Table). `/workspace/styleguide` is the living reference. Legacy page bodies were stripped of their duplicate headers; their forms and tables adopt the new tokens, and are being migrated to the primitives module by module.
-- Dispatch at `/workspace/dispatch`: trips, truck/driver assignments with double-booking prevention, explicit release of an assignment, and automatic release when a trip is cancelled.
+- Dispatch at `/workspace/dispatch`: tabbed trips, assignments, loading and allocations. Trucks and drivers cannot hold two active assignments; release is explicit and cancelling a trip releases automatically.
 
 Current verification snapshot (2026-11-15):
 - GitHub Actions CI run for the scaffold head completed successfully.
