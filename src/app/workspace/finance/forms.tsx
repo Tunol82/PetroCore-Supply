@@ -20,6 +20,7 @@ export function PaymentForm({
   salesOrders,
   purchaseOrders,
   transporterInvoices,
+  directions,
 }: {
   customers: Option[];
   suppliers: Option[];
@@ -27,25 +28,35 @@ export function PaymentForm({
   salesOrders: Option[];
   purchaseOrders: Option[];
   transporterInvoices: Option[];
+  directions: Array<"receipt" | "payment">;
 }) {
   const [state, formAction, pending] = useActionState(recordPayment, initialState);
-  const [direction, setDirection] = useState<"receipt" | "payment">("receipt");
+  const [direction, setDirection] = useState<"receipt" | "payment">(directions[0] ?? "receipt");
 
   return (
     <form action={formAction} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label htmlFor="pm-direction" className={labelClass}>Direction</label>
-          <select
-            id="pm-direction"
-            name="direction"
-            className={fieldClass}
-            value={direction}
-            onChange={(event) => setDirection(event.target.value as "receipt" | "payment")}
-          >
-            <option value="receipt">Receipt from customer</option>
-            <option value="payment">Payment to supplier or transporter</option>
-          </select>
+          {directions.length > 1 ? (
+            <select
+              id="pm-direction"
+              name="direction"
+              className={fieldClass}
+              value={direction}
+              onChange={(event) => setDirection(event.target.value as "receipt" | "payment")}
+            >
+              {directions.includes("receipt") ? <option value="receipt">Receipt from customer</option> : null}
+              {directions.includes("payment") ? (
+                <option value="payment">Payment to supplier or transporter</option>
+              ) : null}
+            </select>
+          ) : (
+            <div className="flex items-center rounded-lg border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--ink-2)]">
+              {direction === "receipt" ? "Receipt from customer" : "Payment to supplier or transporter"}
+              <input type="hidden" name="direction" value={direction} />
+            </div>
+          )}
         </div>
 
         {direction === "receipt" ? (

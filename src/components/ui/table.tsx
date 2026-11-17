@@ -28,6 +28,12 @@ export function TBody({ children }: { children: ReactNode }) {
   return <tbody className="divide-y divide-[var(--line)]">{children}</tbody>;
 }
 
+export function TFoot({ children }: { children: ReactNode }) {
+  return (
+    <tfoot className="border-t border-[var(--line)] bg-[var(--surface-2)] font-semibold">{children}</tfoot>
+  );
+}
+
 export function TR({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <tr className={`align-top ${className}`}>{children}</tr>;
 }

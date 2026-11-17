@@ -1,8 +1,14 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
+import { Badge, StatusBadge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { Tabs } from "@/components/ui/tabs";
+import { Table, TBody, TD, TFoot, TH, THead, TR, TableScroll } from "@/components/ui/table";
 import { PaymentForm } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -40,11 +46,26 @@ type SalesOrder = { id: string; order_number: string };
 type PurchaseOrder = { id: string; po_number: string };
 type TransporterInvoice = { id: string; invoice_number: string };
 
+const TABS = ["payments", "profitability"] as const;
+
 function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(value);
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
-export default async function FinancePage() {
+function formatPercent(value: number) {
+  return `${value.toFixed(1)}%`;
+}
+
+export default async function FinancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   if (!getSupabaseConfig()) {
     redirect("/workspace");
   }
@@ -78,19 +99,15 @@ export default async function FinancePage() {
 
   if (!canView) {
     return (
-      <div>
-        <div className="space-y-6">
-<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Not authorised</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">You cannot view finance records.</h1>
-            <Link href="/workspace" className="mt-6 inline-block text-sm font-semibold text-[var(--brand)]">
-              Return to workspace
-            </Link>
-          </section>
-        </div>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Finance" title="Not authorised" description="You cannot view finance records." />
+        <ButtonLink href="/workspace">Return to workspace</ButtonLink>
       </div>
     );
   }
+
+  const params = await searchParams;
+  const tab = TABS.includes((params.tab ?? "") as (typeof TABS)[number]) ? (params.tab as string) : "payments";
 
   const [
     paymentsResult,
@@ -108,12 +125,12 @@ export default async function FinancePage() {
         "id, direction, customer_id, supplier_id, transporter_id, sales_order_id, purchase_order_id, transporter_invoice_id, amount, method, reference, paid_at, status",
       )
       .order("paid_at", { ascending: false })
-      .limit(40),
+      .limit(50),
     supabase
       .from("sales_order_profitability")
       .select("sales_order_id, order_number, order_status, revenue, cost_of_sales, gross_margin, receipts")
       .order("order_number", { ascending: false })
-      .limit(30),
+      .limit(50),
     supabase.from("customers").select("id, name").order("name"),
     supabase.from("suppliers").select("id, name").order("name"),
     supabase.from("transporters").select("id, business_name").order("business_name"),
@@ -138,14 +155,8 @@ export default async function FinancePage() {
 
   if (queryError) {
     return (
-      <div>
-        <div className="space-y-6">
-<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Unavailable</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">Finance records could not be loaded.</h1>
-            <p className="mt-3 text-sm leading-7 text-[var(--muted)]">No records were changed. Try again.</p>
-          </section>
-        </div>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Finance" title="Unavailable" description="Finance records could not be loaded." />
       </div>
     );
   }
@@ -164,101 +175,176 @@ export default async function FinancePage() {
   const transporterById = new Map(transporters.map((item) => [item.id, item]));
   const salesOrderById = new Map(salesOrders.map((item) => [item.id, item]));
   const purchaseOrderById = new Map(purchaseOrders.map((item) => [item.id, item]));
+  const transporterInvoiceById = new Map(transporterInvoices.map((item) => [item.id, item]));
 
-  const recordedReceipts = payments
-    .filter((payment) => payment.direction === "receipt")
-    .reduce((sum, payment) => sum + Number(payment.amount), 0);
-  const recordedPayments = payments
-    .filter((payment) => payment.direction === "payment")
-    .reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const receipts = payments.filter((payment) => payment.direction === "receipt");
+  const outgoings = payments.filter((payment) => payment.direction === "payment");
+  const recordedReceipts = receipts.reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const recordedPayments = outgoings.reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const netRecorded = recordedReceipts - recordedPayments;
 
-  const canRecordReceipt = Boolean(canManageSales);
-  const canRecordPayment = Boolean(canManageProcurement);
+  const totalRevenue = profitability.reduce((sum, row) => sum + Number(row.revenue), 0);
+  const totalCost = profitability.reduce((sum, row) => sum + Number(row.cost_of_sales), 0);
+  const totalMargin = profitability.reduce((sum, row) => sum + Number(row.gross_margin), 0);
+  const totalReceipted = profitability.reduce((sum, row) => sum + Number(row.receipts), 0);
+  const blendedMargin = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : null;
+
+  const directions: Array<"receipt" | "payment"> = [];
+  if (canManageSales) directions.push("receipt");
+  if (canManageProcurement) directions.push("payment");
+
+  const tabs = [
+    { href: "/workspace/finance?tab=payments", label: "Payments", count: payments.length },
+    { href: "/workspace/finance?tab=profitability", label: "Profitability", count: profitability.length },
+  ];
+  const activeHref = `/workspace/finance?tab=${tab}`;
 
   return (
-    <div>
-      <div className="space-y-6">
-<section className="mt-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand)]">Finance</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">{tenant.organisationName}</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Recorded money in and out, and operational margin from order revenue against FIFO cost of sales.
-          </p>
-        </section>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Finance"
+        title={tenant.organisationName}
+        description="Recorded money in and out, and operational margin from order revenue against FIFO cost of sales."
+        actions={
+          <>
+            <ButtonLink href="/workspace/transport-invoices">Transporter invoices</ButtonLink>
+            <ButtonLink href="/workspace/sales">Sales</ButtonLink>
+          </>
+        }
+      />
 
-        <section className="mt-8 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-[var(--line)] bg-white p-5">
-            <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Receipts</p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums">{formatMoney(recordedReceipts)}</p>
-          </div>
-          <div className="rounded-xl border border-[var(--line)] bg-white p-5">
-            <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Payments</p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums">{formatMoney(recordedPayments)}</p>
-          </div>
-          <div className="rounded-xl border border-[var(--line)] bg-white p-5">
-            <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Net recorded</p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums">
-              {formatMoney(recordedReceipts - recordedPayments)}
-            </p>
-          </div>
-        </section>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Receipts"
+          value={formatMoney(recordedReceipts)}
+          hint={`${receipts.length} receipt${receipts.length === 1 ? "" : "s"}`}
+          tone="brand"
+        />
+        <StatCard
+          label="Payments"
+          value={formatMoney(recordedPayments)}
+          hint={`${outgoings.length} payment${outgoings.length === 1 ? "" : "s"}`}
+        />
+        <StatCard
+          label="Net recorded"
+          value={formatMoney(netRecorded)}
+          hint="Receipts less payments"
+          tone={netRecorded < 0 ? "danger" : "accent"}
+        />
+        <StatCard
+          label="Operating margin"
+          value={formatMoney(totalMargin)}
+          hint={blendedMargin === null ? "No revenue recorded" : `${formatPercent(blendedMargin)} of revenue`}
+          tone={totalMargin < 0 ? "danger" : "accent"}
+        />
+      </div>
 
-        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Payments and receipts</h2>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[820px] text-left text-sm">
-              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
-                <tr>
-                  <th className="py-2 pr-3">Date</th>
-                  <th className="py-2 pr-3">Direction</th>
-                  <th className="py-2 pr-3">Party</th>
-                  <th className="py-2 pr-3">Link</th>
-                  <th className="py-2 pr-3">Method</th>
-                  <th className="py-2 pr-3">Reference</th>
-                  <th className="py-2 text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {payments.map((payment) => {
-                  const party =
-                    customerById.get(payment.customer_id ?? "")?.name ??
-                    supplierById.get(payment.supplier_id ?? "")?.name ??
-                    transporterById.get(payment.transporter_id ?? "")?.business_name ??
-                    "—";
-                  const link =
-                    salesOrderById.get(payment.sales_order_id ?? "")?.order_number ??
-                    purchaseOrderById.get(payment.purchase_order_id ?? "")?.po_number ??
-                    payment.transporter_invoice_id ??
-                    null;
+      <Tabs items={tabs} active={activeHref} />
 
-                  return (
-                    <tr key={payment.id}>
-                      <td className="py-2 pr-3 text-xs">
-                        {new Date(payment.paid_at).toLocaleDateString("en-GB")}
-                      </td>
-                      <td className="py-2 pr-3 text-xs">
-                        {payment.direction === "receipt" ? "Receipt" : "Payment"}
-                      </td>
-                      <td className="py-2 pr-3">{party}</td>
-                      <td className="py-2 pr-3 text-xs">{link ? "linked" : "—"}</td>
-                      <td className="py-2 pr-3 text-xs">{payment.method.replaceAll("_", " ")}</td>
-                      <td className="py-2 pr-3 text-xs">{payment.reference ?? "—"}</td>
-                      <td className="py-2 text-right tabular-nums">{formatMoney(Number(payment.amount))}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {payments.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No payments recorded yet.</p>
-            ) : null}
-          </div>
+      {tab === "payments" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader
+              title="Payments and receipts"
+              description="Recorded as supplied, with explicit links to an order or transporter invoice. No automatic matching."
+            />
+            <CardBody>
+              {payments.length === 0 ? (
+                <EmptyState title="No payments recorded" description="Record the first receipt or payment below." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={1000}>
+                    <THead>
+                      <TR>
+                        <TH>Date</TH>
+                        <TH>Direction</TH>
+                        <TH>Party</TH>
+                        <TH>Linked to</TH>
+                        <TH>Method</TH>
+                        <TH>Reference</TH>
+                        <TH>Status</TH>
+                        <TH align="right">Amount</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {payments.map((payment) => {
+                        const customer = payment.customer_id ? customerById.get(payment.customer_id) : undefined;
+                        const supplier = payment.supplier_id ? supplierById.get(payment.supplier_id) : undefined;
+                        const transporter = payment.transporter_id
+                          ? transporterById.get(payment.transporter_id)
+                          : undefined;
 
-          {canRecordReceipt || canRecordPayment ? (
-            <div className="mt-6 border-t border-[var(--line)] pt-5">
-              <h3 className="text-sm font-semibold">Record payment</h3>
-              <div className="mt-3">
+                        const party = customer?.name ?? supplier?.name ?? transporter?.business_name ?? "—";
+                        const partyType = customer
+                          ? "Customer"
+                          : supplier
+                            ? "Supplier"
+                            : transporter
+                              ? "Transporter"
+                              : null;
+
+                        const link =
+                          (payment.sales_order_id
+                            ? salesOrderById.get(payment.sales_order_id)?.order_number
+                            : null) ??
+                          (payment.purchase_order_id
+                            ? purchaseOrderById.get(payment.purchase_order_id)?.po_number
+                            : null) ??
+                          (payment.transporter_invoice_id
+                            ? transporterInvoiceById.get(payment.transporter_invoice_id)?.invoice_number
+                            : null) ??
+                          null;
+
+                        return (
+                          <TR key={payment.id}>
+                            <TD className="text-xs text-[var(--muted)]">
+                              {new Date(payment.paid_at).toLocaleDateString("en-GB")}
+                            </TD>
+                            <TD>
+                              <Badge tone={payment.direction === "receipt" ? "success" : "warning"}>
+                                {payment.direction}
+                              </Badge>
+                            </TD>
+                            <TD>
+                              {party}
+                              {partyType ? (
+                                <span className="block text-xs text-[var(--muted)]">{partyType}</span>
+                              ) : null}
+                            </TD>
+                            <TD className="text-xs">{link ?? <span className="text-[var(--muted)]">—</span>}</TD>
+                            <TD className="text-xs capitalize">{payment.method.replaceAll("_", " ")}</TD>
+                            <TD className="text-xs text-[var(--muted)]">{payment.reference ?? "—"}</TD>
+                            <TD>
+                              <StatusBadge status={payment.status} />
+                            </TD>
+                            <TD align="right">
+                              <span
+                                className={
+                                  payment.direction === "receipt" ? "text-[var(--success)]" : "text-[var(--ink)]"
+                                }
+                              >
+                                {formatMoney(Number(payment.amount))}
+                              </span>
+                            </TD>
+                          </TR>
+                        );
+                      })}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
+
+          {directions.length > 0 ? (
+            <Card>
+              <CardHeader
+                title="Record payment"
+                description="A receipt needs sales management permission; a supplier or transporter payment needs procurement management permission."
+              />
+              <CardBody>
                 <PaymentForm
+                  directions={directions}
                   customers={customers.map((item) => ({ id: item.id, label: item.name }))}
                   suppliers={suppliers.map((item) => ({ id: item.id, label: item.name }))}
                   transporters={transporters.map((item) => ({ id: item.id, label: item.business_name }))}
@@ -269,57 +355,90 @@ export default async function FinancePage() {
                     label: item.invoice_number,
                   }))}
                 />
-              </div>
-              <p className="mt-3 text-xs text-[var(--muted)]">
-                Recording a receipt needs sales management permission; a payment needs procurement management
-                permission.
-              </p>
-            </div>
+              </CardBody>
+            </Card>
           ) : null}
-        </section>
+        </div>
+      ) : null}
 
-        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Operational profitability</h2>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            Order revenue minus net FIFO cost of sales. Excludes overheads, and is not statutory profit.
-          </p>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
-                <tr>
-                  <th className="py-2 pr-3">Order</th>
-                  <th className="py-2 pr-3">Status</th>
-                  <th className="py-2 pr-3 text-right">Revenue</th>
-                  <th className="py-2 pr-3 text-right">Cost of sales</th>
-                  <th className="py-2 pr-3 text-right">Gross margin</th>
-                  <th className="py-2 text-right">Receipts</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {profitability.map((row) => (
-                  <tr key={row.sales_order_id}>
-                    <td className="py-2 pr-3 font-medium">{row.order_number}</td>
-                    <td className="py-2 pr-3 text-xs">{row.order_status}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(Number(row.revenue))}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(Number(row.cost_of_sales))}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(Number(row.gross_margin))}</td>
-                    <td className="py-2 text-right tabular-nums">{formatMoney(Number(row.receipts))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {tab === "profitability" ? (
+        <Card>
+          <CardHeader
+            title="Operational profitability"
+            description="Order revenue minus net FIFO cost of sales. Excludes overheads and is not statutory profit."
+          />
+          <CardBody>
             {profitability.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No sales orders yet.</p>
-            ) : null}
-          </div>
-        </section>
+              <EmptyState title="No sales orders yet" description="Profitability appears once an order is confirmed." />
+            ) : (
+              <TableScroll>
+                <Table minWidth={940}>
+                  <THead>
+                    <TR>
+                      <TH>Order</TH>
+                      <TH>Status</TH>
+                      <TH align="right">Revenue</TH>
+                      <TH align="right">Cost of sales</TH>
+                      <TH align="right">Gross margin</TH>
+                      <TH align="right">Margin %</TH>
+                      <TH align="right">Receipts</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {profitability.map((row) => {
+                      const revenue = Number(row.revenue);
+                      const margin = Number(row.gross_margin);
+                      const marginPercent = revenue > 0 ? (margin / revenue) * 100 : null;
 
-        <p className="mt-8 text-xs leading-6 text-[var(--muted)]">
-          Records are append-only. There is no automatic allocation, ageing, write-off, tax or journal posting; those
-          rules remain open. Gross margin is operational evidence, not an audited result.
-        </p>
-      </div>
+                      return (
+                        <TR key={row.sales_order_id}>
+                          <TD className="font-medium">{row.order_number}</TD>
+                          <TD>
+                            <StatusBadge status={row.order_status} />
+                          </TD>
+                          <TD align="right">{formatMoney(revenue)}</TD>
+                          <TD align="right">{formatMoney(Number(row.cost_of_sales))}</TD>
+                          <TD align="right">
+                            <span className={margin < 0 ? "text-[var(--danger)]" : ""}>{formatMoney(margin)}</span>
+                          </TD>
+                          <TD align="right" className="text-xs text-[var(--muted)]">
+                            {marginPercent === null ? "—" : formatPercent(marginPercent)}
+                          </TD>
+                          <TD align="right">{formatMoney(Number(row.receipts))}</TD>
+                        </TR>
+                      );
+                    })}
+                  </TBody>
+                  <TFoot>
+                    <TR>
+                      <TD>Total</TD>
+                      <TD className="text-xs text-[var(--muted)]">
+                        {profitability.length} order{profitability.length === 1 ? "" : "s"}
+                      </TD>
+                      <TD align="right">{formatMoney(totalRevenue)}</TD>
+                      <TD align="right">{formatMoney(totalCost)}</TD>
+                      <TD align="right">
+                        <span className={totalMargin < 0 ? "text-[var(--danger)]" : ""}>
+                          {formatMoney(totalMargin)}
+                        </span>
+                      </TD>
+                      <TD align="right" className="text-xs text-[var(--muted)]">
+                        {blendedMargin === null ? "—" : formatPercent(blendedMargin)}
+                      </TD>
+                      <TD align="right">{formatMoney(totalReceipted)}</TD>
+                    </TR>
+                  </TFoot>
+                </Table>
+              </TableScroll>
+            )}
+          </CardBody>
+        </Card>
+      ) : null}
+
+      <p className="text-xs leading-6 text-[var(--muted)]">
+        Records are append-only. There is no automatic allocation, ageing, write-off, tax or journal posting; those
+        rules remain open. Gross margin is operational evidence, not an audited result.
+      </p>
     </div>
   );
 }
-
