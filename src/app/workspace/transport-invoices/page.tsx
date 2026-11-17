@@ -1,8 +1,14 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { Tabs } from "@/components/ui/tabs";
+import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
 import { InvoiceLineForm, TransporterInvoiceForm } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -33,11 +39,26 @@ type InvoiceLine = {
 type Transporter = { id: string; business_name: string; transporter_code: string };
 type Trip = { id: string; trip_number: string };
 
+const TABS = ["invoices", "lines"] as const;
+
 function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(value);
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
-export default async function TransportInvoicesPage() {
+function formatQuantity(value: number) {
+  return new Intl.NumberFormat("en-NG", { maximumFractionDigits: 3 }).format(value);
+}
+
+export default async function TransportInvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   if (!getSupabaseConfig()) {
     redirect("/workspace");
   }
@@ -62,19 +83,19 @@ export default async function TransportInvoicesPage() {
 
   if (!canView && !canManage) {
     return (
-      <div>
-        <div className="space-y-6">
-<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Not authorised</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">You cannot view transporter invoices.</h1>
-            <Link href="/workspace" className="mt-6 inline-block text-sm font-semibold text-[var(--brand)]">
-              Return to workspace
-            </Link>
-          </section>
-        </div>
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Transporter invoices"
+          title="Not authorised"
+          description="You cannot view transporter invoices."
+        />
+        <ButtonLink href="/workspace">Return to workspace</ButtonLink>
       </div>
     );
   }
+
+  const params = await searchParams;
+  const tab = TABS.includes((params.tab ?? "") as (typeof TABS)[number]) ? (params.tab as string) : "invoices";
 
   const [invoicesResult, linesResult, transportersResult, tripsResult] = await Promise.all([
     supabase
@@ -83,29 +104,22 @@ export default async function TransportInvoicesPage() {
         "id, transporter_id, trip_id, invoice_number, invoice_date, subtotal, tax_amount, total_amount, liability_status, recorded_at",
       )
       .order("invoice_date", { ascending: false })
-      .limit(30),
+      .limit(50),
     supabase
       .from("transporter_invoice_lines")
       .select("id, invoice_id, description, quantity, unit_rate, line_total, charge_category")
       .order("created_at", { ascending: true })
-      .limit(80),
+      .limit(100),
     supabase.from("transporters").select("id, business_name, transporter_code").order("business_name"),
     supabase.from("trips").select("id, trip_number").order("created_at", { ascending: false }).limit(40),
   ]);
 
-  const queryError =
-    invoicesResult.error ?? linesResult.error ?? transportersResult.error ?? tripsResult.error;
+  const queryError = invoicesResult.error ?? linesResult.error ?? transportersResult.error ?? tripsResult.error;
 
   if (queryError) {
     return (
-      <div>
-        <div className="space-y-6">
-<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Unavailable</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">Invoices could not be loaded.</h1>
-            <p className="mt-3 text-sm leading-7 text-[var(--muted)]">No records were changed. Try again.</p>
-          </section>
-        </div>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Transporter invoices" title="Unavailable" description="Invoices could not be loaded." />
       </div>
     );
   }
@@ -119,7 +133,6 @@ export default async function TransportInvoicesPage() {
   const tripById = new Map(trips.map((item) => [item.id, item]));
   const invoiceById = new Map(invoices.map((item) => [item.id, item]));
 
-  const totalRecorded = invoices.reduce((sum, invoice) => sum + Number(invoice.total_amount), 0);
   const linesByInvoice = new Map<string, InvoiceLine[]>();
   for (const line of lines) {
     const current = linesByInvoice.get(line.invoice_id) ?? [];
@@ -127,79 +140,98 @@ export default async function TransportInvoicesPage() {
     linesByInvoice.set(line.invoice_id, current);
   }
 
+  const totalRecorded = invoices.reduce((sum, invoice) => sum + Number(invoice.total_amount), 0);
+  const totalTax = invoices.reduce((sum, invoice) => sum + Number(invoice.tax_amount), 0);
+  const awaitingAssessment = invoices.filter((invoice) => invoice.liability_status === "not_assessed").length;
+
+  const tabs = [
+    { href: "/workspace/transport-invoices?tab=invoices", label: "Invoices", count: invoices.length },
+    { href: "/workspace/transport-invoices?tab=lines", label: "Invoice lines", count: lines.length },
+  ];
+  const activeHref = `/workspace/transport-invoices?tab=${tab}`;
+
   return (
-    <div>
-      <div className="space-y-6">
-<section className="mt-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand)]">Transporter invoices</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">{tenant.organisationName}</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Invoices recorded exactly as submitted. Liability and deductions remain unassessed (DR-13).
-          </p>
-        </section>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Transporter invoices"
+        title={tenant.organisationName}
+        description="Invoices recorded exactly as submitted. Liability and deductions remain unassessed until DR-13 is approved."
+        actions={<ButtonLink href="/workspace/finance">Payments</ButtonLink>}
+      />
 
-        <section className="mt-8 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-[var(--line)] bg-white p-5">
-            <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Invoices</p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums">{invoices.length}</p>
-          </div>
-          <div className="rounded-xl border border-[var(--line)] bg-white p-5">
-            <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Recorded value</p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums">{formatMoney(totalRecorded)}</p>
-          </div>
-          <div className="rounded-xl border border-[var(--line)] bg-white p-5">
-            <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Liability assessed</p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums">0</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">DR-13 open</p>
-          </div>
-        </section>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Invoices" value={invoices.length} hint={`${lines.length} line${lines.length === 1 ? "" : "s"}`} tone="brand" />
+        <StatCard label="Recorded value" value={formatMoney(totalRecorded)} hint="Including tax as submitted" />
+        <StatCard label="Tax recorded" value={formatMoney(totalTax)} hint="As stated on the invoice" />
+        <StatCard
+          label="Awaiting assessment"
+          value={awaitingAssessment}
+          hint="DR-13 open: no liability or deductions"
+        />
+      </div>
 
-        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Invoices</h2>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[820px] text-left text-sm">
-              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
-                <tr>
-                  <th className="py-2 pr-3">Number</th>
-                  <th className="py-2 pr-3">Transporter</th>
-                  <th className="py-2 pr-3">Trip</th>
-                  <th className="py-2 pr-3">Date</th>
-                  <th className="py-2 pr-3 text-right">Subtotal</th>
-                  <th className="py-2 pr-3 text-right">Tax</th>
-                  <th className="py-2 pr-3 text-right">Total</th>
-                  <th className="py-2">Liability</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {invoices.map((invoice) => (
-                  <tr key={invoice.id}>
-                    <td className="py-2 pr-3 font-medium">{invoice.invoice_number}</td>
-                    <td className="py-2 pr-3">
-                      {transporterById.get(invoice.transporter_id)?.business_name ?? "—"}
-                    </td>
-                    <td className="py-2 pr-3 text-xs">
-                      {invoice.trip_id ? tripById.get(invoice.trip_id)?.trip_number ?? "—" : "—"}
-                    </td>
-                    <td className="py-2 pr-3 text-xs">
-                      {new Date(invoice.invoice_date).toLocaleDateString("en-GB")}
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(Number(invoice.subtotal))}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(Number(invoice.tax_amount))}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(Number(invoice.total_amount))}</td>
-                    <td className="py-2 text-xs">{invoice.liability_status.replaceAll("_", " ")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {invoices.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No transporter invoices recorded yet.</p>
-            ) : null}
-          </div>
+      <Tabs items={tabs} active={activeHref} />
+
+      {tab === "invoices" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader
+              title="Invoices"
+              description="Subtotal and tax are recorded as submitted; the total is not recomputed here."
+            />
+            <CardBody>
+              {invoices.length === 0 ? (
+                <EmptyState title="No transporter invoices" description="Record the first invoice below." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={980}>
+                    <THead>
+                      <TR>
+                        <TH>Number</TH>
+                        <TH>Transporter</TH>
+                        <TH>Trip</TH>
+                        <TH>Date</TH>
+                        <TH align="right">Subtotal</TH>
+                        <TH align="right">Tax</TH>
+                        <TH align="right">Total</TH>
+                        <TH align="right">Lines</TH>
+                        <TH>Liability</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {invoices.map((invoice) => (
+                        <TR key={invoice.id}>
+                          <TD className="font-medium">{invoice.invoice_number}</TD>
+                          <TD className="text-xs">
+                            {transporterById.get(invoice.transporter_id)?.business_name ?? "—"}
+                          </TD>
+                          <TD className="text-xs">{invoice.trip_id ? tripById.get(invoice.trip_id)?.trip_number ?? "—" : "—"}</TD>
+                          <TD className="text-xs text-[var(--muted)]">
+                            {new Date(invoice.invoice_date).toLocaleDateString("en-GB")}
+                          </TD>
+                          <TD align="right">{formatMoney(Number(invoice.subtotal))}</TD>
+                          <TD align="right">{formatMoney(Number(invoice.tax_amount))}</TD>
+                          <TD align="right">{formatMoney(Number(invoice.total_amount))}</TD>
+                          <TD align="right">{(linesByInvoice.get(invoice.id) ?? []).length}</TD>
+                          <TD>
+                            <StatusBadge status={invoice.liability_status} />
+                          </TD>
+                        </TR>
+                      ))}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
 
           {canManage ? (
-            <div className="mt-6 border-t border-[var(--line)] pt-5">
-              <h3 className="text-sm font-semibold">Record invoice</h3>
-              <div className="mt-3">
+            <Card>
+              <CardHeader
+                title="Record invoice"
+                description="Record the invoice exactly as the transporter submitted it. Nothing here creates a payable."
+              />
+              <CardBody>
                 <TransporterInvoiceForm
                   transporters={transporters.map((item) => ({
                     id: item.id,
@@ -207,54 +239,73 @@ export default async function TransportInvoicesPage() {
                   }))}
                   trips={trips.map((item) => ({ id: item.id, label: item.trip_number }))}
                 />
-              </div>
-            </div>
+              </CardBody>
+            </Card>
           ) : null}
-        </section>
+        </div>
+      ) : null}
 
-        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Invoice lines</h2>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[700px] text-left text-sm">
-              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
-                <tr>
-                  <th className="py-2 pr-3">Invoice</th>
-                  <th className="py-2 pr-3">Description</th>
-                  <th className="py-2 pr-3">Category</th>
-                  <th className="py-2 pr-3 text-right">Quantity</th>
-                  <th className="py-2 pr-3 text-right">Unit rate</th>
-                  <th className="py-2 text-right">Line total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {lines.map((line) => (
-                  <tr key={line.id}>
-                    <td className="py-2 pr-3 text-xs">{invoiceById.get(line.invoice_id)?.invoice_number ?? "—"}</td>
-                    <td className="py-2 pr-3">{line.description}</td>
-                    <td className="py-2 pr-3 text-xs">
-                      {line.charge_category ? line.charge_category.replaceAll("_", " ") : "—"}
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums">
-                      {new Intl.NumberFormat("en-NG", { maximumFractionDigits: 3 }).format(Number(line.quantity))}
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(Number(line.unit_rate))}</td>
-                    <td className="py-2 text-right tabular-nums">{formatMoney(Number(line.line_total))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {lines.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No invoice lines recorded yet.</p>
-            ) : null}
-          </div>
+      {tab === "lines" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader
+              title="Invoice lines"
+              description="Charges as billed, with the category left optional so an unusual charge can still be recorded."
+            />
+            <CardBody>
+              {lines.length === 0 ? (
+                <EmptyState title="No invoice lines" description="Add a line to a recorded invoice below." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={900}>
+                    <THead>
+                      <TR>
+                        <TH>Invoice</TH>
+                        <TH>Transporter</TH>
+                        <TH>Description</TH>
+                        <TH>Category</TH>
+                        <TH align="right">Quantity</TH>
+                        <TH align="right">Unit rate</TH>
+                        <TH align="right">Line total</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {lines.map((line) => {
+                        const invoice = invoiceById.get(line.invoice_id);
+
+                        return (
+                          <TR key={line.id}>
+                            <TD className="text-xs font-medium">{invoice?.invoice_number ?? "—"}</TD>
+                            <TD className="text-xs text-[var(--muted)]">
+                              {invoice ? transporterById.get(invoice.transporter_id)?.business_name ?? "—" : "—"}
+                            </TD>
+                            <TD>{line.description}</TD>
+                            <TD className="text-xs capitalize">
+                              {line.charge_category ? line.charge_category.replaceAll("_", " ") : "—"}
+                            </TD>
+                            <TD align="right">{formatQuantity(Number(line.quantity))}</TD>
+                            <TD align="right">{formatMoney(Number(line.unit_rate))}</TD>
+                            <TD align="right">{formatMoney(Number(line.line_total))}</TD>
+                          </TR>
+                        );
+                      })}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
 
           {canManage ? (
-            <div className="mt-6 border-t border-[var(--line)] pt-5">
-              <h3 className="text-sm font-semibold">Add invoice line</h3>
-              {invoices.length === 0 ? (
-                <p className="mt-3 text-sm text-[var(--muted)]">Record an invoice before adding lines.</p>
-              ) : (
-                <div className="mt-3">
+            <Card>
+              <CardHeader
+                title="Add invoice line"
+                description="Quantity times unit rate produces the line total. The charge category is optional."
+              />
+              <CardBody>
+                {invoices.length === 0 ? (
+                  <EmptyState title="No invoice to add to" description="Record an invoice before adding lines." />
+                ) : (
                   <InvoiceLineForm
                     invoices={invoices.map((invoice) => ({
                       id: invoice.id,
@@ -263,18 +314,17 @@ export default async function TransportInvoicesPage() {
                       }`,
                     }))}
                   />
-                </div>
-              )}
-            </div>
+                )}
+              </CardBody>
+            </Card>
           ) : null}
-        </section>
+        </div>
+      ) : null}
 
-        <p className="mt-8 text-xs leading-6 text-[var(--muted)]">
-          Invoices are append-only evidence. Nothing here creates a payable, a payment, a deduction from a driver or
-          transporter, or a loss. Those rules await DR-13.
-        </p>
-      </div>
+      <p className="text-xs leading-6 text-[var(--muted)]">
+        Invoices are append-only evidence. Nothing here creates a payable, a payment, a deduction from a driver or
+        transporter, or a loss. Those rules await DR-13.
+      </p>
     </div>
   );
 }
-
