@@ -182,7 +182,9 @@ export default async function ProcurementCostsPage({
           hint={
             categories.length === 0
               ? "No categories configured"
-              : `${landedCategories} of ${categories.length} categories include`
+              : landedCategories === categories.length
+                ? "All categories include landed cost"
+                : `${landedCategories} of ${categories.length} categories include`
           }
         />
         <StatCard
