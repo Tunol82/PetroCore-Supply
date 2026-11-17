@@ -1,8 +1,14 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge, Badge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { Tabs } from "@/components/ui/tabs";
+import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
 import { DeliveryForm, EvidenceForm } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +32,7 @@ type Evidence = {
   evidence_type: string;
   file_path: string;
   original_filename: string | null;
+  notes: string | null;
   uploaded_at: string;
 };
 
@@ -37,7 +44,24 @@ type CustomerLocation = { id: string; customer_id: string; location_name: string
 type Product = { id: string; product_name: string };
 type LoadingRecord = { id: string; trip_id: string; product_id: string; loaded_quantity: number };
 
-export default async function DeliveriesPage() {
+const TABS = ["deliveries", "evidence"] as const;
+
+const EVIDENCE_TONES: Record<string, "brand" | "success" | "accent" | "neutral"> = {
+  signature: "success",
+  photo: "brand",
+  waybill: "accent",
+  other: "neutral",
+};
+
+function formatQuantity(value: number) {
+  return new Intl.NumberFormat("en-NG", { maximumFractionDigits: 3 }).format(value);
+}
+
+export default async function DeliveriesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   if (!getSupabaseConfig()) {
     redirect("/workspace");
   }
@@ -62,19 +86,15 @@ export default async function DeliveriesPage() {
 
   if (!canView && !canManage) {
     return (
-      <div>
-        <div className="space-y-6">
-<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Not authorised</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">You cannot view deliveries.</h1>
-            <Link href="/workspace" className="mt-6 inline-block text-sm font-semibold text-[var(--brand)]">
-              Return to workspace
-            </Link>
-          </section>
-        </div>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Deliveries" title="Not authorised" description="You cannot view deliveries." />
+        <ButtonLink href="/workspace">Return to workspace</ButtonLink>
       </div>
     );
   }
+
+  const params = await searchParams;
+  const tab = TABS.includes((params.tab ?? "") as (typeof TABS)[number]) ? (params.tab as string) : "deliveries";
 
   const [
     deliveriesResult,
@@ -93,13 +113,13 @@ export default async function DeliveriesPage() {
         "id, trip_id, sales_order_item_id, customer_location_id, product_id, delivered_quantity, customer_confirmed_quantity, delivery_status, delivery_time, waybill_reference",
       )
       .order("delivery_time", { ascending: false })
-      .limit(30),
+      .limit(50),
     supabase
       .from("delivery_evidence")
-      .select("id, trip_delivery_record_id, evidence_type, file_path, original_filename, uploaded_at")
+      .select("id, trip_delivery_record_id, evidence_type, file_path, original_filename, notes, uploaded_at")
       .order("uploaded_at", { ascending: false })
-      .limit(30),
-    supabase.from("trips").select("id, trip_number").order("created_at", { ascending: false }).limit(30),
+      .limit(50),
+    supabase.from("trips").select("id, trip_number").order("created_at", { ascending: false }).limit(50),
     supabase.from("sales_order_items").select("id, sales_order_id, product_id, quantity"),
     supabase.from("sales_orders").select("id, order_number, customer_id"),
     supabase.from("customers").select("id, name").order("name"),
@@ -109,7 +129,7 @@ export default async function DeliveriesPage() {
       .from("trip_loading_records")
       .select("id, trip_id, product_id, loaded_quantity")
       .order("loading_time", { ascending: false })
-      .limit(30),
+      .limit(50),
   ]);
 
   const queryError =
@@ -125,13 +145,8 @@ export default async function DeliveriesPage() {
 
   if (queryError) {
     return (
-      <div>
-        <div className="space-y-6">
-<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Unavailable</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">Delivery data could not be loaded.</h1>
-          </section>
-        </div>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Deliveries" title="Unavailable" description="Delivery data could not be loaded." />
       </div>
     );
   }
@@ -194,81 +209,126 @@ export default async function DeliveriesPage() {
     id: delivery.id,
     label: `${tripById.get(delivery.trip_id)?.trip_number ?? "trip"} · ${
       productById.get(delivery.product_id)?.product_name ?? "product"
-    } · ${Number(delivery.delivered_quantity).toLocaleString("en-NG")}`,
+    } · ${formatQuantity(Number(delivery.delivered_quantity))}`,
   }));
 
+  const confirmed = deliveries.filter((delivery) => delivery.customer_confirmed_quantity !== null).length;
+  const pendingConfirmation = deliveries.length - confirmed;
+  const deliveredVolume = deliveries.reduce((sum, delivery) => sum + Number(delivery.delivered_quantity), 0);
+
+  const tabs = [
+    { href: "/workspace/deliveries?tab=deliveries", label: "Deliveries", count: deliveries.length },
+    { href: "/workspace/deliveries?tab=evidence", label: "Evidence", count: evidence.length },
+  ];
+  const activeHref = `/workspace/deliveries?tab=${tab}`;
+
   return (
-    <div>
-      <div className="space-y-6">
-<section className="mt-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand)]">Delivery</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">{tenant.organisationName}</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Delivery records, customer-confirmed quantities and evidence references.
-          </p>
-        </section>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Deliveries"
+        title={tenant.organisationName}
+        description="Delivery records, customer-confirmed quantities and evidence references. Evidence files stay in private tenant storage."
+        actions={
+          <>
+            <ButtonLink href="/workspace/dispatch">Dispatch</ButtonLink>
+            <ButtonLink href="/workspace/sales">Sales</ButtonLink>
+          </>
+        }
+      />
 
-        <section className="mt-8 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Deliveries</h2>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
-                <tr>
-                  <th className="py-2 pr-3">Trip</th>
-                  <th className="py-2 pr-3">Order line</th>
-                  <th className="py-2 pr-3">Location</th>
-                  <th className="py-2 pr-3 text-right">Delivered</th>
-                  <th className="py-2 pr-3 text-right">Confirmed</th>
-                  <th className="py-2 pr-3">Status</th>
-                  <th className="py-2">Time</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {deliveries.map((delivery) => {
-                  const item = salesItemById.get(delivery.sales_order_item_id);
-                  const order = item ? salesOrderById.get(item.sales_order_id) : undefined;
-                  const location = locationById.get(delivery.customer_location_id);
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Deliveries" value={deliveries.length} hint={`${formatQuantity(deliveredVolume)} delivered`} tone="brand" />
+        <StatCard label="Confirmed" value={confirmed} hint="Customer-confirmed quantity recorded" />
+        <StatCard
+          label="Pending confirmation"
+          value={pendingConfirmation}
+          hint={
+            deliveries.length === 0 ? "No deliveries yet" : pendingConfirmation === 0 ? "All confirmed" : "Awaiting customer sign-off"
+          }
+        />
+        <StatCard label="Evidence files" value={evidence.length} hint="Signed links valid 10 minutes" />
+      </div>
 
-                  return (
-                    <tr key={delivery.id}>
-                      <td className="py-2 pr-3 font-medium">
-                        {tripById.get(delivery.trip_id)?.trip_number ?? "—"}
-                      </td>
-                      <td className="py-2 pr-3 text-xs">
-                        {order?.order_number ?? "—"} · {productById.get(delivery.product_id)?.product_name ?? "—"}
-                      </td>
-                      <td className="py-2 pr-3 text-xs">
-                        {location?.location_name ?? "—"}
-                        <span className="block text-[var(--muted)]">
-                          {customerById.get(location?.customer_id ?? "")?.name ?? ""}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
-                        {Number(delivery.delivered_quantity).toLocaleString("en-NG")}
-                      </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
-                        {delivery.customer_confirmed_quantity === null
-                          ? "—"
-                          : Number(delivery.customer_confirmed_quantity).toLocaleString("en-NG")}
-                      </td>
-                      <td className="py-2 pr-3 text-xs">{delivery.delivery_status}</td>
-                      <td className="py-2 text-xs">
-                        {new Date(delivery.delivery_time).toLocaleDateString("en-GB")}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {deliveries.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No deliveries recorded yet.</p>
-            ) : null}
-          </div>
+      <Tabs items={tabs} active={activeHref} />
+
+      {tab === "deliveries" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader
+              title="Delivery records"
+              description="Cumulative deliveries cannot exceed the ordered quantity; confirmed quantity cannot exceed delivered quantity."
+            />
+            <CardBody>
+              {deliveries.length === 0 ? (
+                <EmptyState title="No deliveries recorded" description="Record the first delivery below." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={980}>
+                    <THead>
+                      <TR>
+                        <TH>Trip</TH>
+                        <TH>Order line</TH>
+                        <TH>Location</TH>
+                        <TH align="right">Delivered</TH>
+                        <TH align="right">Confirmed</TH>
+                        <TH>Status</TH>
+                        <TH>Waybill</TH>
+                        <TH>Date</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {deliveries.map((delivery) => {
+                        const item = salesItemById.get(delivery.sales_order_item_id);
+                        const order = item ? salesOrderById.get(item.sales_order_id) : undefined;
+                        const location = locationById.get(delivery.customer_location_id);
+
+                        return (
+                          <TR key={delivery.id}>
+                            <TD className="font-medium">{tripById.get(delivery.trip_id)?.trip_number ?? "—"}</TD>
+                            <TD className="text-xs">
+                              {order?.order_number ?? "—"}
+                              <span className="block text-[var(--muted)]">
+                                {productById.get(delivery.product_id)?.product_name ?? "—"}
+                              </span>
+                            </TD>
+                            <TD className="text-xs">
+                              {location?.location_name ?? "—"}
+                              <span className="block text-[var(--muted)]">
+                                {customerById.get(location?.customer_id ?? "")?.name ?? ""}
+                              </span>
+                            </TD>
+                            <TD align="right">{formatQuantity(Number(delivery.delivered_quantity))}</TD>
+                            <TD align="right">
+                              {delivery.customer_confirmed_quantity === null ? (
+                                <span className="text-[var(--muted)]">—</span>
+                              ) : (
+                                formatQuantity(Number(delivery.customer_confirmed_quantity))
+                              )}
+                            </TD>
+                            <TD>
+                              <StatusBadge status={delivery.delivery_status} />
+                            </TD>
+                            <TD className="text-xs text-[var(--muted)]">{delivery.waybill_reference ?? "—"}</TD>
+                            <TD className="text-xs text-[var(--muted)]">
+                              {new Date(delivery.delivery_time).toLocaleDateString("en-GB")}
+                            </TD>
+                          </TR>
+                        );
+                      })}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
 
           {canManage ? (
-            <div className="mt-6 border-t border-[var(--line)] pt-5">
-              <h3 className="text-sm font-semibold">Record delivery</h3>
-              <div className="mt-3">
+            <Card>
+              <CardHeader
+                title="Record delivery"
+                description="Link the trip, order line, product and delivery location. Measurement fields are optional."
+              />
+              <CardBody>
                 <DeliveryForm
                   trips={tripOptions}
                   salesLines={salesLineOptions}
@@ -276,77 +336,97 @@ export default async function DeliveriesPage() {
                   locations={locationOptions}
                   products={productOptions}
                 />
-              </div>
-            </div>
+              </CardBody>
+            </Card>
           ) : null}
-        </section>
+        </div>
+      ) : null}
 
-        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Delivery evidence</h2>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
-                <tr>
-                  <th className="py-2 pr-3">Delivery</th>
-                  <th className="py-2 pr-3">Type</th>
-                  <th className="py-2 pr-3">File</th>
-                  <th className="py-2">Uploaded</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {evidence.map((item) => {
-                  const delivery = deliveryById.get(item.trip_delivery_record_id);
+      {tab === "evidence" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader
+              title="Delivery evidence"
+              description="Signatures, photos and waybills attached to a delivery record. Evidence is append-only."
+            />
+            <CardBody>
+              {evidence.length === 0 ? (
+                <EmptyState title="No evidence uploaded" description="Upload the first file below." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={760}>
+                    <THead>
+                      <TR>
+                        <TH>Delivery</TH>
+                        <TH>Type</TH>
+                        <TH>File</TH>
+                        <TH>Notes</TH>
+                        <TH>Uploaded</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {evidence.map((item) => {
+                        const delivery = deliveryById.get(item.trip_delivery_record_id);
 
-                  return (
-                    <tr key={item.id}>
-                      <td className="py-2 pr-3 text-xs">
-                        {delivery ? tripById.get(delivery.trip_id)?.trip_number ?? "delivery" : "-"}
-                      </td>
-                      <td className="py-2 pr-3 text-xs">{item.evidence_type}</td>
-                      <td className="py-2 pr-3 text-xs break-all">
-                        {evidenceLinks.has(item.id) ? (
-                          <a
-                            className="font-semibold text-[var(--brand)]"
-                            href={evidenceLinks.get(item.id)}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {item.original_filename ?? "Open file"}
-                          </a>
-                        ) : (
-                          item.original_filename ?? item.file_path
-                        )}
-                      </td>
-                      <td className="py-2 text-xs">
-                        {new Date(item.uploaded_at).toLocaleDateString("en-GB")}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {evidence.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No evidence recorded yet.</p>
-            ) : null}
-          </div>
+                        return (
+                          <TR key={item.id}>
+                            <TD className="text-xs">
+                              {delivery ? tripById.get(delivery.trip_id)?.trip_number ?? "delivery" : "—"}
+                            </TD>
+                            <TD>
+                              <Badge tone={EVIDENCE_TONES[item.evidence_type] ?? "neutral"}>{item.evidence_type}</Badge>
+                            </TD>
+                            <TD className="break-all text-xs">
+                              {evidenceLinks.has(item.id) ? (
+                                <a
+                                  className="font-semibold text-[var(--brand)] hover:underline"
+                                  href={evidenceLinks.get(item.id)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  {item.original_filename ?? "Open file"}
+                                </a>
+                              ) : (
+                                <span className="text-[var(--muted)]">{item.original_filename ?? item.file_path}</span>
+                              )}
+                            </TD>
+                            <TD className="text-xs text-[var(--muted)]">{item.notes ?? "—"}</TD>
+                            <TD className="text-xs text-[var(--muted)]">
+                              {new Date(item.uploaded_at).toLocaleDateString("en-GB")}
+                            </TD>
+                          </TR>
+                        );
+                      })}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
 
           {canManage ? (
-            <div className="mt-6 border-t border-[var(--line)] pt-5">
-              <h3 className="text-sm font-semibold">Upload evidence</h3>
-              <div className="mt-3">
-                <EvidenceForm deliveries={deliveryOptions} />
-              </div>
-            </div>
+            <Card>
+              <CardHeader
+                title="Upload evidence"
+                description="JPEG, PNG, WebP or PDF up to 5 MB. Files upload to private tenant storage."
+              />
+              <CardBody>
+                {deliveries.length === 0 ? (
+                  <EmptyState title="No delivery to attach to" description="Record a delivery before uploading evidence." />
+                ) : (
+                  <EvidenceForm deliveries={deliveryOptions} />
+                )}
+              </CardBody>
+            </Card>
           ) : null}
-        </section>
+        </div>
+      ) : null}
 
-        <p className="mt-8 text-xs leading-6 text-[var(--muted)]">
-          Evidence files upload to private tenant storage and are append-only; signed links expire after ten minutes.
-          Delivery confirmation is stored on the delivery row; a separate immutable confirmation event is a pending
-          decision.
-        </p>
-      </div>
+      <p className="text-xs leading-6 text-[var(--muted)]">
+        Evidence files upload to private tenant storage and are append-only; signed links expire after ten minutes.
+        Delivery confirmation is stored on the delivery row; a separate immutable confirmation event is a pending
+        decision.
+      </p>
     </div>
   );
 }
-
