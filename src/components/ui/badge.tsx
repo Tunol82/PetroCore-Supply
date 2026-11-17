@@ -44,6 +44,7 @@ const aliases: Record<string, Tone> = {
   failed: "danger",
   planned: "neutral",
   in_transit: "brand",
+  maintenance: "warning",
   delivered: "success",
   receipt: "brand",
   issue: "accent",
@@ -51,12 +52,20 @@ const aliases: Record<string, Tone> = {
   adjustment: "warning",
 };
 
-export function Badge({ children, tone }: { children: ReactNode; tone?: Tone }) {
+export function Badge({
+  children,
+  tone,
+  capitalize = true,
+}: {
+  children: ReactNode;
+  tone?: Tone;
+  capitalize?: boolean;
+}) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${
-        tones[tone ?? "neutral"]
-      }`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+        capitalize ? "capitalize" : ""
+      } ${tones[tone ?? "neutral"]}`}
     >
       {children}
     </span>
