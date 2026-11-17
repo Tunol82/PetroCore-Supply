@@ -1,8 +1,14 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
+import { PageHeader, EmptyState } from "@/components/ui/page-header";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
+import { Badge, StatusBadge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { Tabs } from "@/components/ui/tabs";
+import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
 import { AssignRoleForm, GrantAccessForm, RevokeForm } from "./access-forms";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +27,8 @@ type AuditEvent = {
   created_at: string;
 };
 
+const TABS = ["members", "access", "activity"] as const;
+
 const AUDIT_ACTION_LABELS: Record<string, string> = {
   "access.role_assigned": "Role assigned",
   "access.role_revoked": "Role revoked",
@@ -36,7 +44,15 @@ function formatAuditTime(value: string) {
   }).format(new Date(value));
 }
 
-export default async function AccessPage() {
+function humanise(value: string) {
+  return value.replaceAll("_", " ");
+}
+
+export default async function AccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   if (!getSupabaseConfig()) {
     redirect("/workspace");
   }
@@ -64,20 +80,14 @@ export default async function AccessPage() {
 
   if (!canManage) {
     return (
-      <div>
-        <div className="space-y-6">
-<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Not authorised</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">You cannot manage access for this workspace.</h1>
-            <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-              Access administration requires the <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">users.manage</code>{" "}
-              permission. Ask a workspace administrator if you need it.
-            </p>
-            <Link href="/workspace" className="mt-6 inline-block text-sm font-semibold text-[var(--brand)]">
-              Return to workspace
-            </Link>
-          </section>
-        </div>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Access" title="Not authorised" description="You cannot manage access for this workspace." />
+        <p className="text-sm text-[var(--muted)]">
+          Access administration requires the{" "}
+          <code className="rounded bg-[var(--surface-3)] px-1 py-0.5 text-xs">users.manage</code> permission. Ask a
+          workspace administrator if you need it.
+        </p>
+        <ButtonLink href="/workspace">Return to workspace</ButtonLink>
       </div>
     );
   }
@@ -86,13 +96,8 @@ export default async function AccessPage() {
     supabase.from("profiles").select("id, full_name, email, status").order("full_name"),
     supabase.from("roles").select("id, name, is_system_role").order("name"),
     supabase.from("user_roles").select("id, user_id, role_id"),
-    supabase
-      .from("business_locations")
-      .select("id, location_code, location_name, status")
-      .order("location_name"),
-    supabase
-      .from("user_location_access")
-      .select("id, user_id, location_id, access_level, status"),
+    supabase.from("business_locations").select("id, location_code, location_name, status").order("location_name"),
+    supabase.from("user_location_access").select("id, user_id, location_id, access_level, status"),
   ]);
 
   const queryError =
@@ -110,23 +115,18 @@ export default async function AccessPage() {
       .select("id, action, entity_type, entity_id, user_id, created_at")
       .like("action", "access.%")
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(30);
 
     auditEvents = (auditData ?? []) as AuditEvent[];
   }
 
   if (queryError) {
     return (
-      <div>
-        <div className="space-y-6">
-<section className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Unavailable</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">Access data could not be loaded.</h1>
-            <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-              No access records were changed. Try again, or ask your administrator to check the workspace.
-            </p>
-          </section>
-        </div>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Access" title="Unavailable" description="Access data could not be loaded." />
+        <p className="text-sm text-[var(--muted)]">
+          No access records were changed. Try again, or ask your administrator to check the workspace.
+        </p>
       </div>
     );
   }
@@ -140,8 +140,8 @@ export default async function AccessPage() {
   const memberById = new Map(members.map((member) => [member.id, member]));
   const roleById = new Map(roles.map((role) => [role.id, role]));
   const locationById = new Map(locations.map((location) => [location.id, location]));
-  const rolesByMember = new Map<string, UserRole[]>();
 
+  const rolesByMember = new Map<string, UserRole[]>();
   for (const assignment of userRoles) {
     const current = rolesByMember.get(assignment.user_id) ?? [];
     current.push(assignment);
@@ -161,156 +161,247 @@ export default async function AccessPage() {
       label: `${location.location_name} (${location.location_code})`,
     }));
 
+  const params = await searchParams;
+  const requestedTab = TABS.includes((params.tab ?? "") as (typeof TABS)[number]) ? (params.tab as string) : "members";
+  const tab = requestedTab === "activity" && !canViewAudit ? "members" : requestedTab;
+
+  const membersWithoutRoles = members.filter((member) => (rolesByMember.get(member.id) ?? []).length === 0).length;
+  const activeGrants = grants.filter((grant) => grant.status === "active").length;
+  const activeLocations = locations.filter((location) => location.status === "active").length;
+
+  const tabs = [
+    { href: "/workspace/access?tab=members", label: "Members", count: members.length },
+    { href: "/workspace/access?tab=access", label: "Location access", count: grants.length },
+    ...(canViewAudit
+      ? [{ href: "/workspace/access?tab=activity", label: "Activity", count: auditEvents.length }]
+      : []),
+  ];
+  const activeHref = `/workspace/access?tab=${tab}`;
+
   return (
-    <div>
-      <div className="mx-auto max-w-5xl">
-<section className="mt-10 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand)]">Tenant administration</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight">Access for {tenant.organisationName}</h1>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              {tenant.organisationCode} · {members.length} member{members.length === 1 ? "" : "s"} · {locations.length} location
-              {locations.length === 1 ? "" : "s"}
-            </p>
-          </div>
-          <Link
-            href="/workspace"
-            className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium hover:bg-slate-50"
-          >
-            Back to workspace
-          </Link>
-        </section>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Tenant administration"
+        title={tenant.organisationName}
+        description={`${tenant.organisationCode} · members, role assignments and location grants. Every change is enforced by row level security and audited.`}
+        actions={<ButtonLink href="/workspace/settings">Settings</ButtonLink>}
+      />
 
-        <section className="mt-8 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Members and roles</h2>
-          <div className="mt-4 divide-y divide-[var(--line)]">
-            {members.map((member) => {
-              const assignments = rolesByMember.get(member.id) ?? [];
-
-              return (
-                <div key={member.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
-                  <div>
-                    <p className="text-sm font-medium">{member.full_name ?? member.email}</p>
-                    <p className="text-xs text-[var(--muted)]">{member.email}</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {assignments.length === 0 ? (
-                      <span className="text-xs text-[var(--muted)]">No roles</span>
-                    ) : (
-                      assignments.map((assignment) => (
-                        <span
-                          key={assignment.id}
-                          className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-medium text-[var(--brand)]"
-                        >
-                          {roleById.get(assignment.role_id)?.name ?? "Unknown role"}
-                          <RevokeForm kind="role" id={assignment.id} />
-                        </span>
-                      ))
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            {members.length === 0 ? <p className="py-3 text-sm text-[var(--muted)]">No members yet.</p> : null}
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Assign a role</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">Roles define which permissions a member holds.</p>
-          <div className="mt-4">
-            {roleOptions.length > 0 ? (
-              <AssignRoleForm members={memberOptions} roles={roleOptions} />
-            ) : (
-              <p className="text-sm text-[var(--muted)]">No roles exist in this tenant yet.</p>
-            )}
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Location access</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Members see a location only when granted, unless their role includes tenant-wide location visibility.
-          </p>
-          <div className="mt-4 divide-y divide-[var(--line)]">
-            {grants.map((grant) => {
-              const member = memberById.get(grant.user_id);
-              const location = locationById.get(grant.location_id);
-
-              return (
-                <div
-                  key={grant.id}
-                  data-testid="grant-row"
-                  className="flex flex-wrap items-center justify-between gap-3 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{member?.full_name ?? member?.email ?? "Unknown member"}</p>
-                    <p className="text-xs text-[var(--muted)]">
-                      {location ? `${location.location_name} (${location.location_code})` : "Unknown location"} ·{" "}
-                      {grant.access_level} · {grant.status}
-                    </p>
-                  </div>
-                  <RevokeForm kind="access" id={grant.id} />
-                </div>
-              );
-            })}
-            {grants.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No explicit location grants.</p>
-            ) : null}
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Grant location access</h2>
-          <div className="mt-4">
-            {locationOptions.length > 0 ? (
-              <GrantAccessForm members={memberOptions} locations={locationOptions} />
-            ) : (
-              <p className="text-sm text-[var(--muted)]">No active locations to grant.</p>
-            )}
-          </div>
-        </section>
-
-        {canViewAudit ? (
-          <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">Recent access activity</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Newest first. Audit records are append-only and cannot be edited.
-            </p>
-            <div className="mt-4 divide-y divide-[var(--line)]">
-              {auditEvents.map((event) => {
-                const actor = event.user_id ? memberById.get(event.user_id) : undefined;
-
-                return (
-                  <div
-                    key={event.id}
-                    data-testid="audit-row"
-                    className="flex flex-wrap items-center justify-between gap-2 py-3"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{AUDIT_ACTION_LABELS[event.action] ?? event.action}</p>
-                      <p className="text-xs text-[var(--muted)]">
-                        {actor?.full_name ?? actor?.email ?? "System"} · {event.entity_type}
-                        {event.entity_id ? ` · ${event.entity_id.slice(0, 8)}` : ""}
-                      </p>
-                    </div>
-                    <p className="text-xs text-[var(--muted)]">{formatAuditTime(event.created_at)}</p>
-                  </div>
-                );
-              })}
-              {auditEvents.length === 0 ? (
-                <p className="py-3 text-sm text-[var(--muted)]">No access activity yet.</p>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
-
-        <p className="mt-8 text-xs leading-6 text-[var(--muted)]">
-          Every change is enforced by database Row Level Security and recorded against your account. Permission checks
-          run on the server; the browser cannot grant itself a role or location.
-        </p>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Members" value={members.length} hint={`${roles.length} role${roles.length === 1 ? "" : "s"} available`} tone="brand" />
+        <StatCard label="Roles assigned" value={userRoles.length} hint="Across all members" />
+        <StatCard
+          label="Without a role"
+          value={membersWithoutRoles}
+          hint={membersWithoutRoles === 0 ? "Everyone has access" : "Cannot act until assigned"}
+          tone={membersWithoutRoles > 0 ? "danger" : "neutral"}
+        />
+        <StatCard
+          label="Location grants"
+          value={grants.length}
+          hint={`${activeGrants} active · ${activeLocations} location${activeLocations === 1 ? "" : "s"} available`}
+        />
       </div>
+
+      <Tabs items={tabs} active={activeHref} />
+
+      {tab === "members" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader
+              title="Members and roles"
+              description="Roles define which permissions a member holds. Revoking a role takes effect immediately."
+            />
+            <CardBody>
+              {members.length === 0 ? (
+                <EmptyState title="No members yet" description="Invite a member to the workspace first." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={860}>
+                    <THead>
+                      <TR>
+                        <TH>Member</TH>
+                        <TH>Status</TH>
+                        <TH>Roles</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {members.map((member) => {
+                        const assignments = rolesByMember.get(member.id) ?? [];
+
+                        return (
+                          <TR key={member.id}>
+                            <TD>
+                              <span className="font-medium">{member.full_name ?? member.email}</span>
+                              {member.full_name ? (
+                                <span className="block text-xs text-[var(--muted)]">{member.email}</span>
+                              ) : null}
+                            </TD>
+                            <TD>
+                              <StatusBadge status={member.status} />
+                            </TD>
+                            <TD>
+                              {assignments.length === 0 ? (
+                                <span className="text-xs text-[var(--muted)]">No roles</span>
+                              ) : (
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {assignments.map((assignment) => (
+                                    <span key={assignment.id} className="inline-flex items-center gap-2">
+                                      <Badge tone={roleById.get(assignment.role_id)?.is_system_role ? "brand" : "neutral"}>
+                                        {roleById.get(assignment.role_id)?.name ?? "Unknown role"}
+                                      </Badge>
+                                      <RevokeForm kind="role" id={assignment.id} />
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </TD>
+                          </TR>
+                        );
+                      })}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader title="Assign a role" description="A member can hold more than one role." />
+            <CardBody>
+              {roleOptions.length === 0 ? (
+                <EmptyState title="No roles in this tenant" description="Roles are provisioned with the tenant." />
+              ) : (
+                <AssignRoleForm members={memberOptions} roles={roleOptions} />
+              )}
+            </CardBody>
+          </Card>
+        </div>
+      ) : null}
+
+      {tab === "access" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader
+              title="Location access"
+              description="Members see a location only when granted, unless their role includes tenant-wide visibility."
+            />
+            <CardBody>
+              {grants.length === 0 ? (
+                <EmptyState title="No explicit location grants" description="Grant a location below." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={860}>
+                    <THead>
+                      <TR>
+                        <TH>Member</TH>
+                        <TH>Location</TH>
+                        <TH>Level</TH>
+                        <TH>Status</TH>
+                        <TH>Action</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {grants.map((grant) => {
+                        const member = memberById.get(grant.user_id);
+                        const location = locationById.get(grant.location_id);
+
+                        return (
+                          <TR key={grant.id} testId="grant-row">
+                            <TD>
+                              <span className="font-medium">{member?.full_name ?? member?.email ?? "Unknown member"}</span>
+                              {member?.full_name ? (
+                                <span className="block text-xs text-[var(--muted)]">{member.email}</span>
+                              ) : null}
+                            </TD>
+                            <TD className="text-xs">
+                              {location ? (
+                                <>
+                                  {location.location_name}
+                                  <span className="block text-[var(--muted)]">{location.location_code}</span>
+                                </>
+                              ) : (
+                                "Unknown location"
+                              )}
+                            </TD>
+                            <TD className="text-xs capitalize">{humanise(grant.access_level)}</TD>
+                            <TD>
+                              <StatusBadge status={grant.status} />
+                            </TD>
+                            <TD>
+                              <RevokeForm kind="access" id={grant.id} />
+                            </TD>
+                          </TR>
+                        );
+                      })}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader title="Grant location access" description="Access levels follow the location permission model." />
+            <CardBody>
+              {locationOptions.length === 0 ? (
+                <EmptyState title="No active locations" description="Create an active location before granting access." />
+              ) : (
+                <GrantAccessForm members={memberOptions} locations={locationOptions} />
+              )}
+            </CardBody>
+          </Card>
+        </div>
+      ) : null}
+
+      {tab === "activity" && canViewAudit ? (
+        <Card>
+          <CardHeader
+            title="Recent access activity"
+            description="Newest first. Audit records are append-only and cannot be edited."
+          />
+          <CardBody>
+            {auditEvents.length === 0 ? (
+              <EmptyState title="No access activity yet" description="Role and location changes appear here." />
+            ) : (
+              <TableScroll>
+                <Table minWidth={860}>
+                  <THead>
+                    <TR>
+                      <TH>Action</TH>
+                      <TH>Actor</TH>
+                      <TH>Entity</TH>
+                      <TH>When</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {auditEvents.map((event) => {
+                      const actor = event.user_id ? memberById.get(event.user_id) : undefined;
+
+                      return (
+                        <TR key={event.id} testId="audit-row">
+                          <TD className="font-medium">{AUDIT_ACTION_LABELS[event.action] ?? event.action}</TD>
+                          <TD className="text-xs">{actor?.full_name ?? actor?.email ?? "System"}</TD>
+                          <TD className="text-xs text-[var(--muted)]">
+                            {humanise(event.entity_type)}
+                            {event.entity_id ? ` · ${event.entity_id.slice(0, 8)}` : ""}
+                          </TD>
+                          <TD className="text-xs text-[var(--muted)]">{formatAuditTime(event.created_at)}</TD>
+                        </TR>
+                      );
+                    })}
+                  </TBody>
+                </Table>
+              </TableScroll>
+            )}
+          </CardBody>
+        </Card>
+      ) : null}
+
+      <p className="text-xs leading-6 text-[var(--muted)]">
+        Every change is enforced by database row level security and recorded against your account. Permission checks run
+        on the server; the browser cannot grant itself a role or location.
+      </p>
     </div>
   );
 }
-

@@ -110,7 +110,9 @@ export function GrantAccessForm({
           <label htmlFor="grant-level" className={labelClass}>Access level</label>
           <select id="grant-level" name="accessLevel" className={fieldClass} defaultValue="view">
             {ACCESS_LEVELS.map((level) => (
-              <option key={level} value={level}>{level}</option>
+              <option key={level} value={level}>
+                {level.charAt(0).toUpperCase() + level.slice(1)}
+              </option>
             ))}
           </select>
         </div>

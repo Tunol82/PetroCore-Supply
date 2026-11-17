@@ -34,8 +34,20 @@ export function TFoot({ children }: { children: ReactNode }) {
   );
 }
 
-export function TR({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <tr className={`align-top ${className}`}>{children}</tr>;
+export function TR({
+  children,
+  className = "",
+  testId,
+}: {
+  children: ReactNode;
+  className?: string;
+  testId?: string;
+}) {
+  return (
+    <tr className={`align-top ${className}`} data-testid={testId}>
+      {children}
+    </tr>
+  );
 }
 
 export function TH({

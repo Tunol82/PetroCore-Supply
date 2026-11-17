@@ -97,8 +97,8 @@ Implemented in the scaffold:
 - Owner-approved design review pack (PR #2, merged 2026-11-15): field-level Database Dictionary v1.2 proposal, reconstructed ERD v1.2, Decision Register, Migration 1 checklist and non-production Supabase plan.
 - Tenant access migration applied to the non-production project: organisations, settings, locations, profiles, roles, permissions, role assignments, location grants and audit log, with RLS on every table.
 - Tenant resolution in `/workspace`: verified tenant, access-pending and workspace-error states.
-- Tenant administration at `/workspace/access`: member list with roles, role assignment/revocation, location grant creation/revocation, server-side permission checks and audit triggers on every access change.
-- Recent access activity on the same page for holders of `audit.view`, read from the append-only audit log.
+- Tenant administration at `/workspace/access`: tabbed members, location access and activity. Member list with roles, role assignment/revocation, location grant creation/revocation, server-side permission checks and audit triggers on every access change. Members without a role are counted, and the activity tab shows the newest access audit events for holders of `audit.view`.
+- Recent access activity on the activity tab for holders of `audit.view`, read from the append-only audit log.
 - Platform administration at `/platform`: platform admins only, MFA-gated by default, read-only tenant view, 30-minute switch sessions and an append-only platform audit trail.
 - Platform audit viewer at `/platform/audit`: newest 50 platform events with action, administrator, tenant, reason and timestamp; platform admins only.
 - Account security at `/account/security`: TOTP enrollment, verification to AAL2 and factor removal. Removing the last factor ends the session so an elevated AAL2 claim cannot persist.
