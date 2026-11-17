@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
@@ -201,7 +202,14 @@ export default async function TransportInvoicesPage({
                     <TBody>
                       {invoices.map((invoice) => (
                         <TR key={invoice.id}>
-                          <TD className="font-medium">{invoice.invoice_number}</TD>
+                          <TD className="font-medium">
+                            <Link
+                              href={`/print/transporter-invoice/${invoice.id}`}
+                              className="text-[var(--brand)] hover:underline"
+                            >
+                              {invoice.invoice_number}
+                            </Link>
+                          </TD>
                           <TD className="text-xs">
                             {transporterById.get(invoice.transporter_id)?.business_name ?? "—"}
                           </TD>

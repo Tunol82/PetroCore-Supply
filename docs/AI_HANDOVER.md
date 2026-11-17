@@ -115,18 +115,17 @@ Implemented in the scaffold:
 - Finance at `/workspace/finance`: tabbed payments and profitability. Customer receipts and supplier or transporter payments are recorded as supplied with explicit links, plus an operational profitability view of order revenue against net FIFO cost of sales with a totals row. The payment form only offers directions the user may record.
 - Settings at `/workspace/settings`: organisation summary and a danger zone that clears demo transactions after typing the organisation code, keeping users, master data and audit history.
 
-**UI foundation (2026-11-16):** every workspace page is wrapped by an app shell (`src/app/workspace/layout.tsx`, `src/components/shell/app-shell.tsx`) with permission-filtered sidebar navigation, a top bar, and a mobile drawer. Design tokens live in `src/app/globals.css` and mirror the PetroCore.app brand: blue primary (`#1e40af`/`#2563eb`), navy sidebar (`#0b1f3a`), green positive accent (`#1d9e75`), slate neutrals and DM Sans/DM Mono. Supply is tuned denser than the retail app but shares the family palette, logo mark and typography. Reusable primitives live in `src/components/ui` (Button, Card, Field/Input/Select/Textarea, Badge/StatusBadge, Alert, StatCard, PageHeader, EmptyState, Table). `/workspace/styleguide` is the living reference. Legacy page bodies were stripped of their duplicate headers; their forms and tables adopt the new tokens, and are being migrated to the primitives module by module.
-- Dispatch at `/workspace/dispatch`: tabbed trips, assignments, loading and allocations. Trucks and drivers cannot hold two active assignments; release is explicit and cancelling a trip releases automatically.
+**UI foundation (2026-11-16):** every workspace page is wrapped by an app shell (`src/app/workspace/layout.tsx`, `src/components/shell/app-shell.tsx`) with permission-filtered sidebar navigation, a top bar, and a mobile drawer. Design tokens live in `src/app/globals.css` and mirror the PetroCore.app brand: blue primary (`#1e40af`/`#2563eb`), navy sidebar (`#0b1f3a`), green positive accent (`#1d9e75`), slate neutrals and DM Sans/DM Mono. Supply is tuned denser than the retail app but shares the family palette, logo mark and typography. Reusable primitives live in `src/components/ui` (Button, Card, Field/Input/Select/Textarea, Badge/StatusBadge, Alert, StatCard, PageHeader, EmptyState, Table). `/workspace/styleguide` is the living reference. All workspace modules now use the shell and primitives.
 
-Current verification snapshot (2026-11-15):
-- GitHub Actions CI run for the scaffold head completed successfully.
-- A local verification pass was completed on Windows against Node 24.16.0 / npm 11.13.0: `npm run lint`, `npm run typecheck`, `npm test` (11 tests) and `npm run build` all passed, and `npm run test:e2e` passed 6 Playwright tests.
+Printable documents live outside the workspace shell at `/print/delivery/[id]` (A4 delivery waybill with quantities, transport details and a signature block) and `/print/transporter-invoice/[id]` (A4 invoice copy with charge lines and totals). Both check session and permission, rely on tenant RLS, are `noindex`, and use the shared `no-print` toolbar plus the `@media print` rules in `globals.css`. Delivery waybill links sit on the deliveries table; the invoice number links to its copy.
+
+Current verification snapshot (2026-11-18):
+- GitHub Actions CI is green on every push to `chore/verification-and-ci-hardening`.
+- Local verification on Windows (Node 24.16.0): `npm run lint`, `npm run typecheck`, `npm run build`, `npm test` (143 tests) and `npm run test:e2e` (7 Playwright tests) all pass.
 - The end-to-end suite covers the unconfigured, signed-out and validation states; `playwright.config.ts` blanks the Supabase variables so it stays deterministic.
-- A non-production Supabase project now exists. Migration `20261115000100_tenant_access_core` was applied on 2026-11-15 and the tenant-isolation tests passed (see the Migration 1 physical proposal §9).
-- Live browser sign-in was verified: `/workspace` resolved the organisation `Alpha` (`ORG-A`) from the authenticated membership, with no console errors.
-- `npm run verify:live` verifies three identities end to end: the Alpha administrator (tenant + access administration), a Beta-tenant user (isolation, no admin link, access denied) and a no-membership user (access-pending state). All passed on 2026-11-15.
-- Local Supabase values live in `.env.local`, which is git-ignored. No credentials are committed.
-- No **production** database has been touched. Procurement, sales, dispatch, delivery, reconciliation, inventory receipt, reservation, issue and FIFO allocation flows are implemented against the non-production project only; finance remains unimplemented.
+- A non-production Supabase project exists with migrations applied through `20261115003200`.
+- Live browser checks used the Alpha administrator (`ORG-A`) against seeded demo data; screenshots verified every migrated page in its tabs.
+- No **production** database has been touched. Procurement, costs, sales, dispatch, loading, deliveries and evidence, reconciliation, inventory receipts, reservations, issues with reversals, FIFO allocations, transporter invoices and payments with operational profitability are implemented against the non-production project only.
 - No code has been merged into `main`; PR #1 remains draft.
 
 Local development and review work now happens on `chore/verification-and-ci-hardening`, branched from `chore/initial-project-scaffold`.

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
@@ -308,7 +309,14 @@ export default async function DeliveriesPage({
                             <TD>
                               <StatusBadge status={delivery.delivery_status} />
                             </TD>
-                            <TD className="text-xs text-[var(--muted)]">{delivery.waybill_reference ?? "—"}</TD>
+                            <TD className="text-xs">
+                              <Link
+                                href={`/print/delivery/${delivery.id}`}
+                                className="font-medium text-[var(--brand)] hover:underline"
+                              >
+                                {delivery.waybill_reference ?? "Print waybill"}
+                              </Link>
+                            </TD>
                             <TD className="text-xs text-[var(--muted)]">
                               {new Date(delivery.delivery_time).toLocaleDateString("en-GB")}
                             </TD>

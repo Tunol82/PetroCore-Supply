@@ -114,3 +114,31 @@
     scrollbar-color: var(--line-strong) transparent;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Print documents: waybills and transporter invoice copies.
+   The sheet is a white A4 document on screen and becomes the page when printed.
+   --------------------------------------------------------------------------- */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-sheet {
+    margin: 0 !important;
+    max-width: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+}
