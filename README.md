@@ -8,7 +8,9 @@ A multi-tenant operations platform for petroleum procurement, sales, dispatch, h
 
 ## Project status
 
-**Foundation scaffold — no operational modules or production database schema have been implemented yet.**
+**Multi-tenant operations app in active development.** Procurement, procurement costs, inventory and fulfilment, sales orders, fleet, dispatch, deliveries with evidence, reconciliation, transporter invoices, payments with operational profitability, and tenant access administration are implemented against a **non-production** Supabase project. The production database schema is not approved yet and no production database has been touched.
+
+`main` is untouched; development happens on `chore/verification-and-ci-hardening` (PR #1, draft).
 
 This repository is the application source for PetroCore Supply. It is a separate product from PetroCore Operations, with a planned future integration boundary. The initial architecture uses a modular monolith and PostgreSQL.
 
@@ -36,6 +38,17 @@ Open http://localhost:3000.
 
 The app can start without Supabase credentials. Supabase-backed features must not be enabled until environment variables and database migrations are configured.
 
+## Demo data
+
+Screenshots and manual review use a demo chain in the non-production project (`BAT-DEMO-1`, `TRIP-DEMO-1`, `SO-DEMO-1` and related master data). The operational rows built on top of it are versioned:
+
+```bash
+psql "$SUPABASE_DB_URL" -f supabase/seed/demo-tenant.sql          # idempotent, safe to re-run
+psql "$SUPABASE_DB_URL" -f supabase/seed/demo-tenant-teardown.sql # removes only those rows
+```
+
+The seed covers one delivery with waybill evidence, a customer receipt and supplier payment, a transporter invoice with two charge lines, and an inbound-haulage cost category with one batch component. It does not create auth users or storage objects. Never run it against production.
+
 ## Quality checks
 
 ```bash
@@ -57,6 +70,7 @@ CI runs the same checks on pull requests to `main`.
 - `src/modules` — business modules, added incrementally
 - `src/shared` — shared UI, auth, types and utilities
 - `supabase/migrations` — version-controlled database migrations
+- `supabase/seed` — demo data seed and teardown scripts for the non-production project
 - `supabase/functions` — server-side edge functions where justified
 - `supabase/tests` — database/security tests
 - `docs` — product, database, ERD, architecture and business rules

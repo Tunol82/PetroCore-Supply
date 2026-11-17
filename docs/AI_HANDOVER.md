@@ -130,6 +130,8 @@ Current verification snapshot (2026-11-18):
 
 Local development and review work now happens on `chore/verification-and-ci-hardening`, branched from `chore/initial-project-scaffold`.
 
+**Demo data (non-production only):** `supabase/seed/demo-tenant.sql` recreates the demo rows used for screenshots — one delivery with waybill evidence, a customer receipt and supplier payment, a transporter invoice with two charge lines, and an inbound-haulage cost category with one batch component. It is idempotent because delivery and invoice triggers validate before conflict resolution, so every insert is guarded by a `not exists` check; `supabase/seed/demo-tenant-teardown.sql` removes exactly those rows by id. Master data (`BAT-DEMO-1`, `TRIP-DEMO-1`, `SO-DEMO-1`, suppliers, products, customers, locations) is not created or removed. The seed does not create auth users or storage objects. A stray "RLS test category" left by a security test was deleted on 2026-11-18.
+
 ## 7. Source documents — read before implementation
 
 1. `docs/architecture/technical-foundation.md` — approved technical direction and integrity boundaries.
