@@ -6,9 +6,10 @@ import { getCurrentTenant } from "@/modules/tenant/current-tenant";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
-import { StatusBadge } from "@/components/ui/badge";
+import { Badge, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
-import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
+import { Table, TBody, TD, TFoot, TH, THead, TR, TableScroll } from "@/components/ui/table";
+import { TripArrivalForm, TripExpenseForm } from "./forms";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +96,25 @@ type Transporter = { id: string; business_name: string };
 type Depot = { id: string; name: string; depot_code: string };
 type Location = { id: string; location_name: string; location_code: string };
 
+type TripExpense = {
+  id: string;
+  expense_type: string;
+  description: string | null;
+  amount: number;
+  litres: number | null;
+  reference: string | null;
+  incurred_on: string;
+};
+
+const EXPENSE_LABELS: Record<string, string> = {
+  fuel: "Fuel",
+  toll: "Toll",
+  loading: "Loading",
+  driver_allowance: "Driver allowance",
+  maintenance: "Maintenance",
+  other: "Other",
+};
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -114,6 +134,48 @@ function formatDate(value: string | null) {
   }
 
   return new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function tripDuration(departure: string | null, arrival: string | null) {
+  if (!departure || !arrival) {
+    return null;
+  }
+
+  const hours = (new Date(arrival).getTime() - new Date(departure).getTime()) / 3_600_000;
+
+  if (!Number.isFinite(hours) || hours < 0) {
+    return null;
+  }
+
+  return hours;
+}
+
+function arrivalPunctuality(expected: string | null, actual: string | null) {
+  if (!expected || !actual) {
+    return null;
+  }
+
+  const diffHours = (new Date(actual).getTime() - new Date(expected).getTime()) / 3_600_000;
+
+  if (Math.abs(diffHours) < 0.5) {
+    return { label: "On time", tone: "success" as const };
+  }
+
+  if (diffHours > 0) {
+    return { label: `${diffHours.toFixed(1)} h late`, tone: "warning" as const };
+  }
+
+  return { label: `${Math.abs(diffHours).toFixed(1)} h early`, tone: "brand" as const };
 }
 
 export default async function TripPnlPage({ params }: { params: Promise<{ id: string }> }) {
@@ -316,7 +378,7 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
   );
   const discrepancyIds = discrepancies.map((discrepancy) => discrepancy.id);
 
-  const [purchaseItemsResult, recoveriesResult] = await Promise.all([
+  const [purchaseItemsResult, recoveriesResult, landedCostsResult, expensesResult] = await Promise.all([
     purchaseItemIds.length > 0
       ? supabase
           .from("purchase_order_items")
@@ -326,10 +388,35 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
     discrepancyIds.length > 0
       ? supabase.from("transporter_recoveries").select("id, discrepancy_id, amount").in("discrepancy_id", discrepancyIds)
       : Promise.resolve({ data: [], error: null }),
+    batchIds.length > 0
+      ? supabase
+          .from("inventory_batches")
+          .select("procurement_batch_id, landed_cost_per_unit")
+          .in("procurement_batch_id", batchIds)
+      : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from("trip_expenses")
+      .select("id, expense_type, description, amount, litres, reference, incurred_on")
+      .eq("trip_id", trip.id)
+      .order("incurred_on", { ascending: false }),
   ]);
+
+  if (purchaseItemsResult.error || recoveriesResult.error || landedCostsResult.error || expensesResult.error) {
+    return (
+      <div className="space-y-6">
+        <PageHeader eyebrow="Trip P&L" title="Unavailable" description="Costing data could not be loaded." />
+        <ButtonLink href="/workspace/dispatch">Back to dispatch</ButtonLink>
+      </div>
+    );
+  }
 
   const purchaseItems = (purchaseItemsResult.data ?? []) as PurchaseItem[];
   const recoveries = (recoveriesResult.data ?? []) as { id: string; discrepancy_id: string; amount: number }[];
+  const landedCosts = (landedCostsResult.data ?? []) as {
+    procurement_batch_id: string;
+    landed_cost_per_unit: number;
+  }[];
+  const expenses = (expensesResult.data ?? []) as TripExpense[];
 
   const batchById = new Map(batches.map((batch) => [batch.id, batch]));
   const purchaseItemById = new Map(purchaseItems.map((item) => [item.id, item]));
@@ -354,6 +441,9 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
   let purchaseCost = 0;
   let uncostedPurchaseLitres = 0;
   const purchaseCostByProduct = new Map<string, number>();
+  const landedCostByBatch = new Map(
+    landedCosts.map((row) => [row.procurement_batch_id, Number(row.landed_cost_per_unit)]),
+  );
 
   for (const allocation of allocations) {
     const batch = batchById.get(allocation.procurement_batch_id);
@@ -361,15 +451,24 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
       ? purchaseItemById.get(batch.purchase_order_item_id)
       : undefined;
 
-    const effectiveUnitPrice = purchaseItem
+    const poUnitPrice = purchaseItem
       ? Number(purchaseItem.ordered_quantity) > 0
         ? Number(purchaseItem.line_total) / Number(purchaseItem.ordered_quantity)
         : Number(purchaseItem.agreed_unit_price)
       : null;
 
+    const landedUnitPrice = landedCostByBatch.get(allocation.procurement_batch_id) ?? 0;
+
+    const effectiveUnitPrice =
+      poUnitPrice !== null && Number.isFinite(poUnitPrice) && poUnitPrice > 0
+        ? poUnitPrice
+        : landedUnitPrice > 0
+          ? landedUnitPrice
+          : null;
+
     const quantity = Number(allocation.allocated_quantity);
 
-    if (effectiveUnitPrice === null || !Number.isFinite(effectiveUnitPrice)) {
+    if (effectiveUnitPrice === null) {
       uncostedPurchaseLitres += quantity;
       continue;
     }
@@ -409,6 +508,14 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
   const transportCost = invoices.reduce((sum, invoice) => sum + Number(invoice.total_amount), 0);
   const recovered = recoveries.reduce((sum, recovery) => sum + Number(recovery.amount), 0);
 
+  const expenseTotal = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  const fuelLitres = expenses
+    .filter((expense) => expense.expense_type === "fuel" && expense.litres !== null)
+    .reduce((sum, expense) => sum + Number(expense.litres), 0);
+  const fuelCost = expenses
+    .filter((expense) => expense.expense_type === "fuel")
+    .reduce((sum, expense) => sum + Number(expense.amount), 0);
+
   const confirmedLiability = discrepancies
     .filter((discrepancy) => discrepancy.liability_status === "confirmed")
     .reduce((sum, discrepancy) => sum + Number(discrepancy.liability_amount ?? 0), 0);
@@ -417,8 +524,8 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
     .filter((discrepancy) => discrepancy.liability_status !== "confirmed")
     .reduce((sum, discrepancy) => sum + Number(discrepancy.provisional_financial_impact ?? 0), 0);
 
-  const netCost = purchaseCost + transportCost - recovered;
-  const contribution = revenue - transportCost + recovered;
+  const netCost = purchaseCost + transportCost + expenseTotal - recovered;
+  const contribution = revenue - transportCost - expenseTotal + recovered;
   const grossMargin = purchaseCost > 0 ? revenue - netCost : null;
   const costPerDeliveredLitre = totalDelivered > 0 && purchaseCost > 0 ? netCost / totalDelivered : null;
 
@@ -454,7 +561,7 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
 
   if (uncostedPurchaseLitres > 0) {
     gaps.push(
-      `${formatQuantity(uncostedPurchaseLitres)} litres allocated to a batch without a purchase order price.`,
+      `${formatQuantity(uncostedPurchaseLitres)} litres allocated to a batch without a purchase order price or a landed cost.`,
     );
   }
 
@@ -508,7 +615,7 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
         <StatCard
           label="Contribution"
           value={formatMoney(contribution)}
-          hint={grossMargin === null ? "After transport, before purchase cost" : "After transport and purchase cost"}
+          hint={grossMargin === null ? "After transport and expenses, before purchase cost" : "After transport, expenses and purchase cost"}
           tone={contribution < 0 ? "danger" : "accent"}
         />
       </div>
@@ -602,9 +709,34 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
               />
               <Row label="Departure" value={formatDate(trip.departure_time)} />
               <Row label="Expected arrival" value={formatDate(trip.expected_arrival)} />
-              <Row label="Actual arrival" value={formatDate(trip.actual_arrival)} />
+              <Row
+                label="Actual arrival"
+                value={trip.actual_arrival ? formatDateTime(trip.actual_arrival) : "Not recorded"}
+              />
+              <Row
+                label="Duration"
+                value={
+                  tripDuration(trip.departure_time, trip.actual_arrival) === null
+                    ? "—"
+                    : `${tripDuration(trip.departure_time, trip.actual_arrival)!.toFixed(1)} h`
+                }
+              />
+              <Row
+                label="Punctuality"
+                value={
+                  arrivalPunctuality(trip.expected_arrival, trip.actual_arrival) ? (
+                    <Badge tone={arrivalPunctuality(trip.expected_arrival, trip.actual_arrival)!.tone}>
+                      {arrivalPunctuality(trip.expected_arrival, trip.actual_arrival)!.label}
+                    </Badge>
+                  ) : (
+                    "—"
+                  )
+                }
+              />
               <Row label="Compartments loaded" value={String(loadingRecords.length)} />
             </dl>
+
+            {canManage && !trip.actual_arrival ? <TripArrivalForm tripId={trip.id} /> : null}
           </CardBody>
         </Card>
       </div>
@@ -624,10 +756,16 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
               note={purchaseCost === 0 ? "Not recorded for this trip" : undefined}
             />
             <MoneyRow label="Transport cost (linked invoices)" amount={transportCost} />
-            <MoneyRow label="Recoveries from transporter" amount={-recovered} muted={recovered === 0} />
-            <MoneyRow label="Contribution after transport" amount={contribution} strong />
             <MoneyRow
-              label="Gross margin after purchase and transport"
+              label="Trip expenses (fuel, tolls, other)"
+              amount={expenseTotal}
+              muted={expenseTotal === 0}
+              note={expenseTotal === 0 ? "None recorded" : undefined}
+            />
+            <MoneyRow label="Recoveries from transporter" amount={-recovered} muted={recovered === 0} />
+            <MoneyRow label="Contribution after transport and expenses" amount={contribution} strong />
+            <MoneyRow
+              label="Gross margin after purchase, transport and expenses"
               amount={grossMargin ?? 0}
               strong
               muted={grossMargin === null}
@@ -648,6 +786,80 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
             · confirmed liability {formatMoney(confirmedLiability)} · provisional {formatMoney(provisionalLiability)}.
             Excludes overheads, driver costs and statutory items.
           </p>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Trip expenses"
+          description="Fuel, tolls, loading and other costs recorded against this trip. Append-only; they feed the statement above."
+        />
+        <CardBody>
+          {expenses.length === 0 ? (
+            <EmptyState
+              title="No trip expenses"
+              description="Record fuel, tolls or loading costs below to include them in the margin."
+            />
+          ) : (
+            <TableScroll>
+              <Table minWidth={760}>
+                <THead>
+                  <TR>
+                    <TH>Type</TH>
+                    <TH>Date</TH>
+                    <TH>Description</TH>
+                    <TH align="right">Litres</TH>
+                    <TH align="right">Amount</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {expenses.map((expense) => (
+                    <TR key={expense.id}>
+                      <TD className="font-medium">{EXPENSE_LABELS[expense.expense_type] ?? expense.expense_type}</TD>
+                      <TD className="text-xs text-[var(--muted)]">{formatDate(expense.incurred_on)}</TD>
+                      <TD className="text-xs">
+                        {expense.description ?? "—"}
+                        {expense.reference ? (
+                          <span className="block text-[var(--muted)]">{expense.reference}</span>
+                        ) : null}
+                      </TD>
+                      <TD align="right">
+                        {expense.litres === null ? (
+                          <span className="text-[var(--muted)]">—</span>
+                        ) : (
+                          formatQuantity(Number(expense.litres))
+                        )}
+                      </TD>
+                      <TD align="right">{formatMoney(Number(expense.amount))}</TD>
+                    </TR>
+                  ))}
+                </TBody>
+                <TFoot>
+                  <TR>
+                    <TD>Total</TD>
+                    <TD />
+                    <TD className="text-xs text-[var(--muted)]">
+                      {expenses.length} expense{expenses.length === 1 ? "" : "s"}
+                    </TD>
+                    <TD align="right">{fuelLitres > 0 ? formatQuantity(fuelLitres) : ""}</TD>
+                    <TD align="right">{formatMoney(expenseTotal)}</TD>
+                  </TR>
+                </TFoot>
+              </Table>
+            </TableScroll>
+          )}
+
+          {fuelLitres > 0 ? (
+            <p className="mt-3 text-xs text-[var(--muted)]">
+              Fuel {formatQuantity(fuelLitres)} L · {formatMoney(fuelCost / fuelLitres)} per litre recorded.
+            </p>
+          ) : null}
+
+          {canManage ? (
+            <div className="mt-5 border-t border-[var(--line)] pt-5">
+              <TripExpenseForm tripId={trip.id} />
+            </div>
+          ) : null}
         </CardBody>
       </Card>
 
