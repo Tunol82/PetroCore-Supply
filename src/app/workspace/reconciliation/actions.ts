@@ -275,6 +275,16 @@ export async function confirmLiability(
       return { error: "That discrepancy already has a confirmed liability.", success: null };
     }
 
+    if (rpcError.message.includes("approval threshold")) {
+      const required = rpcError.message.match(/requires the (\S+) permission/)?.[1];
+      return {
+        error: required
+          ? `This amount needs ${required} approval. Ask an administrator to confirm or adjust the threshold.`
+          : "This amount needs a higher approval than your role allows.",
+        success: null,
+      };
+    }
+
     return { error: "The liability could not be confirmed.", success: null };
   }
 

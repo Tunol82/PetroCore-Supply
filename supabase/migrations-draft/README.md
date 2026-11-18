@@ -56,3 +56,4 @@ None.
 | `20261115003000_measurement_chain.sql` | Optional temperature/density fields and the supplier-to-delivered chain view | Applied 2026-11-16; chain view and derived corrected quantity verified |
 | `20261115003100_demo_reset.sql` | Organisation demo-data reset with typed confirmation | Applied 2026-11-16; 159 records cleared, master data kept, wrong confirmation and non-admin blocked |
 | `20261115003200_charge_categories_partial_recovery.sql` | Optional invoice charge categories and partial recoveries | Applied 2026-11-16; category insert, partial recovery and over-recovery guard verified |
+| `20261118000100_dynamic_operating_rules.sql` | Configurable approval thresholds, transporter charge categories and operating policy; liability confirmation now checks the configured authority | Applied 2026-11-18; tier resolution (≤ threshold vs above), category seed and policy upsert verified |

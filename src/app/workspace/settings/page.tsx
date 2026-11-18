@@ -5,6 +5,7 @@ import { getCurrentTenant } from "@/modules/tenant/current-tenant";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
+import { ButtonLink } from "@/components/ui/button";
 import { ResetDemoDataForm } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,20 @@ export default async function SettingsPage() {
         title={tenant.organisationName}
         description={`${tenant.organisationCode} · tenant administration`}
       />
+
+      <Card>
+        <CardHeader
+          title="Business rules"
+          description="Approval thresholds, transporter charge categories and operating policy."
+        />
+        <CardBody className="space-y-4">
+          <p className="text-sm leading-6 text-[var(--muted)]">
+            Approval tiers, charge categories, the trip closure policy and the default correction method are stored per
+            organisation. Tolerance values remain per product on the reconciliation page.
+          </p>
+          <ButtonLink href="/workspace/settings/rules">Manage business rules</ButtonLink>
+        </CardBody>
+      </Card>
 
       <Card className="border-[var(--danger)]/30">
         <CardHeader

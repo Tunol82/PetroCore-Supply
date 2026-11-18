@@ -98,7 +98,7 @@ export default async function TransportInvoicesPage({
   const params = await searchParams;
   const tab = TABS.includes((params.tab ?? "") as (typeof TABS)[number]) ? (params.tab as string) : "invoices";
 
-  const [invoicesResult, linesResult, transportersResult, tripsResult] = await Promise.all([
+  const [invoicesResult, linesResult, transportersResult, tripsResult, categoriesResult] = await Promise.all([
     supabase
       .from("transporter_invoices")
       .select(
@@ -113,9 +113,16 @@ export default async function TransportInvoicesPage({
       .limit(100),
     supabase.from("transporters").select("id, business_name, transporter_code").order("business_name"),
     supabase.from("trips").select("id, trip_number").order("created_at", { ascending: false }).limit(40),
+    supabase
+      .from("transporter_charge_categories")
+      .select("code, label")
+      .eq("active", true)
+      .order("sort_order")
+      .order("label"),
   ]);
 
-  const queryError = invoicesResult.error ?? linesResult.error ?? transportersResult.error ?? tripsResult.error;
+  const queryError =
+    invoicesResult.error ?? linesResult.error ?? transportersResult.error ?? tripsResult.error ?? categoriesResult.error;
 
   if (queryError) {
     return (
@@ -129,6 +136,9 @@ export default async function TransportInvoicesPage({
   const lines = (linesResult.data ?? []) as InvoiceLine[];
   const transporters = (transportersResult.data ?? []) as Transporter[];
   const trips = (tripsResult.data ?? []) as Trip[];
+  const chargeCategories = ((categoriesResult.data ?? []) as { code: string; label: string }[]).map(
+    (category) => ({ id: category.code, label: category.label }),
+  );
 
   const transporterById = new Map(transporters.map((item) => [item.id, item]));
   const tripById = new Map(trips.map((item) => [item.id, item]));
@@ -321,6 +331,7 @@ export default async function TransportInvoicesPage({
                         transporterById.get(invoice.transporter_id)?.business_name ?? "transporter"
                       }`,
                     }))}
+                    chargeCategories={chargeCategories}
                   />
                 )}
               </CardBody>

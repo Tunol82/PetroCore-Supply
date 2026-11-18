@@ -2,6 +2,8 @@
 
 **Status: PROPOSED — NOT APPROVED.** Nothing in this document is implemented. It exists so the owner can approve, amend or reject concrete values instead of abstract options. Until sign-off, the system keeps today's behaviour: liability is confirmed manually by any `transport.manage` user, no tolerance values are seeded, and trips have no closure rule.
 
+> **Update 2026-11-18 — the configuration layer now exists.** Approval thresholds, transporter charge categories and operating policy are editable in **Settings → Business rules**, and the database enforces configured thresholds when a liability is confirmed. Charge categories feed the invoice line form. Trip closure, the aging window and the default correction method are stored per organisation. **No values are seeded**, so runtime behaviour is unchanged until the sign-off table below is completed.
+
 - Prepared: 2026-11-18
 - Covers: DR-13 remainder (approval thresholds), DR-11, DR-03 values, DR-14 trip closure, DR-02 method
 - Companion papers: `decision-paper-dr-13-transporter-liability.md`, `decision-paper-dr-01-03-measurement-tolerances.md`

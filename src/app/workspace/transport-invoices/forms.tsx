@@ -95,7 +95,13 @@ export function TransporterInvoiceForm({
   );
 }
 
-export function InvoiceLineForm({ invoices }: { invoices: Option[] }) {
+export function InvoiceLineForm({
+  invoices,
+  chargeCategories,
+}: {
+  invoices: Option[];
+  chargeCategories: Option[];
+}) {
   const [state, formAction, pending] = useActionState(addTransporterInvoiceLine, initialState);
 
   return (
@@ -126,11 +132,9 @@ export function InvoiceLineForm({ invoices }: { invoices: Option[] }) {
           <label htmlFor="il-category" className={labelClass}>Charge category (optional)</label>
           <select id="il-category" name="chargeCategory" className={fieldClass} defaultValue="">
             <option value="">Not specified</option>
-            <option value="haulage">Haulage</option>
-            <option value="loading">Loading</option>
-            <option value="waiting">Waiting</option>
-            <option value="demurrage">Demurrage</option>
-            <option value="other">Other</option>
+            {chargeCategories.map((category) => (
+              <option key={category.id} value={category.id}>{category.label}</option>
+            ))}
           </select>
         </div>
       </div>
