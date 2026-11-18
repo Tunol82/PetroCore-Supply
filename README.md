@@ -36,6 +36,8 @@ npm run dev
 
 Open http://localhost:3000.
 
+If a dev page sticks on the loading skeleton or Turbopack reports that it is waiting for the filesystem to settle, run `npm run dev:clean`. It stops whatever is listening on port 3000, deletes `.next` and starts the dev server again.
+
 The app can start without Supabase credentials. Supabase-backed features must not be enabled until environment variables and database migrations are configured.
 
 ## Demo data

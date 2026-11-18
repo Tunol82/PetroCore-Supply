@@ -5,6 +5,7 @@
   "description": "PetroCore Supply — petroleum procurement, sales, dispatch, haulage and delivery platform",
   "scripts": {
     "dev": "next dev",
+    "dev:clean": "node scripts/dev-clean.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
