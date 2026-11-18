@@ -35,3 +35,14 @@ where id = 'c0000000-0000-4000-8000-000000000002';
 
 delete from cost_categories
 where id = 'c0000000-0000-4000-8000-000000000001';
+
+update procurement_batches
+   set purchase_order_item_id = null
+ where batch_number = 'BAT-DEMO-1'
+   and purchase_order_item_id = 'b0000000-0000-4000-8000-0000000000b2';
+
+delete from purchase_order_items
+where id = 'b0000000-0000-4000-8000-0000000000b2';
+
+delete from purchase_orders
+where id = 'b0000000-0000-4000-8000-0000000000b1';

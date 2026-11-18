@@ -4,7 +4,8 @@
 -- Purpose: recreate the demo operational data used for screenshots and manual
 -- review on the non-production Supabase project. Safe to run more than once:
 -- every insert is keyed on a stable UUID or a natural key and skipped when the
--- row already exists.
+-- row already exists. Also links BAT-DEMO-1 to PO-DEMO-1 so purchase cost and
+-- the landed-cost preview have a real price.
 --
 -- Prerequisites (created once, not by this script):
 --   organisation ORG-A, product PMS-915996, customer "DB Customer" with
@@ -212,3 +213,57 @@ where batch.batch_number = 'BAT-DEMO-1'
     where existing.id = 'c0000000-0000-4000-8000-000000000002'
   )
 on conflict (id) do nothing;
+
+-- Purchase order and price for the demo batch -------------------------------
+-- Gives purchase cost, the landed-cost preview and the trip statement a real
+-- unit price (10,000 L at N900). The batch is linked below when it has no link.
+insert into purchase_orders (
+  id, organisation_id, po_number, supplier_id, supplier_depot_id,
+  order_date, currency, status, notes
+)
+select
+  'b0000000-0000-4000-8000-0000000000b1',
+  supplier.organisation_id,
+  'PO-DEMO-1',
+  supplier.id,
+  depot.id,
+  current_date - 5,
+  'NGN',
+  'approved',
+  'Demo purchase order for cost views'
+from suppliers supplier
+left join supplier_depots depot
+  on depot.supplier_id = supplier.id
+ and depot.organisation_id = supplier.organisation_id
+where supplier.name = 'North Depot 915996'
+  and not exists (
+    select 1 from purchase_orders existing
+    where existing.id = 'b0000000-0000-4000-8000-0000000000b1'
+  )
+limit 1
+on conflict (id) do nothing;
+
+insert into purchase_order_items (
+  id, organisation_id, purchase_order_id, product_id, ordered_quantity, agreed_unit_price
+)
+select
+  'b0000000-0000-4000-8000-0000000000b2',
+  orders.organisation_id,
+  orders.id,
+  product.id,
+  10000, 900
+from purchase_orders orders
+join products product
+  on product.organisation_id = orders.organisation_id
+ and product.product_code = 'PMS-915996'
+where orders.id = 'b0000000-0000-4000-8000-0000000000b1'
+  and not exists (
+    select 1 from purchase_order_items existing
+    where existing.id = 'b0000000-0000-4000-8000-0000000000b2'
+  )
+on conflict (id) do nothing;
+
+update procurement_batches
+   set purchase_order_item_id = 'b0000000-0000-4000-8000-0000000000b2'
+ where batch_number = 'BAT-DEMO-1'
+   and purchase_order_item_id is null;

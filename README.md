@@ -49,7 +49,7 @@ psql "$SUPABASE_DB_URL" -f supabase/seed/demo-tenant.sql          # idempotent, 
 psql "$SUPABASE_DB_URL" -f supabase/seed/demo-tenant-teardown.sql # removes only those rows
 ```
 
-The seed covers one delivery with waybill evidence, a customer receipt and supplier payment, a transporter invoice with two charge lines, and an inbound-haulage cost category with one batch component. It does not create auth users or storage objects. Never run it against production.
+The seed covers one delivery with waybill evidence, a customer receipt and supplier payment, a transporter invoice with two charge lines, an inbound-haulage cost category with one batch component, and a demo purchase order (10,000 L at ₦900) linked to the storage batch so purchase cost and the landed-cost preview have a price. It does not create auth users or storage objects. Never run it against production.
 
 ## Quality checks
 
