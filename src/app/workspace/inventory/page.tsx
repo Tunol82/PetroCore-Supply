@@ -11,7 +11,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/page-header";
 import { Tabs } from "@/components/ui/tabs";
 import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
-import { ReceiptForm } from "./forms";
+import { ReceiptForm, type BatchCostHint } from "./forms";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +41,9 @@ type ProcurementBatch = {
   id: string;
   batch_number: string;
   product_id: string;
+  purchase_order_item_id: string | null;
   supplier_quantity: number;
+  loaded_quantity: number | null;
   received_quantity: number | null;
   fulfilment_type: string;
 };
@@ -118,7 +120,9 @@ export default async function InventoryPage({
         .limit(100),
       supabase
         .from("procurement_batches")
-        .select("id, batch_number, product_id, supplier_quantity, received_quantity, fulfilment_type")
+        .select(
+          "id, batch_number, product_id, purchase_order_item_id, supplier_quantity, loaded_quantity, received_quantity, fulfilment_type",
+        )
         .eq("fulfilment_type", "storage_receipt")
         .order("created_at", { ascending: false })
         .limit(200),
@@ -150,6 +154,96 @@ export default async function InventoryPage({
   const procurementBatches = (procurementResult.data ?? []) as ProcurementBatch[];
   const products = (productsResult.data ?? []) as Product[];
   const locations = (locationsResult.data ?? []) as Location[];
+
+  const purchaseItemIds = Array.from(
+    new Set(
+      procurementBatches
+        .map((batch) => batch.purchase_order_item_id)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+
+  const [purchaseItemsResult, componentsResult, costCategoriesResult] = await Promise.all([
+    purchaseItemIds.length > 0
+      ? supabase
+          .from("purchase_order_items")
+          .select("id, agreed_unit_price, ordered_quantity, line_total")
+          .in("id", purchaseItemIds)
+      : Promise.resolve({ data: [], error: null }),
+    procurementBatches.length > 0
+      ? supabase
+          .from("procurement_cost_components")
+          .select("id, procurement_batch_id, amount, cost_category_id, approval_status")
+          .in(
+            "procurement_batch_id",
+            procurementBatches.map((batch) => batch.id),
+          )
+      : Promise.resolve({ data: [], error: null }),
+    supabase.from("cost_categories").select("id, landed_cost_inclusion"),
+  ]);
+
+  if (purchaseItemsResult.error || componentsResult.error || costCategoriesResult.error) {
+    return (
+      <div className="space-y-6">
+        <PageHeader eyebrow="Inventory" title="Unavailable" description="Cost hints could not be loaded." />
+      </div>
+    );
+  }
+
+  const purchaseItems = (purchaseItemsResult.data ?? []) as {
+    id: string;
+    agreed_unit_price: number;
+    ordered_quantity: number;
+    line_total: number;
+  }[];
+  const costComponents = (componentsResult.data ?? []) as {
+    id: string;
+    procurement_batch_id: string;
+    amount: number;
+    cost_category_id: string;
+    approval_status: string;
+  }[];
+  const costCategories = (costCategoriesResult.data ?? []) as { id: string; landed_cost_inclusion: boolean }[];
+
+  const purchaseItemById = new Map(purchaseItems.map((item) => [item.id, item]));
+  const landedCategoryById = new Map(costCategories.map((category) => [category.id, category.landed_cost_inclusion]));
+  const componentsByBatch = new Map<string, typeof costComponents>();
+  for (const component of costComponents) {
+    const current = componentsByBatch.get(component.procurement_batch_id) ?? [];
+    current.push(component);
+    componentsByBatch.set(component.procurement_batch_id, current);
+  }
+
+  const costHints: Record<string, BatchCostHint> = {};
+  for (const batch of procurementBatches) {
+    const purchaseItem = batch.purchase_order_item_id
+      ? purchaseItemById.get(batch.purchase_order_item_id)
+      : undefined;
+    const unitPrice = purchaseItem
+      ? Number(purchaseItem.ordered_quantity) > 0
+        ? Number(purchaseItem.line_total) / Number(purchaseItem.ordered_quantity)
+        : Number(purchaseItem.agreed_unit_price)
+      : null;
+    const quantity =
+      Number(batch.loaded_quantity ?? batch.supplier_quantity ?? batch.received_quantity ?? 0) || null;
+    const components = componentsByBatch.get(batch.id) ?? [];
+    const landedComponents = components
+      .filter((component) => landedCategoryById.get(component.cost_category_id))
+      .reduce((sum, component) => sum + Number(component.amount), 0);
+    const purchaseValue =
+      unitPrice !== null && Number.isFinite(unitPrice) && quantity ? unitPrice * quantity : null;
+    const indicativeUnitCost =
+      purchaseValue !== null && quantity ? (purchaseValue + landedComponents) / quantity : null;
+
+    costHints[batch.id] = {
+      purchaseUnitPrice: unitPrice !== null && Number.isFinite(unitPrice) ? unitPrice : null,
+      purchaseValue,
+      landedComponents,
+      componentCount: components.length,
+      quantity,
+      indicativeUnitCost,
+    };
+  }
 
   const productById = new Map(products.map((product) => [product.id, product]));
   const locationById = new Map(locations.map((location) => [location.id, location]));
@@ -285,7 +379,7 @@ export default async function InventoryPage({
           />
           <CardBody>
             {canManage ? (
-              <ReceiptForm batches={receiptOptions} locations={locationOptions} />
+              <ReceiptForm batches={receiptOptions} locations={locationOptions} costHints={costHints} />
             ) : (
               <EmptyState title="Read-only access" description="You can view stock but not receive it." />
             )}
