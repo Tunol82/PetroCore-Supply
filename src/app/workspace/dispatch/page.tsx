@@ -1,4 +1,5 @@
 ﻿import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getCurrentTenant } from "@/modules/tenant/current-tenant";
@@ -392,7 +393,11 @@ export default async function DispatchPage({
                     <TBody>
                       {trips.map((trip) => (
                         <TR key={trip.id}>
-                          <TD className="font-medium">{trip.trip_number}</TD>
+                          <TD className="font-medium">
+                            <Link href={`/workspace/dispatch/trips/${trip.id}`} className="text-[var(--brand)] hover:underline">
+                              {trip.trip_number}
+                            </Link>
+                          </TD>
                           <TD>
                             {trip.origin_supplier_depot_id
                               ? depotById.get(trip.origin_supplier_depot_id)?.name ?? "—"
@@ -472,7 +477,14 @@ export default async function DispatchPage({
 
                           return (
                             <TR key={trip.id}>
-                              <TD className="font-medium">{trip.trip_number}</TD>
+                              <TD className="font-medium">
+                                <Link
+                                  href={`/workspace/dispatch/trips/${trip.id}`}
+                                  className="text-[var(--brand)] hover:underline"
+                                >
+                                  {trip.trip_number}
+                                </Link>
+                              </TD>
                               <TD>
                                 <StatusBadge status={trip.status} />
                               </TD>
