@@ -277,10 +277,14 @@ export function LoadingRecordForm({
           <label htmlFor="ld-factor" className={labelClass}>Correction factor</label>
           <input id="ld-factor" name="correctionFactor" type="number" step="0.000001" min="0" className={fieldClass} />
         </div>
+        <div>
+          <label htmlFor="ld-haulage" className={labelClass}>Compartment haulage (₦, optional)</label>
+          <input id="ld-haulage" name="haulageCost" type="number" step="0.01" min="0" className={fieldClass} />
+        </div>
       </div>
       <p className="text-xs text-[var(--muted)]">
         Measurement fields are optional. A corrected quantity is derived when a factor is supplied; no method is applied
-        automatically.
+        automatically. Compartment haulage is a quoted cost for that tank, not a billed invoice line.
       </p>
       <Feedback state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>

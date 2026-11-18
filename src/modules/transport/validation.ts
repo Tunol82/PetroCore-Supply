@@ -135,6 +135,10 @@ export const loadingRecordSchema = z.object({
   density15c: optionalPositiveNumber,
   correctionMethod: optionalText(40),
   correctionFactor: optionalPositiveNumber,
+  haulageCost: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? undefined : value),
+    z.coerce.number().min(0, "Haulage cannot be negative.").optional(),
+  ),
 });
 
 export const loadingAllocationSchema = z.object({

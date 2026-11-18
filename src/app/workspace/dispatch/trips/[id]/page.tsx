@@ -34,6 +34,7 @@ type LoadingRecord = {
   product_id: string;
   loaded_quantity: number;
   loading_time: string;
+  haulage_cost: number | null;
 };
 
 type Allocation = {
@@ -256,7 +257,7 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
   ] = await Promise.all([
     supabase
       .from("trip_loading_records")
-      .select("id, compartment_id, product_id, loaded_quantity, loading_time")
+      .select("id, compartment_id, product_id, loaded_quantity, loading_time, haulage_cost")
       .eq("trip_id", trip.id)
       .order("loading_time"),
     supabase
@@ -543,6 +544,7 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
   const recovered = recoveries.reduce((sum, recovery) => sum + Number(recovery.amount), 0);
 
   const expenseTotal = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  const quotedHaulage = loadingRecords.reduce((sum, record) => sum + Number(record.haulage_cost ?? 0), 0);
   const fuelLitres = expenses
     .filter((expense) => expense.expense_type === "fuel" && expense.litres !== null)
     .reduce((sum, expense) => sum + Number(expense.litres), 0);
@@ -937,14 +939,14 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
       <Card>
         <CardHeader
           title="Transport by compartment"
-          description="Linked transport invoices allocated across compartments by loaded volume. A per-tank rate is not billed."
+          description="Linked transport invoices allocated across compartments by loaded volume, compared with any quoted per-compartment haulage."
         />
         <CardBody>
           {loadingRecords.length === 0 ? (
             <EmptyState title="No compartments loaded" description="Record loading per compartment to see the split." />
           ) : (
             <TableScroll>
-              <Table minWidth={900}>
+              <Table minWidth={1080}>
                 <THead>
                   <TR>
                     <TH>Compartment</TH>
@@ -953,7 +955,8 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
                     <TH align="right">Fill</TH>
                     <TH align="right">Share</TH>
                     <TH align="right">Transport share</TH>
-                    <TH align="right">Cost / L</TH>
+                    <TH align="right">Quoted haulage</TH>
+                    <TH align="right">Δ vs split</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -963,9 +966,9 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
                     const loaded = Number(record.loaded_quantity);
                     const share = totalLoaded > 0 ? loaded / totalLoaded : 0;
                     const allocated = transportCost * share;
-                    const perLitre = loaded > 0 && transportCost > 0 ? allocated / loaded : null;
                     const capacity = compartment ? Number(compartment.capacity) : 0;
                     const fill = capacity > 0 ? (loaded / capacity) * 100 : null;
+                    const quoted = record.haulage_cost === null ? null : Number(record.haulage_cost);
 
                     return (
                       <TR key={record.id}>
@@ -977,7 +980,18 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
                         <TD align="right">{fill === null ? "—" : `${fill.toFixed(0)}%`}</TD>
                         <TD align="right">{(share * 100).toFixed(1)}%</TD>
                         <TD align="right">{transportCost > 0 ? formatMoney(allocated) : "—"}</TD>
-                        <TD align="right">{perLitre === null ? "—" : formatMoney(perLitre)}</TD>
+                        <TD align="right">
+                          {quoted === null ? <span className="text-[var(--muted)]">—</span> : formatMoney(quoted)}
+                        </TD>
+                        <TD align="right">
+                          {quoted === null || transportCost === 0 ? (
+                            <span className="text-[var(--muted)]">—</span>
+                          ) : (
+                            <span className={allocated - quoted > 0 ? "text-[var(--warning)]" : ""}>
+                              {formatMoney(allocated - quoted)}
+                            </span>
+                          )}
+                        </TD>
                       </TR>
                     );
                   })}
@@ -992,8 +1006,11 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
                     <TD />
                     <TD align="right">100%</TD>
                     <TD align="right">{formatMoney(transportCost)}</TD>
+                    <TD align="right">{quotedHaulage > 0 ? formatMoney(quotedHaulage) : "—"}</TD>
                     <TD align="right">
-                      {totalLoaded > 0 && transportCost > 0 ? formatMoney(transportCost / totalLoaded) : "—"}
+                      {quotedHaulage > 0 && transportCost > 0
+                        ? formatMoney(transportCost - quotedHaulage)
+                        : "—"}
                     </TD>
                   </TR>
                 </TFoot>

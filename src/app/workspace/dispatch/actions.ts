@@ -273,6 +273,7 @@ export async function createLoadingRecord(
     density15c: formData.get("density15c"),
     correctionMethod: formData.get("correctionMethod"),
     correctionFactor: formData.get("correctionFactor"),
+    haulageCost: formData.get("haulageCost"),
   });
 
   if (!parsed.success) {
@@ -295,6 +296,7 @@ export async function createLoadingRecord(
     density_15c: parsed.data.density15c ?? null,
     correction_method: textOrNull(parsed.data.correctionMethod),
     correction_factor: parsed.data.correctionFactor ?? null,
+    haulage_cost: parsed.data.haulageCost ?? null,
     officer_id: context.tenant.profileId,
   });
 

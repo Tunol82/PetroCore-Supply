@@ -61,3 +61,4 @@ None.
 | `20261118000300_trip_expenses.sql` | Append-only trip expenses with optional fuel litres, RLS and audit | Applied 2026-11-18; fuel expense recorded through the UI and folded into the trip statement |
 | `20261118000400_trip_odometer.sql` | Departure and arrival odometer readings with ordering check | Applied 2026-11-18; 480 km distance and 4.00 km/L derived on the demo trip |
 | `20261118000500_trip_arrival_audit.sql` | Audit trigger for arrival and arrival-odometer changes | Applied 2026-11-18; arrival update recorded through the UI |
+| `20261118000600_compartment_haulage.sql` | Optional quoted haulage per loading record | Applied 2026-11-18; quoted vs allocated split verified on a temporary loading record |
