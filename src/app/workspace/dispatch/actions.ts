@@ -86,6 +86,7 @@ export async function createTrip(
     destinationLocationId: formData.get("destinationLocationId"),
     departureDate: formData.get("departureDate"),
     expectedArrivalDate: formData.get("expectedArrivalDate"),
+    odometerStart: formData.get("odometerStart"),
   });
 
   if (!parsed.success) {
@@ -103,6 +104,7 @@ export async function createTrip(
     destination_location_id: textOrNull(parsed.data.destinationLocationId),
     departure_time: dateToIso(parsed.data.departureDate),
     expected_arrival: dateToIso(parsed.data.expectedArrivalDate),
+    odometer_start: parsed.data.odometerStart ?? null,
     created_by: context.tenant.profileId,
   });
 

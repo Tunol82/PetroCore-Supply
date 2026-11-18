@@ -20,6 +20,8 @@ type Trip = {
   departure_time: string | null;
   expected_arrival: string | null;
   actual_arrival: string | null;
+  odometer_start: number | null;
+  odometer_end: number | null;
   origin_supplier_depot_id: string | null;
   origin_location_id: string | null;
   destination_location_id: string | null;
@@ -95,6 +97,7 @@ type Driver = { id: string; full_name: string };
 type Transporter = { id: string; business_name: string };
 type Depot = { id: string; name: string; depot_code: string };
 type Location = { id: string; location_name: string; location_code: string };
+type Compartment = { id: string; compartment_number: string; capacity: number; truck_id: string };
 
 type TripExpense = {
   id: string;
@@ -144,6 +147,24 @@ function formatDateTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function toDateTimeInput(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Africa/Lagos",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
+
+  return parts.replace(" ", "T");
 }
 
 function tripDuration(departure: string | null, arrival: string | null) {
@@ -209,7 +230,7 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
   const { data: tripData, error: tripError } = await supabase
     .from("trips")
     .select(
-      "id, trip_number, status, departure_time, expected_arrival, actual_arrival, origin_supplier_depot_id, origin_location_id, destination_location_id, created_at",
+      "id, trip_number, status, departure_time, expected_arrival, actual_arrival, odometer_start, odometer_end, origin_supplier_depot_id, origin_location_id, destination_location_id, created_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -300,6 +321,19 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
   const primaryAssignment = assignments.find((assignment) => !assignment.released_at) ?? assignments[0] ?? null;
 
   const loadingIds = loadingRecords.map((record) => record.id);
+  const compartmentIds = Array.from(new Set(loadingRecords.map((record) => record.compartment_id)));
+
+  const compartmentsResult =
+    compartmentIds.length > 0
+      ? await supabase
+          .from("truck_compartments")
+          .select("id, compartment_number, capacity, truck_id")
+          .in("id", compartmentIds)
+      : { data: [], error: null };
+
+  const compartmentById = new Map(
+    ((compartmentsResult.data ?? []) as Compartment[]).map((compartment) => [compartment.id, compartment]),
+  );
 
   const [allocationsResult, reconciliationItemsResult] = await Promise.all([
     loadingIds.length > 0
@@ -323,7 +357,7 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
       : Promise.resolve({ data: [], error: null }),
   ]);
 
-  if (allocationsResult.error || reconciliationItemsResult.error) {
+  if (allocationsResult.error || reconciliationItemsResult.error || compartmentsResult.error) {
     return (
       <div className="space-y-6">
         <PageHeader eyebrow="Trip P&L" title="Unavailable" description="Costing data could not be loaded." />
@@ -515,6 +549,15 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
   const fuelCost = expenses
     .filter((expense) => expense.expense_type === "fuel")
     .reduce((sum, expense) => sum + Number(expense.amount), 0);
+
+  const startOdometer = trip.odometer_start === null ? null : Number(trip.odometer_start);
+  const endOdometer = trip.odometer_end === null ? null : Number(trip.odometer_end);
+  const distance =
+    startOdometer !== null && endOdometer !== null && endOdometer >= startOdometer
+      ? endOdometer - startOdometer
+      : null;
+  const fuelEfficiency = distance !== null && distance > 0 && fuelLitres > 0 ? distance / fuelLitres : null;
+  const runningCostPerKm = distance !== null && distance > 0 ? (transportCost + expenseTotal) / distance : null;
 
   const confirmedLiability = discrepancies
     .filter((discrepancy) => discrepancy.liability_status === "confirmed")
@@ -734,9 +777,30 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
                 }
               />
               <Row label="Compartments loaded" value={String(loadingRecords.length)} />
+              <Row
+                label="Odometer (km)"
+                value={
+                  startOdometer === null && endOdometer === null
+                    ? "—"
+                    : `${startOdometer === null ? "—" : formatQuantity(startOdometer)} → ${
+                        endOdometer === null ? "—" : formatQuantity(endOdometer)
+                      }`
+                }
+              />
+              <Row label="Distance" value={distance === null ? "—" : `${formatQuantity(distance)} km`} />
+              <Row
+                label="Fuel efficiency"
+                value={fuelEfficiency === null ? "—" : `${fuelEfficiency.toFixed(2)} km/L`}
+              />
             </dl>
 
-            {canManage && !trip.actual_arrival ? <TripArrivalForm tripId={trip.id} /> : null}
+            {canManage ? (
+              <TripArrivalForm
+                tripId={trip.id}
+                initialArrival={toDateTimeInput(trip.actual_arrival)}
+                initialOdometer={trip.odometer_end === null ? "" : String(Number(trip.odometer_end))}
+              />
+            ) : null}
           </CardBody>
         </Card>
       </div>
@@ -776,7 +840,14 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
               amount={costPerDeliveredLitre ?? 0}
               muted={costPerDeliveredLitre === null}
               note={costPerDeliveredLitre === null ? "Needs purchase cost" : undefined}
-              isRate
+              unit="/ L"
+            />
+            <MoneyRow
+              label="Running cost per km"
+              amount={runningCostPerKm ?? 0}
+              muted={runningCostPerKm === null}
+              note={runningCostPerKm === null ? "Needs both odometer readings" : "Transport plus trip expenses"}
+              unit="/ km"
             />
           </dl>
           <p className="mt-4 text-xs leading-6 text-[var(--muted)]">
@@ -860,6 +931,75 @@ export default async function TripPnlPage({ params }: { params: Promise<{ id: st
               <TripExpenseForm tripId={trip.id} />
             </div>
           ) : null}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Transport by compartment"
+          description="Linked transport invoices allocated across compartments by loaded volume. A per-tank rate is not billed."
+        />
+        <CardBody>
+          {loadingRecords.length === 0 ? (
+            <EmptyState title="No compartments loaded" description="Record loading per compartment to see the split." />
+          ) : (
+            <TableScroll>
+              <Table minWidth={900}>
+                <THead>
+                  <TR>
+                    <TH>Compartment</TH>
+                    <TH>Product</TH>
+                    <TH align="right">Loaded</TH>
+                    <TH align="right">Fill</TH>
+                    <TH align="right">Share</TH>
+                    <TH align="right">Transport share</TH>
+                    <TH align="right">Cost / L</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {loadingRecords.map((record) => {
+                    const compartment = compartmentById.get(record.compartment_id);
+                    const truck = compartment ? truckById.get(compartment.truck_id) : undefined;
+                    const loaded = Number(record.loaded_quantity);
+                    const share = totalLoaded > 0 ? loaded / totalLoaded : 0;
+                    const allocated = transportCost * share;
+                    const perLitre = loaded > 0 && transportCost > 0 ? allocated / loaded : null;
+                    const capacity = compartment ? Number(compartment.capacity) : 0;
+                    const fill = capacity > 0 ? (loaded / capacity) * 100 : null;
+
+                    return (
+                      <TR key={record.id}>
+                        <TD className="font-medium">
+                          {truck?.registration_number ?? "Truck"} · {compartment?.compartment_number ?? "—"}
+                        </TD>
+                        <TD className="text-xs">{productById.get(record.product_id)?.product_name ?? "—"}</TD>
+                        <TD align="right">{formatQuantity(loaded)} L</TD>
+                        <TD align="right">{fill === null ? "—" : `${fill.toFixed(0)}%`}</TD>
+                        <TD align="right">{(share * 100).toFixed(1)}%</TD>
+                        <TD align="right">{transportCost > 0 ? formatMoney(allocated) : "—"}</TD>
+                        <TD align="right">{perLitre === null ? "—" : formatMoney(perLitre)}</TD>
+                      </TR>
+                    );
+                  })}
+                </TBody>
+                <TFoot>
+                  <TR>
+                    <TD>Total</TD>
+                    <TD className="text-xs text-[var(--muted)]">
+                      {loadingRecords.length} compartment{loadingRecords.length === 1 ? "" : "s"}
+                    </TD>
+                    <TD align="right">{formatQuantity(totalLoaded)} L</TD>
+                    <TD />
+                    <TD align="right">100%</TD>
+                    <TD align="right">{formatMoney(transportCost)}</TD>
+                    <TD align="right">
+                      {totalLoaded > 0 && transportCost > 0 ? formatMoney(transportCost / totalLoaded) : "—"}
+                    </TD>
+                  </TR>
+                </TFoot>
+              </Table>
+            </TableScroll>
+          )}
         </CardBody>
       </Card>
 
@@ -1002,14 +1142,14 @@ function MoneyRow({
   strong = false,
   muted = false,
   note,
-  isRate = false,
+  unit,
 }: {
   label: string;
   amount: number;
   strong?: boolean;
   muted?: boolean;
   note?: string;
-  isRate?: boolean;
+  unit?: string;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2.5">
@@ -1027,7 +1167,7 @@ function MoneyRow({
         ) : (
           <>
             {formatMoney(amount)}
-            {isRate ? <span className="text-xs text-[var(--muted)]"> / L</span> : null}
+            {unit ? <span className="text-xs text-[var(--muted)]"> {unit}</span> : null}
           </>
         )}
       </dd>

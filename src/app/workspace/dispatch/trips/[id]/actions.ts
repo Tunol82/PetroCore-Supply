@@ -78,12 +78,18 @@ export async function recordTripArrival(
     return { error: "Enter a valid arrival date and time.", success: null };
   }
 
+  const odometerEnd = numberOrNull(formData.get("odometerEnd"));
+
+  if (odometerEnd !== null && (Number.isNaN(odometerEnd) || odometerEnd < 0)) {
+    return { error: "Arrival odometer must be zero or more.", success: null };
+  }
+
   const { context, error } = await requireTransportManage();
   if (!context) return { error, success: null };
 
   const { data: trip, error: tripError } = await context.supabase
     .from("trips")
-    .select("id, departure_time")
+    .select("id, departure_time, odometer_start")
     .eq("id", tripId)
     .eq("organisation_id", context.tenant.organisationId)
     .maybeSingle();
@@ -96,9 +102,21 @@ export async function recordTripArrival(
     return { error: "Arrival cannot be before departure.", success: null };
   }
 
+  if (
+    odometerEnd !== null &&
+    trip.odometer_start !== null &&
+    odometerEnd < Number(trip.odometer_start)
+  ) {
+    return { error: "Arrival odometer cannot be lower than the departure odometer.", success: null };
+  }
+
   const { data: updated, error: updateError } = await context.supabase
     .from("trips")
-    .update({ actual_arrival: arrived.toISOString(), updated_at: new Date().toISOString() })
+    .update({
+      actual_arrival: arrived.toISOString(),
+      ...(odometerEnd !== null ? { odometer_end: odometerEnd } : {}),
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", tripId)
     .eq("organisation_id", context.tenant.organisationId)
     .select("id")

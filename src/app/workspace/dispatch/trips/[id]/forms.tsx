@@ -36,18 +36,39 @@ function Feedback({ state }: { state: TripActionState }) {
   return null;
 }
 
-export function TripArrivalForm({ tripId }: { tripId: string }) {
+export function TripArrivalForm({
+  tripId,
+  initialArrival,
+  initialOdometer,
+}: {
+  tripId: string;
+  initialArrival: string;
+  initialOdometer: string;
+}) {
   const [state, formAction, pending] = useActionState(recordTripArrival, initialState);
+  const hasArrival = initialArrival.length > 0;
 
   return (
     <form action={formAction} className="mt-3 space-y-3 border-t border-[var(--line)] pt-3">
       <input type="hidden" name="tripId" value={tripId} />
-      <Field label="Actual arrival" htmlFor="arrival-at">
-        <Input id="arrival-at" name="arrivedAt" type="datetime-local" required />
-      </Field>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Actual arrival" htmlFor="arrival-at">
+          <Input id="arrival-at" name="arrivedAt" type="datetime-local" required defaultValue={initialArrival} />
+        </Field>
+        <Field label="Odometer at arrival (km)" htmlFor="arrival-odometer" hint="Optional; unlocks distance and km/L.">
+          <Input
+            id="arrival-odometer"
+            name="odometerEnd"
+            type="number"
+            min="0"
+            step="0.1"
+            defaultValue={initialOdometer}
+          />
+        </Field>
+      </div>
       <Feedback state={state} />
       <Button type="submit" size="sm" disabled={pending}>
-        {pending ? "Saving…" : "Record arrival"}
+        {pending ? "Saving…" : hasArrival ? "Update arrival" : "Record arrival"}
       </Button>
     </form>
   );

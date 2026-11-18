@@ -92,6 +92,10 @@ export function TripForm({
           <label htmlFor="trip-expected" className={labelClass}>Expected arrival</label>
           <input id="trip-expected" name="expectedArrivalDate" type="date" className={fieldClass} />
         </div>
+        <div>
+          <label htmlFor="trip-odometer" className={labelClass}>Odometer at departure (km)</label>
+          <input id="trip-odometer" name="odometerStart" type="number" min="0" step="0.1" className={fieldClass} />
+        </div>
       </div>
       <Feedback state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>

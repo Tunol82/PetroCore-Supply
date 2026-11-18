@@ -59,3 +59,5 @@ None.
 | `20261118000100_dynamic_operating_rules.sql` | Configurable approval thresholds, transporter charge categories and operating policy; liability confirmation now checks the configured authority | Applied 2026-11-18; tier resolution (≤ threshold vs above), category seed and policy upsert verified |
 | `20261118000200_trip_closure.sql` | `close_trip` with policy-driven guard, override reason and audit | Applied 2026-11-18; warn closes, block rejects without a reason, block closes with the override permission and reason (rolled back) |
 | `20261118000300_trip_expenses.sql` | Append-only trip expenses with optional fuel litres, RLS and audit | Applied 2026-11-18; fuel expense recorded through the UI and folded into the trip statement |
+| `20261118000400_trip_odometer.sql` | Departure and arrival odometer readings with ordering check | Applied 2026-11-18; 480 km distance and 4.00 km/L derived on the demo trip |
+| `20261118000500_trip_arrival_audit.sql` | Audit trigger for arrival and arrival-odometer changes | Applied 2026-11-18; arrival update recorded through the UI |

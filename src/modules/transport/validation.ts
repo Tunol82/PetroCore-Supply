@@ -101,6 +101,7 @@ export const tripSchema = z
     destinationLocationId: optionalUuid("Select a destination location."),
     departureDate: optionalDate,
     expectedArrivalDate: optionalDate,
+    odometerStart: optionalPositiveNumber,
   })
   .refine(
     (value) =>
