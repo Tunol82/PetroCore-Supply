@@ -5,12 +5,13 @@ import { getCurrentTenant } from "@/modules/tenant/current-tenant";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
-import { StatusBadge } from "@/components/ui/badge";
+import { StatusBadge, Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
 import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
 import {
   AssignmentForm,
+  CloseTripForm,
   LoadingAllocationForm,
   LoadingRecordForm,
   ReleaseAssignmentForm,
@@ -27,6 +28,7 @@ type Trip = {
   destination_location_id: string | null;
   departure_time: string | null;
   status: string;
+  created_at: string;
 };
 
 type Assignment = {
@@ -75,6 +77,14 @@ function formatQuantity(value: number) {
   return new Intl.NumberFormat("en-NG", { maximumFractionDigits: 3 }).format(value);
 }
 
+function ageInDays(value: string) {
+  return Math.floor((new Date().getTime() - new Date(value).getTime()) / 86_400_000);
+}
+
+function olderThanDays(value: string, days: number) {
+  return new Date(value).getTime() < new Date().getTime() - days * 86_400_000;
+}
+
 export default async function DispatchPage({
   searchParams,
 }: {
@@ -119,7 +129,7 @@ export default async function DispatchPage({
       supabase
         .from("trips")
         .select(
-          "id, trip_number, origin_supplier_depot_id, origin_location_id, destination_location_id, departure_time, status",
+          "id, trip_number, origin_supplier_depot_id, origin_location_id, destination_location_id, departure_time, status, created_at",
         )
         .order("created_at", { ascending: false })
         .limit(50),
@@ -147,6 +157,9 @@ export default async function DispatchPage({
     batchesResult,
     salesItemsResult,
     salesOrdersResult,
+    reconciliationsResult,
+    reconciliationItemsResult,
+    policyResult,
   ] = await Promise.all([
     supabase
       .from("trip_loading_records")
@@ -163,7 +176,34 @@ export default async function DispatchPage({
     supabase.from("procurement_batches").select("id, batch_number, product_id").order("created_at", { ascending: false }).limit(50),
     supabase.from("sales_order_items").select("id, sales_order_id, product_id"),
     supabase.from("sales_orders").select("id, order_number"),
+    supabase.from("trip_reconciliations").select("id, trip_id").limit(200),
+    supabase
+      .from("trip_reconciliation_items")
+      .select("id, reconciliation_id, reconciliation_status")
+      .limit(500),
+    supabase
+      .from("operating_policies")
+      .select("trip_closure_policy, closure_override_permission, unresolved_aging_days, default_correction_method")
+      .eq("organisation_id", tenant.organisationId)
+      .maybeSingle(),
   ]);
+
+  const policy =
+    (policyResult.data as
+      | {
+          trip_closure_policy: string;
+          closure_override_permission: string;
+          unresolved_aging_days: number;
+          default_correction_method: string | null;
+        }
+      | null) ?? null;
+  const closurePolicy = (policy?.trip_closure_policy ?? "warn") as "allow" | "warn" | "block";
+  const overridePermission = policy?.closure_override_permission ?? "transport.manage";
+  const agingDays = policy?.unresolved_aging_days ?? 7;
+
+  const { data: canOverrideClosure } = await supabase.rpc("has_permission", {
+    p_permission_key: overridePermission,
+  });
 
   const queryError =
     tripsResult.error ??
@@ -179,7 +219,10 @@ export default async function DispatchPage({
     productsResult.error ??
     batchesResult.error ??
     salesItemsResult.error ??
-    salesOrdersResult.error;
+    salesOrdersResult.error ??
+    reconciliationsResult.error ??
+    reconciliationItemsResult.error ??
+    policyResult.error;
 
   if (queryError) {
     return (
@@ -203,6 +246,12 @@ export default async function DispatchPage({
   const batches = (batchesResult.data ?? []) as ProcurementBatch[];
   const salesItems = (salesItemsResult.data ?? []) as SalesOrderItemRef[];
   const salesOrders = (salesOrdersResult.data ?? []) as SalesOrderRef[];
+  const reconciliations = (reconciliationsResult.data ?? []) as { id: string; trip_id: string }[];
+  const reconciliationItems = (reconciliationItemsResult.data ?? []) as {
+    id: string;
+    reconciliation_id: string;
+    reconciliation_status: string;
+  }[];
 
   const tripById = new Map(trips.map((trip) => [trip.id, trip]));
   const depotById = new Map(depots.map((depot) => [depot.id, depot]));
@@ -214,6 +263,30 @@ export default async function DispatchPage({
   const batchById = new Map(batches.map((batch) => [batch.id, batch]));
   const salesOrderById = new Map(salesOrders.map((order) => [order.id, order]));
   const loadingRecordById = new Map(loadingRecords.map((record) => [record.id, record]));
+
+  const reconciliationById = new Map(reconciliations.map((item) => [item.id, item]));
+  const unresolvedStatuses = new Set(["open", "flagged", "under_investigation"]);
+  const unresolvedByTrip = new Map<string, number>();
+
+  for (const item of reconciliationItems) {
+    if (!unresolvedStatuses.has(item.reconciliation_status)) {
+      continue;
+    }
+
+    const tripId = reconciliationById.get(item.reconciliation_id)?.trip_id;
+
+    if (!tripId) {
+      continue;
+    }
+
+    unresolvedByTrip.set(tripId, (unresolvedByTrip.get(tripId) ?? 0) + 1);
+  }
+
+  const openTrips = trips.filter((trip) => trip.status !== "closed" && trip.status !== "cancelled");
+  const unresolvedTripCount = openTrips.filter((trip) => (unresolvedByTrip.get(trip.id) ?? 0) > 0).length;
+  const agingTrips = openTrips.filter(
+    (trip) => (unresolvedByTrip.get(trip.id) ?? 0) > 0 && olderThanDays(trip.created_at, agingDays),
+  );
 
   const assignmentsByTrip = new Map<string, Assignment[]>();
   for (const assignment of assignments) {
@@ -260,8 +333,6 @@ export default async function DispatchPage({
   }));
 
   const activeAssignments = assignments.filter((assignment) => !assignment.released_at).length;
-  const allocatedVolume = allocations.reduce((sum, allocation) => sum + Number(allocation.allocated_quantity), 0);
-
   const tabs = [
     { href: "/workspace/dispatch?tab=trips", label: "Trips", count: trips.length },
     { href: "/workspace/dispatch?tab=assignments", label: "Assignments", count: assignments.length },
@@ -283,7 +354,16 @@ export default async function DispatchPage({
         <StatCard label="Trips" value={trips.length} hint="Latest 50" />
         <StatCard label="Active assignments" value={activeAssignments} hint="Truck and driver committed" tone="brand" />
         <StatCard label="Loading records" value={loadingRecords.length} hint="Per compartment" />
-        <StatCard label="Allocated volume" value={formatQuantity(allocatedVolume)} hint="Procurement to loading" />
+        <StatCard
+          label="Unresolved trips"
+          value={unresolvedTripCount}
+          hint={
+            agingTrips.length === 0
+              ? "None past the aging window"
+              : `${agingTrips.length} past ${agingDays} days`
+          }
+          tone={agingTrips.length > 0 ? "danger" : "neutral"}
+        />
       </div>
 
       <Tabs items={tabs} active={activeHref} />
@@ -297,7 +377,7 @@ export default async function DispatchPage({
                 <EmptyState title="No trips yet" description="Create the first trip below." />
               ) : (
                 <TableScroll>
-                  <Table minWidth={820}>
+                  <Table minWidth={900}>
                     <THead>
                       <TR>
                         <TH>Trip</TH>
@@ -306,6 +386,7 @@ export default async function DispatchPage({
                         <TH>Departure</TH>
                         <TH>Status</TH>
                         <TH align="right">Assignments</TH>
+                        <TH align="right">Unresolved</TH>
                       </TR>
                     </THead>
                     <TBody>
@@ -331,6 +412,15 @@ export default async function DispatchPage({
                             <StatusBadge status={trip.status} />
                           </TD>
                           <TD align="right">{(assignmentsByTrip.get(trip.id) ?? []).length}</TD>
+                          <TD align="right">
+                            {(unresolvedByTrip.get(trip.id) ?? 0) > 0 ? (
+                              <span className="font-semibold text-[var(--warning)]">
+                                {unresolvedByTrip.get(trip.id)}
+                              </span>
+                            ) : (
+                              <span className="text-[var(--muted)]">—</span>
+                            )}
+                          </TD>
                         </TR>
                       ))}
                     </TBody>
@@ -345,6 +435,77 @@ export default async function DispatchPage({
               <CardHeader title="Create trip" description="Origin can be a supplier depot or a storage location." />
               <CardBody>
                 <TripForm depots={depotOptions} locations={locationOptions} />
+              </CardBody>
+            </Card>
+          ) : null}
+
+          {canManage ? (
+            <Card>
+              <CardHeader
+                title="Close trips"
+                description={
+                  closurePolicy === "block"
+                    ? `Closure is blocked while reconciliation items are unresolved. Override needs ${overridePermission} and a reason. Aging report after ${agingDays} days.`
+                    : `Trips close with unresolved items recorded in the audit trail (policy: ${closurePolicy}). Aging report after ${agingDays} days.`
+                }
+              />
+              <CardBody>
+                {openTrips.length === 0 ? (
+                  <EmptyState title="No open trips" description="Every trip is closed or cancelled." />
+                ) : (
+                  <TableScroll>
+                    <Table minWidth={1040}>
+                      <THead>
+                        <TR>
+                          <TH>Trip</TH>
+                          <TH>Status</TH>
+                          <TH align="right">Unresolved</TH>
+                          <TH>Age</TH>
+                          <TH>Close</TH>
+                        </TR>
+                      </THead>
+                      <TBody>
+                        {openTrips.map((trip) => {
+                          const unresolved = unresolvedByTrip.get(trip.id) ?? 0;
+                          const age = ageInDays(trip.created_at);
+                          const isAging = unresolved > 0 && olderThanDays(trip.created_at, agingDays);
+
+                          return (
+                            <TR key={trip.id}>
+                              <TD className="font-medium">{trip.trip_number}</TD>
+                              <TD>
+                                <StatusBadge status={trip.status} />
+                              </TD>
+                              <TD align="right">
+                                {unresolved > 0 ? (
+                                  <span className="font-semibold text-[var(--warning)]">{unresolved}</span>
+                                ) : (
+                                  <span className="text-[var(--muted)]">—</span>
+                                )}
+                              </TD>
+                              <TD className="text-xs text-[var(--muted)]">
+                                {age} day{age === 1 ? "" : "s"}
+                                {isAging ? (
+                                  <span className="ml-2">
+                                    <Badge tone="warning">Aging</Badge>
+                                  </span>
+                                ) : null}
+                              </TD>
+                              <TD>
+                                <CloseTripForm
+                                  tripId={trip.id}
+                                  unresolvedItems={unresolved}
+                                  policy={closurePolicy}
+                                  canOverride={Boolean(canOverrideClosure)}
+                                />
+                              </TD>
+                            </TR>
+                          );
+                        })}
+                      </TBody>
+                    </Table>
+                  </TableScroll>
+                )}
               </CardBody>
             </Card>
           ) : null}
@@ -475,7 +636,12 @@ export default async function DispatchPage({
             <Card>
               <CardHeader title="Record loading" description="Measurement fields are optional." />
               <CardBody>
-                <LoadingRecordForm trips={tripOptions} compartments={compartmentOptions} products={productOptions} />
+                <LoadingRecordForm
+                  trips={tripOptions}
+                  compartments={compartmentOptions}
+                  products={productOptions}
+                  defaultCorrectionMethod={policy?.default_correction_method ?? null}
+                />
               </CardBody>
             </Card>
           ) : null}

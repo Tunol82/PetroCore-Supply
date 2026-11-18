@@ -43,12 +43,14 @@ export function DeliveryForm({
   loadingRecords,
   locations,
   products,
+  defaultCorrectionMethod,
 }: {
   trips: Option[];
   salesLines: Option[];
   loadingRecords: Option[];
   locations: Option[];
   products: Option[];
+  defaultCorrectionMethod?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(recordDelivery, initialState);
 
@@ -140,7 +142,13 @@ export function DeliveryForm({
         </div>
         <div>
           <label htmlFor="dl-method" className={labelClass}>Correction method</label>
-          <input id="dl-method" name="correctionMethod" className={fieldClass} placeholder="Optional" />
+          <input
+            id="dl-method"
+            name="correctionMethod"
+            className={fieldClass}
+            placeholder="Optional"
+            defaultValue={defaultCorrectionMethod ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="dl-factor" className={labelClass}>Correction factor</label>

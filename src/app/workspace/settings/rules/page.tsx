@@ -339,12 +339,13 @@ export default async function BusinessRulesPage({
                   <strong className="font-semibold">Charge categories</strong> feed the transporter invoice line form.
                 </li>
                 <li>
-                  <strong className="font-semibold">Trip closure</strong> and the aging window are stored but not yet
-                  enforced, because there is no close action. When that action ships, it will read this policy.
+                  <strong className="font-semibold">Trip closure</strong> is enforced from the dispatch page. With
+                  &ldquo;block&rdquo;, unresolved reconciliation items stop closure unless the override permission and a
+                  reason are supplied. The aging window drives the aging badge and the unresolved-trips stat.
                 </li>
                 <li>
-                  <strong className="font-semibold">Correction method</strong> is available as a form default; no
-                  automatic conversion is applied.
+                  <strong className="font-semibold">Correction method</strong> prefills the loading and delivery forms.
+                  No automatic conversion is applied.
                 </li>
                 <li>
                   <strong className="font-semibold">Tolerance values</strong> are configured on the reconciliation page,

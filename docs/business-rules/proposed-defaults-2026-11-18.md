@@ -2,7 +2,7 @@
 
 **Status: PROPOSED — NOT APPROVED.** Nothing in this document is implemented. It exists so the owner can approve, amend or reject concrete values instead of abstract options. Until sign-off, the system keeps today's behaviour: liability is confirmed manually by any `transport.manage` user, no tolerance values are seeded, and trips have no closure rule.
 
-> **Update 2026-11-18 — the configuration layer now exists.** Approval thresholds, transporter charge categories and operating policy are editable in **Settings → Business rules**, and the database enforces configured thresholds when a liability is confirmed. Charge categories feed the invoice line form. Trip closure, the aging window and the default correction method are stored per organisation. **No values are seeded**, so runtime behaviour is unchanged until the sign-off table below is completed.
+> **Update 2026-11-18 — the configuration layer now exists.** Approval thresholds, transporter charge categories and operating policy are editable in **Settings → Business rules**, and the database enforces configured thresholds when a liability is confirmed. Charge categories feed the invoice line form. Trip closure is enforced on dispatch: with a `block` policy, unresolved items stop closure unless the override permission and a reason are supplied, and the aging window drives the aging badge. The default correction method prefills loading and delivery forms. **No values are seeded**, so runtime behaviour is unchanged (closure defaults to `warn`) until the sign-off table below is completed.
 
 - Prepared: 2026-11-18
 - Covers: DR-13 remainder (approval thresholds), DR-11, DR-03 values, DR-14 trip closure, DR-02 method
@@ -148,6 +148,8 @@ This is deliberately the smallest step: it makes the existing fields meaningful 
 | 5. Tests | DB checks for each tier and closure guard; unit tests for threshold selection; live check script | — | Medium |
 
 Recommended order: 2, then 1, then 3, then 4 — the tolerance values are configuration only and deliver reporting value immediately, while thresholds and closure change behaviour.
+
+**Status 2026-11-18:** the mechanisms for steps 1, 3 and 4 are built (Settings → Business rules, `close_trip`, form prefill). Step 2 (the tolerance values themselves) and every number in §8 still need the owner's sign-off.
 
 ---
 

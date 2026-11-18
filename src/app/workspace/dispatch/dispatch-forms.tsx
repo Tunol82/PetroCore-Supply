@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import {
   addLoadingAllocation,
   assignTrip,
+  closeTrip,
   createLoadingRecord,
   createTrip,
   releaseAssignment,
@@ -195,10 +196,12 @@ export function LoadingRecordForm({
   trips,
   compartments,
   products,
+  defaultCorrectionMethod,
 }: {
   trips: Option[];
   compartments: Option[];
   products: Option[];
+  defaultCorrectionMethod?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(createLoadingRecord, initialState);
 
@@ -258,7 +261,13 @@ export function LoadingRecordForm({
         </div>
         <div>
           <label htmlFor="ld-method" className={labelClass}>Correction method</label>
-          <input id="ld-method" name="correctionMethod" className={fieldClass} placeholder="Optional" />
+          <input
+            id="ld-method"
+            name="correctionMethod"
+            className={fieldClass}
+            placeholder="Optional"
+            defaultValue={defaultCorrectionMethod ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="ld-factor" className={labelClass}>Correction factor</label>
@@ -273,6 +282,42 @@ export function LoadingRecordForm({
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Recording…" : "Record loading"}
       </button>
+    </form>
+  );
+}
+
+export function CloseTripForm({
+  tripId,
+  unresolvedItems,
+  policy,
+  canOverride,
+}: {
+  tripId: string;
+  unresolvedItems: number;
+  policy: "allow" | "warn" | "block";
+  canOverride: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(closeTrip, initialState);
+  const needsReason = policy === "block" && unresolvedItems > 0;
+  const blocked = needsReason && !canOverride;
+
+  return (
+    <form action={formAction} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="tripId" value={tripId} />
+      <input
+        name="reason"
+        placeholder={needsReason ? "Override reason (required)" : "Reason (optional)"}
+        disabled={blocked}
+        className="w-52 rounded-lg border border-[var(--line)] bg-white px-2.5 py-1.5 text-xs outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10 disabled:bg-[var(--surface-3)]"
+      />
+      <button
+        type="submit"
+        disabled={pending || blocked}
+        className="rounded-lg bg-[var(--brand)] px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-[var(--surface-3)] disabled:text-[var(--muted)]"
+      >
+        {pending ? "Closing…" : blocked ? "Override needed" : "Close trip"}
+      </button>
+      <Feedback state={state} />
     </form>
   );
 }

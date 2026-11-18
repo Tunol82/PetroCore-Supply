@@ -107,6 +107,7 @@ export default async function DeliveriesPage({
     locationsResult,
     productsResult,
     loadingResult,
+    policyResult,
   ] = await Promise.all([
     supabase
       .from("trip_delivery_records")
@@ -131,6 +132,11 @@ export default async function DeliveriesPage({
       .select("id, trip_id, product_id, loaded_quantity")
       .order("loading_time", { ascending: false })
       .limit(50),
+    supabase
+      .from("operating_policies")
+      .select("default_correction_method")
+      .eq("organisation_id", tenant.organisationId)
+      .maybeSingle(),
   ]);
 
   const queryError =
@@ -142,7 +148,8 @@ export default async function DeliveriesPage({
     customersResult.error ??
     locationsResult.error ??
     productsResult.error ??
-    loadingResult.error;
+    loadingResult.error ??
+    policyResult.error;
 
   if (queryError) {
     return (
@@ -173,6 +180,9 @@ export default async function DeliveriesPage({
   const locations = (locationsResult.data ?? []) as CustomerLocation[];
   const products = (productsResult.data ?? []) as Product[];
   const loadingRecords = (loadingResult.data ?? []) as LoadingRecord[];
+  const correctionMethodDefault =
+    ((policyResult.data ?? null) as { default_correction_method: string | null } | null)
+      ?.default_correction_method ?? null;
 
   const tripById = new Map(trips.map((trip) => [trip.id, trip]));
   const salesItemById = new Map(salesItems.map((item) => [item.id, item]));
@@ -343,6 +353,7 @@ export default async function DeliveriesPage({
                   loadingRecords={loadingOptions}
                   locations={locationOptions}
                   products={productOptions}
+                  defaultCorrectionMethod={correctionMethodDefault}
                 />
               </CardBody>
             </Card>

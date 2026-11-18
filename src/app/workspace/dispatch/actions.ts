@@ -204,6 +204,57 @@ export async function releaseAssignment(
   return { error: null, success: "Assignment released. The truck and driver are available again." };
 }
 
+export async function closeTrip(
+  _previous: DispatchActionState,
+  formData: FormData,
+): Promise<DispatchActionState> {
+  const tripId = String(formData.get("tripId") ?? "").trim();
+  const reasonValue = formData.get("reason");
+  const reason = typeof reasonValue === "string" ? reasonValue.trim() : "";
+
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tripId)) {
+    return { error: "Select a valid trip.", success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { error: rpcError } = await context.supabase.rpc("close_trip", {
+    p_trip_id: tripId,
+    p_reason: reason.length > 0 ? reason : null,
+  });
+
+  if (rpcError) {
+    const message = rpcError.message;
+
+    if (message.includes("already closed")) {
+      return { error: "That trip is already closed.", success: null };
+    }
+
+    if (message.includes("cancelled trip")) {
+      return { error: "A cancelled trip cannot be closed.", success: null };
+    }
+
+    if (message.includes("reason is required")) {
+      return { error: "Add a reason to close a trip with unresolved items.", success: null };
+    }
+
+    if (message.includes("closure blocked")) {
+      return {
+        error:
+          "Closure is blocked by the operating policy. Resolve the flagged items, or ask someone with the override permission to close it with a reason.",
+        success: null,
+      };
+    }
+
+    return { error: "The trip could not be closed.", success: null };
+  }
+
+  revalidatePath("/workspace/dispatch");
+  revalidatePath("/workspace/reconciliation");
+  return { error: null, success: "Trip closed." };
+}
+
 export async function createLoadingRecord(
   _previous: DispatchActionState,
   formData: FormData,
