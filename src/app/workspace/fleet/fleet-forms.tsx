@@ -1,5 +1,7 @@
 "use client";
 
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState } from "react";
 import {
   createCompartment,
@@ -75,6 +77,7 @@ export function TransporterForm() {
         <input id="tp-address" name="address" className={fieldClass} />
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save transporter"}
       </button>
@@ -135,6 +138,7 @@ export function TruckForm({ transporters }: { transporters: Option[] }) {
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save truck"}
       </button>
@@ -171,6 +175,7 @@ export function CompartmentForm({ trucks }: { trucks: Option[] }) {
         <input id="cp-compatibility" name="productCompatibility" className={fieldClass} />
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save compartment"}
       </button>
@@ -225,6 +230,7 @@ export function DriverForm({ transporters }: { transporters: Option[] }) {
         Third-party drivers are operational records only and create no payroll obligation.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save driver"}
       </button>

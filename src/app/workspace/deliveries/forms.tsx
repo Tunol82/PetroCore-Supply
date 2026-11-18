@@ -1,5 +1,9 @@
 "use client";
 
+import { UnsavedGuard } from "@/components/ui/unsaved-guard";
+
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState } from "react";
 import {
   addDeliveryEvidence,
@@ -56,6 +60,7 @@ export function DeliveryForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label htmlFor="dl-trip" className={labelClass}>Trip</label>
@@ -160,6 +165,7 @@ export function DeliveryForm({
         Measurement fields are optional.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Recording…" : "Record delivery"}
       </button>
@@ -172,6 +178,7 @@ export function EvidenceForm({ deliveries }: { deliveries: Option[] }) {
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="ev-delivery" className={labelClass}>Delivery record</label>
@@ -211,6 +218,7 @@ export function EvidenceForm({ deliveries }: { deliveries: Option[] }) {
         Files upload to private tenant storage. JPEG, PNG, WebP or PDF up to 5 MB. Evidence is append-only.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Uploading…" : "Upload evidence"}
       </button>

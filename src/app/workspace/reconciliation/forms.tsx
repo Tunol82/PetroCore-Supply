@@ -1,5 +1,7 @@
 "use client";
 
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState } from "react";
 import {
   addReconciliationItem,
@@ -78,6 +80,7 @@ export function ReconciliationForm({ trips }: { trips: Option[] }) {
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save reconciliation"}
       </button>
@@ -160,6 +163,7 @@ export function ReconciliationItemForm({
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save item"}
       </button>
@@ -218,6 +222,7 @@ export function DiscrepancyForm({ items }: { items: Option[] }) {
         A discrepancy is not a loss or liability. It requires investigation and authorised confirmation.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Recording…" : "Record discrepancy"}
       </button>
@@ -268,6 +273,7 @@ export function InvestigationForm({ discrepancies }: { discrepancies: Option[] }
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Recording…" : "Record investigation"}
       </button>
@@ -425,6 +431,7 @@ export function ToleranceRuleForm({ products }: { products: Option[] }) {
         Optional. Without a rule, items keep the status chosen by the user and no tolerance is recorded.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save tolerance rule"}
       </button>

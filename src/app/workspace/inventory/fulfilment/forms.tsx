@@ -1,5 +1,9 @@
 "use client";
 
+import { UnsavedGuard } from "@/components/ui/unsaved-guard";
+
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState } from "react";
 import {
   addIssueLine,
@@ -81,6 +85,7 @@ export function ReservationForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="rs-number" className={labelClass}>Reservation number</label>
@@ -98,6 +103,7 @@ export function ReservationForm({
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Create reservation"}
       </button>
@@ -118,6 +124,7 @@ export function ReservationItemForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-4">
         <Select id="ri-reservation" name="reservationId" label="Reservation" options={reservations} placeholder="Select a reservation" />
         <Select id="ri-item" name="salesOrderItemId" label="Sales order line" options={orderItems} placeholder="Select a sales order line" />
@@ -128,6 +135,7 @@ export function ReservationItemForm({
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Reserving…" : "Reserve stock"}
       </button>
@@ -140,6 +148,7 @@ export function ReleaseForm({ reservationItemId, outstanding }: { reservationIte
 
   return (
     <form action={formAction} className="flex items-center gap-2">
+      <UnsavedGuard />
       <input type="hidden" name="reservationItemId" value={reservationItemId} />
       <input
         name="quantity"
@@ -173,6 +182,7 @@ export function IssueForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="is-number" className={labelClass}>Issue number</label>
@@ -199,6 +209,7 @@ export function IssueForm({
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Create draft issue"}
       </button>
@@ -211,6 +222,7 @@ export function IssueLineForm({ issues, orderItems }: { issues: Option[]; orderI
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <Select id="il-issue" name="issueId" label="Draft issue" options={issues} placeholder="Select an issue" />
         <Select id="il-item" name="salesOrderItemId" label="Sales order line" options={orderItems} placeholder="Select an order line" />
@@ -220,6 +232,7 @@ export function IssueLineForm({ issues, orderItems }: { issues: Option[]; orderI
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Adding…" : "Add issue line"}
       </button>
@@ -232,6 +245,7 @@ export function PostIssueForm({ issueId }: { issueId: string }) {
 
   return (
     <form action={formAction} className="space-y-2">
+      <UnsavedGuard />
       <input type="hidden" name="issueId" value={issueId} />
       <button
         type="submit"
@@ -251,6 +265,7 @@ export function ReverseIssueForm({ issueId }: { issueId: string }) {
 
   return (
     <form action={formAction} className="space-y-2">
+      <UnsavedGuard />
       <input type="hidden" name="issueId" value={issueId} />
       <input
         name="reason"

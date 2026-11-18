@@ -1,5 +1,9 @@
 "use client";
 
+import { UnsavedGuard } from "@/components/ui/unsaved-guard";
+
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState } from "react";
 import {
   addLoadingAllocation,
@@ -52,6 +56,7 @@ export function TripForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="trip-number" className={labelClass}>Trip number</label>
@@ -98,6 +103,7 @@ export function TripForm({
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save trip"}
       </button>
@@ -120,6 +126,7 @@ export function AssignmentForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="as-trip" className={labelClass}>Trip</label>
@@ -170,6 +177,7 @@ export function AssignmentForm({
         the trip to release it automatically.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Assigning…" : "Assign trip"}
       </button>
@@ -182,6 +190,7 @@ export function ReleaseAssignmentForm({ assignmentId }: { assignmentId: string }
 
   return (
     <form action={formAction} className="flex flex-wrap items-center gap-2">
+      <UnsavedGuard />
       <input type="hidden" name="assignmentId" value={assignmentId} />
       <button
         type="submit"
@@ -211,6 +220,7 @@ export function LoadingRecordForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label htmlFor="ld-trip" className={labelClass}>Trip</label>
@@ -287,6 +297,7 @@ export function LoadingRecordForm({
         automatically. Compartment haulage is a quoted cost for that tank, not a billed invoice line.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Recording…" : "Record loading"}
       </button>
@@ -311,6 +322,7 @@ export function CloseTripForm({
 
   return (
     <form action={formAction} className="flex flex-wrap items-center gap-2">
+      <UnsavedGuard />
       <input type="hidden" name="tripId" value={tripId} />
       <input
         name="reason"
@@ -326,6 +338,7 @@ export function CloseTripForm({
         {pending ? "Closing…" : blocked ? "Override needed" : "Close trip"}
       </button>
       <Feedback state={state} />
+      <ToastOnState state={state} />
     </form>
   );
 }
@@ -345,6 +358,7 @@ export function LoadingAllocationForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label htmlFor="la-record" className={labelClass}>Loading record</label>
@@ -391,6 +405,7 @@ export function LoadingAllocationForm({
         Allocations are checked against the loaded quantity and the procurement batch quantity.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save allocation"}
       </button>

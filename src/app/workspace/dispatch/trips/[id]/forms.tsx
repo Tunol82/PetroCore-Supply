@@ -1,5 +1,9 @@
 "use client";
 
+import { UnsavedGuard } from "@/components/ui/unsaved-guard";
+
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/field";
@@ -50,6 +54,7 @@ export function TripArrivalForm({
 
   return (
     <form action={formAction} className="mt-3 space-y-3 border-t border-[var(--line)] pt-3">
+      <UnsavedGuard />
       <input type="hidden" name="tripId" value={tripId} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Actual arrival" htmlFor="arrival-at">
@@ -67,6 +72,7 @@ export function TripArrivalForm({
         </Field>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <Button type="submit" size="sm" disabled={pending}>
         {pending ? "Saving…" : hasArrival ? "Update arrival" : "Record arrival"}
       </Button>
@@ -79,6 +85,7 @@ export function TripExpenseForm({ tripId }: { tripId: string }) {
 
   return (
     <form action={formAction} className="space-y-4">
+      <UnsavedGuard />
       <input type="hidden" name="tripId" value={tripId} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Field label="Type" htmlFor="expense-type">
@@ -107,6 +114,7 @@ export function TripExpenseForm({ tripId }: { tripId: string }) {
         </Field>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <Button type="submit" disabled={pending}>
         {pending ? "Saving…" : "Add expense"}
       </Button>

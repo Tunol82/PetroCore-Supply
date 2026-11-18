@@ -40,12 +40,12 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
     if (inventory) {
       items.push(
         { href: "/workspace/inventory", label: "Inventory" },
-        { href: "/workspace/inventory/fulfilment", label: "Fulfilment" },
+        { href: "/workspace/inventory/fulfilment", label: "Stock issues" },
       );
     }
 
     if (sales) {
-      items.push({ href: "/workspace/sales", label: "Sales orders" });
+      items.push({ href: "/workspace/sales", label: "Sales" });
     }
 
     groups.push({ label: "Supply", items });
@@ -58,14 +58,14 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
         { href: "/workspace/fleet", label: "Fleet" },
         { href: "/workspace/dispatch", label: "Dispatch" },
         { href: "/workspace/deliveries", label: "Deliveries" },
-        { href: "/workspace/reconciliation", label: "Reconciliation" },
-        { href: "/workspace/transport-invoices", label: "Transporter invoices" },
+        { href: "/workspace/reconciliation", label: "Trip checks" },
+        { href: "/workspace/transport-invoices", label: "Haulage bills" },
       ],
     });
   }
 
   if (finance) {
-    groups.push({ label: "Finance", items: [{ href: "/workspace/finance", label: "Payments & margin" }] });
+    groups.push({ label: "Finance", items: [{ href: "/workspace/finance", label: "Money" }] });
   }
 
   const administration = [];

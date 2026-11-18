@@ -1,5 +1,7 @@
 "use client";
 
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState } from "react";
 import { addTransporterInvoiceLine, createTransporterInvoice, type InvoiceActionState } from "./actions";
 
@@ -88,6 +90,7 @@ export function TransporterInvoiceForm({
         Recorded as supplied. Liability is not assessed and no payable or deduction is created.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Recording…" : "Record invoice"}
       </button>
@@ -139,6 +142,7 @@ export function InvoiceLineForm({
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Adding…" : "Add line"}
       </button>

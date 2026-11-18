@@ -1,5 +1,9 @@
 "use client";
 
+import { UnsavedGuard } from "@/components/ui/unsaved-guard";
+
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState, useState } from "react";
 import {
   addPurchaseOrderItem,
@@ -48,6 +52,7 @@ export function SupplierForm() {
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="supplier-code" className={labelClass}>Supplier code</label>
@@ -79,6 +84,7 @@ export function SupplierForm() {
         <input id="supplier-address" name="address" className={fieldClass} />
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save supplier"}
       </button>
@@ -91,6 +97,7 @@ export function DepotForm({ suppliers }: { suppliers: Option[] }) {
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="depot-supplier" className={labelClass}>Supplier</label>
@@ -123,6 +130,7 @@ export function DepotForm({ suppliers }: { suppliers: Option[] }) {
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save depot"}
       </button>
@@ -135,6 +143,7 @@ export function ProductForm() {
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="product-code" className={labelClass}>Product code</label>
@@ -158,6 +167,7 @@ export function ProductForm() {
         <input id="product-description" name="description" className={fieldClass} />
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save product"}
       </button>
@@ -179,6 +189,7 @@ export function PurchaseOrderForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="po-number" className={labelClass}>Purchase order number</label>
@@ -227,6 +238,7 @@ export function PurchaseOrderForm({
         <input id="po-notes" name="notes" className={fieldClass} />
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save purchase order"}
       </button>
@@ -245,6 +257,7 @@ export function PurchaseOrderItemForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="poi-order" className={labelClass}>Purchase order</label>
@@ -278,6 +291,7 @@ export function PurchaseOrderItemForm({
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save order line"}
       </button>
@@ -306,6 +320,7 @@ export function BatchForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="batch-number" className={labelClass}>Batch reference</label>
@@ -412,6 +427,7 @@ export function BatchForm({
         applied yet.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Recording…" : "Record batch"}
       </button>
@@ -430,6 +446,7 @@ export function SupplierProductForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label htmlFor="sp-supplier" className={labelClass}>Supplier</label>
@@ -455,6 +472,7 @@ export function SupplierProductForm({
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Link product to supplier"}
       </button>

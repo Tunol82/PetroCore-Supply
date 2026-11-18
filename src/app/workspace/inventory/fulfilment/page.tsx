@@ -124,7 +124,7 @@ export default async function FulfilmentPage({
   if (!canView && !canManage) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Fulfilment" title="Not authorised" description="You cannot view stock fulfilment." />
+        <PageHeader eyebrow="Stock issues" title="Not authorised" description="You cannot view stock fulfilment." />
         <ButtonLink href="/workspace">Return to workspace</ButtonLink>
       </div>
     );
@@ -211,7 +211,7 @@ export default async function FulfilmentPage({
   if (queryError) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Fulfilment" title="Unavailable" description="Fulfilment data could not be loaded." />
+        <PageHeader eyebrow="Stock issues" title="Unavailable" description="Fulfilment data could not be loaded." />
       </div>
     );
   }
@@ -298,7 +298,7 @@ export default async function FulfilmentPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Fulfilment"
+        eyebrow="Stock issues"
         title={tenant.organisationName}
         description="Reservations commit stock without moving it. Only a posted issue reduces stock, oldest batches first."
         actions={<ButtonLink href="/workspace/inventory">Inventory</ButtonLink>}

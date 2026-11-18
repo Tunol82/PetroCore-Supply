@@ -125,7 +125,7 @@ export default async function WorkspacePage() {
       },
       {
         href: "/workspace/inventory/fulfilment",
-        title: "Fulfilment",
+        title: "Stock issues",
         description: "Reservations, FIFO issues, reversals and allocations.",
         group: "Supply",
       },
@@ -135,7 +135,7 @@ export default async function WorkspacePage() {
   if (showSales) {
     modules.push({
       href: "/workspace/sales",
-      title: "Sales orders",
+      title: "Sales",
       description: "Customers, delivery locations and order lines.",
       group: "Supply",
     });
@@ -163,13 +163,13 @@ export default async function WorkspacePage() {
       },
       {
         href: "/workspace/reconciliation",
-        title: "Reconciliation",
+        title: "Trip checks",
         description: "Variance, tolerances, liability and investigations.",
         group: "Transport",
       },
       {
         href: "/workspace/transport-invoices",
-        title: "Transporter invoices",
+        title: "Haulage bills",
         description: "Invoices as submitted, with optional charge categories.",
         group: "Transport",
       },
@@ -179,7 +179,7 @@ export default async function WorkspacePage() {
   if (showFinance) {
     modules.push({
       href: "/workspace/finance",
-      title: "Payments & margin",
+      title: "Money",
       description: "Receipts, payments and operational profitability.",
       group: "Finance",
     });

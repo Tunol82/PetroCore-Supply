@@ -1,5 +1,7 @@
 "use client";
 
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState } from "react";
 import {
   createCostCategory,
@@ -100,6 +102,7 @@ export function CostCategoryForm() {
         Allocation is not applied yet. Landed-cost allocation depends on decisions DR-06 and DR-21.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save cost category"}
       </button>
@@ -165,6 +168,7 @@ export function CostComponentForm({
         Costs are recorded as pending evidence. Approval and allocation are not applied.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Recording…" : "Record cost component"}
       </button>

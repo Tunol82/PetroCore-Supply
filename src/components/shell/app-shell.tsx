@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { signOut } from "@/app/workspace/actions";
 import { BrandMark } from "./brand-mark";
+import { ToastProvider } from "@/components/ui/toast";
 
 export type NavItem = { href: string; label: string };
 export type NavGroup = { label: string; items: NavItem[] };
@@ -71,7 +72,8 @@ export function AppShell({
   );
 
   return (
-    <div className="min-h-screen lg:pl-[var(--sidebar-w)]">
+    <ToastProvider>
+      <div className="min-h-screen lg:pl-[var(--sidebar-w)]">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[var(--sidebar-w)] flex-col bg-[var(--sidebar)] lg:flex">
         <div className="flex items-center gap-3 px-4 py-4">
@@ -172,5 +174,6 @@ export function AppShell({
         </main>
       </div>
     </div>
+    </ToastProvider>
   );
 }

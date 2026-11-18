@@ -1,5 +1,7 @@
 "use client";
 
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState, useState } from "react";
 import {
   addSalesOrderItem,
@@ -95,6 +97,7 @@ export function CustomerForm() {
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save customer"}
       </button>
@@ -135,6 +138,7 @@ export function CustomerLocationForm({ customers }: { customers: Option[] }) {
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save delivery location"}
       </button>
@@ -216,6 +220,7 @@ export function SalesOrderForm({
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save sales order"}
       </button>
@@ -271,6 +276,7 @@ export function SalesOrderItemForm({
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save order line"}
       </button>

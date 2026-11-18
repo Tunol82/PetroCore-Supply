@@ -127,7 +127,7 @@ export default async function ReconciliationPage({
   if (!canView && !canManage) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Reconciliation" title="Not authorised" description="You cannot view reconciliation." />
+        <PageHeader eyebrow="Trip checks" title="Not authorised" description="You cannot view reconciliation." />
         <ButtonLink href="/workspace">Return to workspace</ButtonLink>
       </div>
     );
@@ -221,7 +221,7 @@ export default async function ReconciliationPage({
   if (queryError) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Reconciliation" title="Unavailable" description="Reconciliation data could not be loaded." />
+        <PageHeader eyebrow="Trip checks" title="Unavailable" description="Reconciliation data could not be loaded." />
       </div>
     );
   }
@@ -312,7 +312,7 @@ export default async function ReconciliationPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Reconciliation"
+        eyebrow="Trip checks"
         title={tenant.organisationName}
         description="Trip variances, discrepancies, liability and investigations. Variance is evidence, not a loss."
       />

@@ -1,5 +1,7 @@
 "use client";
 
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/field";
@@ -83,6 +85,7 @@ export function ApprovalThresholdForm({ permissions }: { permissions: string[] }
         The highest matching tier wins. With no active tier, any user holding transport.manage can confirm.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <Button type="submit" disabled={pending}>
         {pending ? "Saving…" : "Add threshold"}
       </Button>
@@ -101,6 +104,7 @@ export function ThresholdToggle({ id, active }: { id: string; active: boolean })
         {pending ? "Working…" : active ? "Deactivate" : "Activate"}
       </Button>
       <Feedback state={state} />
+      <ToastOnState state={state} />
     </form>
   );
 }
@@ -122,6 +126,7 @@ export function ChargeCategoryForm() {
         </Field>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <Button type="submit" disabled={pending}>
         {pending ? "Saving…" : "Add category"}
       </Button>
@@ -140,6 +145,7 @@ export function ChargeCategoryToggle({ id, active }: { id: string; active: boole
         {pending ? "Working…" : active ? "Deactivate" : "Activate"}
       </Button>
       <Feedback state={state} />
+      <ToastOnState state={state} />
     </form>
   );
 }
@@ -214,6 +220,7 @@ export function PolicyForm({
         closure is blocked by this setting.
       </p>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <Button type="submit" disabled={pending}>
         {pending ? "Saving…" : "Save policy"}
       </Button>

@@ -1,5 +1,7 @@
 "use client";
 
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState } from "react";
 import {
   assignRole,
@@ -69,6 +71,7 @@ export function AssignRoleForm({ members, roles }: { members: Option[]; roles: O
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Assigning…" : "Assign role"}
       </button>
@@ -118,6 +121,7 @@ export function GrantAccessForm({
         </div>
       </div>
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Granting…" : "Grant location access"}
       </button>
@@ -140,6 +144,7 @@ export function RevokeForm({ kind, id }: { kind: "role" | "access"; id: string }
         {pending ? "Revoking…" : "Revoke"}
       </button>
       <Feedback state={state} />
+      <ToastOnState state={state} />
     </form>
   );
 }

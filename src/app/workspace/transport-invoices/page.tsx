@@ -80,7 +80,7 @@ export default async function TransportInvoicesPage({
     return (
       <div className="space-y-6">
         <PageHeader
-          eyebrow="Transporter invoices"
+          eyebrow="Haulage bills"
           title="Not authorised"
           description="You cannot view transporter invoices."
         />
@@ -121,7 +121,7 @@ export default async function TransportInvoicesPage({
   if (queryError) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Transporter invoices" title="Unavailable" description="Invoices could not be loaded." />
+        <PageHeader eyebrow="Haulage bills" title="Unavailable" description="Invoices could not be loaded." />
       </div>
     );
   }
@@ -158,7 +158,7 @@ export default async function TransportInvoicesPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Transporter invoices"
+        eyebrow="Haulage bills"
         title={tenant.organisationName}
         description="Invoices recorded exactly as submitted. Liability and deductions remain unassessed until DR-13 is approved."
         actions={<ButtonLink href="/workspace/finance">Payments</ButtonLink>}

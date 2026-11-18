@@ -1,5 +1,9 @@
 "use client";
 
+import { UnsavedGuard } from "@/components/ui/unsaved-guard";
+
+import { ToastOnState } from "@/components/ui/toast";
+
 import { useActionState, useState } from "react";
 import { receiveInventoryBatch, type InventoryActionState } from "./actions";
 
@@ -84,6 +88,7 @@ export function ReceiptForm({
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="iv-batch" className={labelClass}>Procurement batch</label>
@@ -201,6 +206,7 @@ export function ReceiptForm({
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{blocker}</p>
       ) : null}
       <Feedback state={state} />
+      <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending || !ready}>
         {pending ? "Receiving…" : "Receive stock"}
       </button>

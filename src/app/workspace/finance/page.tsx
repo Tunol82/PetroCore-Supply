@@ -89,7 +89,7 @@ export default async function FinancePage({
   if (!canView) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Finance" title="Not authorised" description="You cannot view finance records." />
+        <PageHeader eyebrow="Money" title="Not authorised" description="You cannot view finance records." />
         <ButtonLink href="/workspace">Return to workspace</ButtonLink>
       </div>
     );
@@ -145,7 +145,7 @@ export default async function FinancePage({
   if (queryError) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Finance" title="Unavailable" description="Finance records could not be loaded." />
+        <PageHeader eyebrow="Money" title="Unavailable" description="Finance records could not be loaded." />
       </div>
     );
   }
@@ -191,7 +191,7 @@ export default async function FinancePage({
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Finance"
+        eyebrow="Money"
         title={tenant.organisationName}
         description="Recorded money in and out, and operational margin from order revenue against FIFO cost of sales."
         actions={
