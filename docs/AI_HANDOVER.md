@@ -96,7 +96,7 @@ Implemented in the scaffold:
 - Technical foundation, Milestone 1 scope, consolidated Database Dictionary v1.2 source document and Database v1.2 Reconciliation Report.
 - Owner-approved design review pack (PR #2, merged 2026-11-15): field-level Database Dictionary v1.2 proposal, reconstructed ERD v1.2, Decision Register, Migration 1 checklist and non-production Supabase plan.
 - Tenant access migration applied to the non-production project: organisations, settings, locations, profiles, roles, permissions, role assignments, location grants and audit log, with RLS on every table.
-- Tenant resolution in `/workspace`: verified tenant, access-pending and workspace-error states.
+- Tenant resolution in `/workspace`: verified tenant, access-pending and workspace-error states. The home page also carries a **Needs attention** queue (deliveries awaiting confirmation, trips with unresolved items including aging, transporter invoices awaiting assessment, storage batches awaiting receipt, members without a role), filtered by the caller's permissions and linking straight to the relevant tab.
 - Tenant administration at `/workspace/access`: tabbed members, location access and activity. Member list with roles, role assignment/revocation, location grant creation/revocation, server-side permission checks and audit triggers on every access change. Members without a role are counted, and the activity tab shows the newest access audit events for holders of `audit.view`.
 - Recent access activity on the activity tab for holders of `audit.view`, read from the append-only audit log.
 - Platform administration at `/platform`: platform admins only, MFA-gated by default, read-only tenant view, 30-minute switch sessions and an append-only platform audit trail.
@@ -127,6 +127,7 @@ Current verification snapshot (2026-11-18):
 - The end-to-end suite covers the unconfigured, signed-out and validation states; `playwright.config.ts` blanks the Supabase variables so it stays deterministic.
 - A non-production Supabase project exists with migrations applied through `20261118000100`.
 - Live browser checks used the Alpha administrator (`ORG-A`) against seeded demo data; screenshots verified every migrated page in its tabs.
+- Known performance note (2026-11-18): warm navigation in dev measured roughly 3–6 s per page. Each page repeats `auth.getUser()`, tenant resolution and permission RPCs already done by the layout, before its own queries. The planned fix is a request-scoped context memo (React `cache`) shared by layout and pages, adopted page by page.
 - No **production** database has been touched. Procurement, costs, sales, dispatch, loading, deliveries and evidence, reconciliation, inventory receipts, reservations, issues with reversals, FIFO allocations, transporter invoices and payments with operational profitability are implemented against the non-production project only.
 - No code has been merged into `main`; PR #1 remains draft.
 
