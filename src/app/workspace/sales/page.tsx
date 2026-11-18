@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
-import { getCurrentTenant } from "@/modules/tenant/current-tenant";
+import { getWorkspaceContext } from "@/modules/tenant/workspace-context";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
@@ -74,23 +73,18 @@ export default async function SalesPage({
     redirect("/workspace");
   }
 
-  const supabase = await createClient();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const { supabase, user, tenant, can } = await getWorkspaceContext();
 
-  if (userError || !userData.user) {
+  if (!user) {
     redirect("/login");
   }
-
-  const { tenant } = await getCurrentTenant(supabase, userData.user.id);
 
   if (!tenant) {
     redirect("/workspace");
   }
 
-  const [{ data: canView }, { data: canManage }] = await Promise.all([
-    supabase.rpc("has_permission", { p_permission_key: "sales.view" }),
-    supabase.rpc("has_permission", { p_permission_key: "sales.manage" }),
-  ]);
+  const canView = can("sales.view");
+  const canManage = can("sales.manage");
 
   if (!canView && !canManage) {
     return (

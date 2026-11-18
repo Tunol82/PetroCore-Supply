@@ -1,8 +1,7 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
-import { getCurrentTenant } from "@/modules/tenant/current-tenant";
+import { getWorkspaceContext } from "@/modules/tenant/workspace-context";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
@@ -65,42 +64,28 @@ export default async function WorkspacePage() {
     );
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
+  const { supabase, user, tenant, can } = await getWorkspaceContext();
 
-  if (error || !data.user) {
+  if (!user) {
     redirect("/login");
   }
 
-  const { tenant, error: tenantError } = await getCurrentTenant(supabase, data.user.id);
-
-  if (tenantError || !tenant) {
+  if (!tenant) {
     return (
       <main className="grid min-h-screen place-items-center px-5 py-12">
         <div className="w-full max-w-2xl">
           <Card>
             <CardBody className="p-7">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--warning)]">
-                {tenantError ? "Workspace unavailable" : "Access pending"}
+                Access pending
               </p>
               <h1 className="mt-2 text-2xl font-semibold tracking-[-0.02em]">
-                {tenantError
-                  ? "We could not confirm your workspace access."
-                  : "Your account is not linked to a company yet."}
+                Your account is not linked to a company yet.
               </h1>
               <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                {tenantError ? (
-                  "No tenant data has been displayed. Try again, or ask your administrator to confirm your membership."
-                ) : (
-                  <>
-                    You are signed in as{" "}
-                    <span className="font-medium text-[var(--ink)]">
-                      {data.user.email ?? "an authenticated user"}
-                    </span>
-                    , but no active company membership was found. Ask your company administrator to approve your
-                    access.
-                  </>
-                )}
+                You are signed in as{" "}
+                <span className="font-medium text-[var(--ink)]">{user.email ?? "an authenticated user"}</span>, but no
+                active company membership was found. Ask your company administrator to approve your access.
               </p>
             </CardBody>
           </Card>
@@ -113,30 +98,10 @@ export default async function WorkspacePage() {
     .from("business_locations")
     .select("id", { count: "exact", head: true });
 
-  const permissionKeys = [
-    "procurement.view",
-    "procurement.manage",
-    "sales.view",
-    "sales.manage",
-    "transport.view",
-    "transport.manage",
-    "inventory.view",
-    "inventory.manage",
-    "users.manage",
-    "organisation.manage",
-  ];
-
-  const results = await Promise.all(
-    permissionKeys.map((key) => supabase.rpc("has_permission", { p_permission_key: key })),
-  );
-  const allowed = Object.fromEntries(
-    permissionKeys.map((key, index) => [key, Boolean(results[index].data)]),
-  ) as Record<string, boolean>;
-
-  const showProcurement = allowed["procurement.view"] || allowed["procurement.manage"];
-  const showSales = allowed["sales.view"] || allowed["sales.manage"];
-  const showTransport = allowed["transport.view"] || allowed["transport.manage"];
-  const showInventory = allowed["inventory.view"] || allowed["inventory.manage"];
+  const showProcurement = can("procurement.view") || can("procurement.manage");
+  const showSales = can("sales.view") || can("sales.manage");
+  const showTransport = can("transport.view") || can("transport.manage");
+  const showInventory = can("inventory.view") || can("inventory.manage");
   const showFinance = showProcurement || showSales;
 
   const modules: ModuleLink[] = [];
@@ -355,7 +320,7 @@ export default async function WorkspacePage() {
     }
   }
 
-  if (allowed["users.manage"]) {
+  if (can("users.manage")) {
     const [profilesResult, rolesResult] = await Promise.all([
       supabase.from("profiles").select("id").limit(500),
       supabase.from("user_roles").select("user_id").limit(1000),
@@ -381,7 +346,7 @@ export default async function WorkspacePage() {
       <PageHeader
         eyebrow="Workspace"
         title={tenant.organisationName}
-        description={`${tenant.organisationCode} · signed in as ${tenant.fullName}`}
+        description={`${tenant.organisationCode} Â· signed in as ${tenant.fullName}`}
         actions={<Badge tone="success">Active</Badge>}
       />
 
@@ -391,7 +356,7 @@ export default async function WorkspacePage() {
         <StatCard
           label="Modules available"
           value={modules.length}
-          hint={`${allowed["users.manage"] ? "Administrator" : "Operational"} access`}
+          hint={`${can("users.manage") ? "Administrator" : "Operational"} access`}
           tone="brand"
         />
       </div>
@@ -421,7 +386,7 @@ export default async function WorkspacePage() {
                     <div className="flex items-center gap-3">
                       <Badge tone={item.tone}>{item.count}</Badge>
                       <span className="text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--brand)]">
-                        →
+                        â†’
                       </span>
                     </div>
                   </Link>
@@ -447,7 +412,7 @@ export default async function WorkspacePage() {
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm font-semibold text-[var(--ink)]">{module.title}</p>
                     <span className="text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--brand)]">
-                      →
+                      â†’
                     </span>
                   </div>
                   <p className="mt-1 text-xs leading-5 text-[var(--muted)]">{module.description}</p>
@@ -457,7 +422,7 @@ export default async function WorkspacePage() {
         </section>
       ))}
 
-      {allowed["users.manage"] || allowed["organisation.manage"] ? (
+      {can("users.manage") || can("organisation.manage") ? (
         <Card>
           <CardBody className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -465,7 +430,7 @@ export default async function WorkspacePage() {
               <p className="text-xs text-[var(--muted)]">Members, roles, locations and tenant settings.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {allowed["users.manage"] ? (
+              {can("users.manage") ? (
                 <Link
                   href="/workspace/access"
                   className="rounded-[var(--radius-sm)] border border-[var(--line-strong)] px-3 py-1.5 text-xs font-semibold hover:bg-[var(--surface-2)]"
@@ -473,7 +438,7 @@ export default async function WorkspacePage() {
                   Access
                 </Link>
               ) : null}
-              {allowed["organisation.manage"] ? (
+              {can("organisation.manage") ? (
                 <Link
                   href="/workspace/settings"
                   className="rounded-[var(--radius-sm)] border border-[var(--line-strong)] px-3 py-1.5 text-xs font-semibold hover:bg-[var(--surface-2)]"

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
-import { getCurrentTenant } from "@/modules/tenant/current-tenant";
+import { getWorkspaceContext } from "@/modules/tenant/workspace-context";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
@@ -70,30 +69,20 @@ export default async function FinancePage({
     redirect("/workspace");
   }
 
-  const supabase = await createClient();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const { supabase, user, tenant, can } = await getWorkspaceContext();
 
-  if (userError || !userData.user) {
+  if (!user) {
     redirect("/login");
   }
-
-  const { tenant } = await getCurrentTenant(supabase, userData.user.id);
 
   if (!tenant) {
     redirect("/workspace");
   }
 
-  const [
-    { data: canViewSales },
-    { data: canManageSales },
-    { data: canViewProcurement },
-    { data: canManageProcurement },
-  ] = await Promise.all([
-    supabase.rpc("has_permission", { p_permission_key: "sales.view" }),
-    supabase.rpc("has_permission", { p_permission_key: "sales.manage" }),
-    supabase.rpc("has_permission", { p_permission_key: "procurement.view" }),
-    supabase.rpc("has_permission", { p_permission_key: "procurement.manage" }),
-  ]);
+  const canViewSales = can("sales.view");
+  const canManageSales = can("sales.manage");
+  const canViewProcurement = can("procurement.view");
+  const canManageProcurement = can("procurement.manage");
 
   const canView = Boolean(canViewSales || canManageSales || canViewProcurement || canManageProcurement);
 

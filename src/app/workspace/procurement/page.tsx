@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/shared/lib/supabase/server";
+﻿import { redirect } from "next/navigation";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
-import { getCurrentTenant } from "@/modules/tenant/current-tenant";
+import { getWorkspaceContext } from "@/modules/tenant/workspace-context";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
@@ -89,23 +88,18 @@ export default async function ProcurementPage({
     redirect("/workspace");
   }
 
-  const supabase = await createClient();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const { supabase, user, tenant, can } = await getWorkspaceContext();
 
-  if (userError || !userData.user) {
+  if (!user) {
     redirect("/login");
   }
-
-  const { tenant } = await getCurrentTenant(supabase, userData.user.id);
 
   if (!tenant) {
     redirect("/workspace");
   }
 
-  const [{ data: canView }, { data: canManage }] = await Promise.all([
-    supabase.rpc("has_permission", { p_permission_key: "procurement.view" }),
-    supabase.rpc("has_permission", { p_permission_key: "procurement.manage" }),
-  ]);
+  const canView = can("procurement.view");
+  const canManage = can("procurement.manage");
 
   if (!canView && !canManage) {
     return (
@@ -202,7 +196,7 @@ export default async function ProcurementPage({
 
   const orderOptions = orders.map((order) => ({
     id: order.id,
-    label: `${order.po_number} · ${supplierById.get(order.supplier_id)?.name ?? "Unknown supplier"}`,
+    label: `${order.po_number} Â· ${supplierById.get(order.supplier_id)?.name ?? "Unknown supplier"}`,
   }));
 
   const purchaseOrderLineOptions = orderItems.map((item) => {
@@ -210,7 +204,7 @@ export default async function ProcurementPage({
     const product = productById.get(item.product_id);
     return {
       id: item.id,
-      label: `${order?.po_number ?? "Order"} · ${product?.product_name ?? "Product"}`,
+      label: `${order?.po_number ?? "Order"} Â· ${product?.product_name ?? "Product"}`,
     };
   });
 
@@ -301,9 +295,9 @@ export default async function ProcurementPage({
                         return (
                           <TR key={order.id}>
                             <TD className="font-medium">{order.po_number}</TD>
-                            <TD>{supplierById.get(order.supplier_id)?.name ?? "—"}</TD>
+                            <TD>{supplierById.get(order.supplier_id)?.name ?? "â€”"}</TD>
                             <TD className="text-xs text-[var(--muted)]">{order.order_date}</TD>
-                            <TD className="text-xs text-[var(--muted)]">{order.expected_date ?? "—"}</TD>
+                            <TD className="text-xs text-[var(--muted)]">{order.expected_date ?? "â€”"}</TD>
                             <TD>
                               <StatusBadge status={order.status} />
                             </TD>
@@ -340,8 +334,8 @@ export default async function ProcurementPage({
                     <TBody>
                       {orderItems.map((item) => (
                         <TR key={item.id}>
-                          <TD className="text-xs">{orderById.get(item.purchase_order_id)?.po_number ?? "—"}</TD>
-                          <TD>{productById.get(item.product_id)?.product_name ?? "—"}</TD>
+                          <TD className="text-xs">{orderById.get(item.purchase_order_id)?.po_number ?? "â€”"}</TD>
+                          <TD>{productById.get(item.product_id)?.product_name ?? "â€”"}</TD>
                           <TD align="right">{formatQuantity(Number(item.ordered_quantity))}</TD>
                           <TD align="right">{formatMoney(Number(item.agreed_unit_price))}</TD>
                           <TD align="right">{formatMoney(Number(item.discount_amount))}</TD>
@@ -408,26 +402,26 @@ export default async function ProcurementPage({
                       {batches.map((batch) => (
                         <TR key={batch.id}>
                           <TD className="font-medium">{batch.batch_number}</TD>
-                          <TD>{productById.get(batch.product_id)?.product_name ?? "—"}</TD>
+                          <TD>{productById.get(batch.product_id)?.product_name ?? "â€”"}</TD>
                           <TD className="text-xs">
                             {batch.purchase_order_item_id
                               ? orderById.get(
                                   orderItemById.get(batch.purchase_order_item_id)?.purchase_order_id ?? "",
-                                )?.po_number ?? "—"
-                              : "—"}
+                                )?.po_number ?? "â€”"
+                              : "â€”"}
                           </TD>
                           <TD>
-                            {supplierById.get(batch.supplier_id)?.name ?? "—"}
+                            {supplierById.get(batch.supplier_id)?.name ?? "â€”"}
                             <span className="block text-xs text-[var(--muted)]">
-                              {depotById.get(batch.supplier_depot_id)?.name ?? "—"}
+                              {depotById.get(batch.supplier_depot_id)?.name ?? "â€”"}
                             </span>
                           </TD>
                           <TD align="right">{formatQuantity(Number(batch.supplier_quantity))}</TD>
                           <TD align="right">
-                            {batch.loaded_quantity === null ? "—" : formatQuantity(Number(batch.loaded_quantity))}
+                            {batch.loaded_quantity === null ? "â€”" : formatQuantity(Number(batch.loaded_quantity))}
                           </TD>
                           <TD align="right">
-                            {batch.received_quantity === null ? "—" : formatQuantity(Number(batch.received_quantity))}
+                            {batch.received_quantity === null ? "â€”" : formatQuantity(Number(batch.received_quantity))}
                           </TD>
                           <TD className="text-xs">
                             {batch.fulfilment_type === "storage_receipt" ? "Storage" : "Direct"}
@@ -519,7 +513,7 @@ export default async function ProcurementPage({
                       <TBody>
                         {depots.map((depot) => (
                           <TR key={depot.id}>
-                            <TD className="text-xs">{supplierById.get(depot.supplier_id)?.name ?? "—"}</TD>
+                            <TD className="text-xs">{supplierById.get(depot.supplier_id)?.name ?? "â€”"}</TD>
                             <TD>{depot.name}</TD>
                             <TD className="text-xs text-[var(--muted)]">{depot.depot_code}</TD>
                           </TR>
@@ -607,9 +601,9 @@ export default async function ProcurementPage({
                       <TBody>
                         {supplierProducts.map((link) => (
                           <TR key={link.id}>
-                            <TD className="text-xs">{supplierById.get(link.supplier_id)?.name ?? "—"}</TD>
-                            <TD>{productById.get(link.product_id)?.product_name ?? "—"}</TD>
-                            <TD className="text-xs text-[var(--muted)]">{link.supplier_product_code ?? "—"}</TD>
+                            <TD className="text-xs">{supplierById.get(link.supplier_id)?.name ?? "â€”"}</TD>
+                            <TD>{productById.get(link.product_id)?.product_name ?? "â€”"}</TD>
+                            <TD className="text-xs text-[var(--muted)]">{link.supplier_product_code ?? "â€”"}</TD>
                             <TD>
                               <StatusBadge status={link.status} />
                             </TD>

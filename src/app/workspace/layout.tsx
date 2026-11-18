@@ -1,21 +1,9 @@
-import { createClient } from "@/shared/lib/supabase/server";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
-import { getCurrentTenant } from "@/modules/tenant/current-tenant";
+import { getWorkspaceContext } from "@/modules/tenant/workspace-context";
 import { AppShell, type NavGroup } from "@/components/shell/app-shell";
 import type { ReactNode } from "react";
 
 export const dynamic = "force-dynamic";
-
-async function permissions(supabase: Awaited<ReturnType<typeof createClient>>, keys: string[]) {
-  const results = await Promise.all(
-    keys.map((key) => supabase.rpc("has_permission", { p_permission_key: key })),
-  );
-
-  return Object.fromEntries(keys.map((key, index) => [key, Boolean(results[index].data)])) as Record<
-    string,
-    boolean
-  >;
-}
 
 export default async function WorkspaceLayout({ children }: { children: ReactNode }) {
   // The Playwright suite runs without Supabase configured; pages render their
@@ -24,36 +12,20 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
     return <>{children}</>;
   }
 
-  const supabase = await createClient();
-  const { data: userData } = await supabase.auth.getUser();
+  const { user, tenant, can } = await getWorkspaceContext();
 
-  if (!userData.user) {
+  if (!user) {
     return <>{children}</>;
   }
-
-  const { tenant } = await getCurrentTenant(supabase, userData.user.id);
 
   if (!tenant) {
     return <>{children}</>;
   }
 
-  const allowed = await permissions(supabase, [
-    "procurement.view",
-    "procurement.manage",
-    "sales.view",
-    "sales.manage",
-    "transport.view",
-    "transport.manage",
-    "inventory.view",
-    "inventory.manage",
-    "users.manage",
-    "organisation.manage",
-  ]);
-
-  const supply = allowed["procurement.view"] || allowed["procurement.manage"];
-  const sales = allowed["sales.view"] || allowed["sales.manage"];
-  const transport = allowed["transport.view"] || allowed["transport.manage"];
-  const inventory = allowed["inventory.view"] || allowed["inventory.manage"];
+  const supply = can("procurement.view") || can("procurement.manage");
+  const sales = can("sales.view") || can("sales.manage");
+  const transport = can("transport.view") || can("transport.manage");
+  const inventory = can("inventory.view") || can("inventory.manage");
   const finance = supply || sales;
 
   const groups: NavGroup[] = [{ label: "Overview", items: [{ href: "/workspace", label: "Workspace" }] }];
@@ -98,11 +70,11 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
 
   const administration = [];
 
-  if (allowed["users.manage"]) {
+  if (can("users.manage")) {
     administration.push({ href: "/workspace/access", label: "Access" });
   }
 
-  if (allowed["organisation.manage"]) {
+  if (can("organisation.manage")) {
     administration.push({ href: "/workspace/settings", label: "Settings" });
   }
 
@@ -114,7 +86,7 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
     <AppShell
       organisationName={tenant.organisationName}
       organisationCode={tenant.organisationCode}
-      userEmail={userData.user.email ?? ""}
+      userEmail={user.email ?? ""}
       groups={groups}
     >
       {children}
