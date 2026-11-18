@@ -163,7 +163,7 @@ Do not guess these or encode irreversible assumptions:
 
 Milestone 1 is complete and applied to the non-production project. The remaining decisions above belong to Milestone 2 and later. The reconciliation report's implementation gate remains binding for production: **no production deployment until the operational modules are implemented against the approved rules.**
 
-Two decision papers are ready for the owner: transporter liability and charges (DR-13) and measurement, temperature correction and tolerances (DR-01/DR-02/DR-03). Both list options, consequences, data-model impact and a blank decision record, and neither encodes a rule. Until they are approved, the system records evidence only.
+Two decision papers are ready for the owner: transporter liability and charges (DR-13) and measurement, temperature correction and tolerances (DR-01/DR-02/DR-03). Both list options, consequences, data-model impact and a blank decision record, and neither encodes a rule. A third sheet, `docs/business-rules/proposed-defaults-2026-11-18.md`, converts the remaining options into concrete proposals — ₦500,000 / ₦500,000+ approval tiers, 0.20–0.25 % tolerances with 40–50 L floors, a trip-closure guard with a 7-day aging report, and a supplier-factor correction default — with a sign-off table. **Nothing in it is approved or implemented.** Until sign-off, the system records evidence only.
 
 ## 9. Recommended next steps for the coding agent
 
@@ -193,6 +193,7 @@ The design review pack was merged from `docs/database-v1.2-review-proposal` (PR 
 - `docs/erd/erd-v1.2-proposal.md` - reconstructed logical ERD based on the v1.1 dictionary, v1.2 amendment specification and reconciliation report.
 - `docs/business-rules/decision-paper-dr-13-transporter-liability.md` - options and consequences for transporter liability, valuation, recovery and charge categories.
 - `docs/business-rules/decision-paper-dr-01-03-measurement-tolerances.md` - options and consequences for measurement points, precision, temperature correction and tolerance bands.
+- `docs/business-rules/proposed-defaults-2026-11-18.md` - proposed numbers for the open decisions (approval tiers, tolerance values, trip closure, correction method) and an owner sign-off table. Proposed, not approved.
 - `docs/database/security-audit-2026-11-16.md` - schema-wide privilege audit, fixes and deliberate exceptions.
 
 Approval state:

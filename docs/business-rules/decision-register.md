@@ -160,8 +160,8 @@ These come from the v1.2 specification §8. None may be encoded in code or schem
 | ID | Decision | Why it blocks |
 |---|---|---|
 | DR-01 | Petroleum measurement basis and quantity precision (**both boundaries approved 2026-11-16**) | Determines quantity columns, rounding and tolerances. |
-| DR-02 | Temperature/density correction and approved method (**optional recording approved 2026-11-16**; method open) | Changes recorded volumes and conversion logic. |
-| DR-03 | Shortage/excess tolerance thresholds (**optional rules approved 2026-11-16**; values open) | Determines when a variance becomes a discrepancy. |
+| DR-02 | Temperature/density correction and approved method (**optional recording approved 2026-11-16**; method open; [proposed default](proposed-defaults-2026-11-18.md)) | Changes recorded volumes and conversion logic. |
+| DR-03 | Shortage/excess tolerance thresholds (**optional rules approved 2026-11-16**; values open; [proposed values](proposed-defaults-2026-11-18.md)) | Determines when a variance becomes a discrepancy. |
 | DR-04 | Reservation timing, expiry and release | Determines stock availability semantics. |
 | DR-05 | Direct-fulfilment cost recognition | Determines revenue and cost postings. |
 | DR-06 | Landed-cost adjustment treatment | Determines how consumed vs remaining inventory is costed. |
@@ -170,8 +170,8 @@ These come from the v1.2 specification §8. None may be encoded in code or schem
 | DR-09 | Offline conflict resolution by transaction type | Determines sync authority and overrides. |
 | DR-11 | Approval thresholds (monetary, margin, risk) | Determines approval routing. |
 | DR-12 | Document limits, retention and versioning | Determines storage and evidence rules. |
-| DR-13 | Transporter dispute and liability treatment (**core approved 2026-11-16**; charge categories and thresholds open) | Determines when a dispute becomes a liability. |
-| DR-14 | Operational reconciliation tolerances | Determines trip closure rules. |
+| DR-13 | Transporter dispute and liability treatment (**core approved 2026-11-16**; [thresholds proposed](proposed-defaults-2026-11-18.md)) | Determines when a dispute becomes a liability. |
+| DR-14 | Operational reconciliation tolerances ([closure rule proposed](proposed-defaults-2026-11-18.md)) | Determines trip closure rules. |
 
 ### 4.1 Decision papers prepared
 
@@ -181,6 +181,9 @@ Two papers turn the highest-value open decisions into answerable questions. Each
 |---|---|---|
 | `docs/business-rules/decision-paper-dr-13-transporter-liability.md` | DR-13, with DR-11 (thresholds) | Awaiting owner |
 | `docs/business-rules/decision-paper-dr-01-03-measurement-tolerances.md` | DR-01, DR-02, DR-03, with DR-14 | Awaiting owner |
+| `docs/business-rules/proposed-defaults-2026-11-18.md` | DR-13 threshold reminder (DR-11), DR-03 values, DR-14 closure, DR-02 method — with sign-off table | **Proposed, awaiting owner** |
+
+The proposed-defaults sheet turns the open options into concrete numbers (₦500,000 threshold tiers, 0.20–0.25 % tolerance with 40–50 L floors, a closure guard and a supplier-factor correction default). It is a draft only; no threshold, tolerance value or closure rule is enforced until the sign-off table is completed.
 
 ## 5. Schema decisions still open
 
