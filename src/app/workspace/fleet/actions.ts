@@ -5,6 +5,7 @@ import { createClient } from "@/shared/lib/supabase/server";
 import { getCurrentTenant, type CurrentTenant } from "@/modules/tenant/current-tenant";
 import {
   compartmentSchema,
+  compartmentUpdateSchema,
   driverSchema,
   driverUpdateSchema,
   fleetStatusSchema,
@@ -77,7 +78,7 @@ function missingMessage(label: string): string {
   return `That ${label} was not found. It may have been removed.`;
 }
 
-type FleetTable = "transporters" | "trucks" | "drivers";
+type FleetTable = "transporters" | "trucks" | "drivers" | "truck_compartments";
 
 /**
  * Activates or deactivates a fleet master. Trucks keep their richer status
@@ -145,6 +146,13 @@ export async function setDriverStatus(
   formData: FormData,
 ): Promise<FleetActionState> {
   return setFleetStatus("drivers", "Driver", previous, formData);
+}
+
+export async function setCompartmentStatus(
+  previous: FleetActionState,
+  formData: FormData,
+): Promise<FleetActionState> {
+  return setFleetStatus("truck_compartments", "Compartment", previous, formData);
 }
 
 export async function createTransporter(
@@ -401,6 +409,54 @@ export async function createCompartment(
 
   revalidatePath("/workspace/fleet");
   return { error: null, success: "Compartment saved." };
+}
+
+export async function updateCompartment(
+  _previous: FleetActionState,
+  formData: FormData,
+): Promise<FleetActionState> {
+  const parsed = compartmentUpdateSchema.safeParse({
+    id: formData.get("id"),
+    compartmentNumber: formData.get("compartmentNumber"),
+    capacity: formData.get("capacity"),
+    productCompatibility: formData.get("productCompatibility"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { data: updated, error: updateError } = await context.supabase
+    .from("truck_compartments")
+    .update({
+      compartment_number: parsed.data.compartmentNumber,
+      capacity: parsed.data.capacity,
+      product_compatibility: textOrNull(parsed.data.productCompatibility),
+    })
+    .eq("id", parsed.data.id)
+    .eq("organisation_id", context.tenant.organisationId)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) {
+    return {
+      error:
+        updateError.code === "23505"
+          ? "That compartment number is already in use on this truck."
+          : "The compartment could not be updated.",
+      success: null,
+    };
+  }
+
+  if (!updated) {
+    return { error: missingMessage("compartment"), success: null };
+  }
+
+  revalidatePath("/workspace/fleet");
+  return { error: null, success: "Compartment updated." };
 }
 
 export async function createDriver(

@@ -9,6 +9,7 @@ import {
   createDriver,
   createTransporter,
   createTruck,
+  updateCompartment,
   updateDriver,
   updateTransporter,
   updateTruck,
@@ -248,38 +249,96 @@ export function TruckForm({ transporters, truck }: { transporters: Option[]; tru
   );
 }
 
-export function CompartmentForm({ trucks }: { trucks: Option[] }) {
-  const [state, formAction, pending] = useActionState(createCompartment, initialState);
+export type CompartmentRecord = {
+  id: string;
+  truck_id: string;
+  compartment_number: string;
+  capacity: number;
+  product_compatibility: string | null;
+};
+
+export function CompartmentForm({
+  trucks,
+  compartment,
+  truckLabel,
+}: {
+  trucks: Option[];
+  compartment?: CompartmentRecord;
+  truckLabel?: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    compartment ? updateCompartment : createCompartment,
+    initialState,
+  );
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
+      {compartment ? <input type="hidden" name="id" value={compartment.id} /> : null}
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <label htmlFor="cp-truck" className={labelClass}>Truck</label>
-          <select id="cp-truck" name="truckId" required className={fieldClass} defaultValue="">
-            <option value="" disabled>Select a truck</option>
-            {trucks.map((truck) => (
-              <option key={truck.id} value={truck.id}>{truck.label}</option>
-            ))}
-          </select>
+          {compartment ? (
+            <>
+              <span className={labelClass}>Truck</span>
+              <p className="rounded-lg border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-sm">
+                {truckLabel ?? "Truck"}
+              </p>
+            </>
+          ) : (
+            <>
+              <label htmlFor="cp-truck" className={labelClass}>Truck</label>
+              <select id="cp-truck" name="truckId" required className={fieldClass} defaultValue="">
+                <option value="" disabled>Select a truck</option>
+                {trucks.map((truck) => (
+                  <option key={truck.id} value={truck.id}>{truck.label}</option>
+                ))}
+              </select>
+            </>
+          )}
         </div>
         <div>
           <label htmlFor="cp-number" className={labelClass}>Compartment number</label>
-          <input id="cp-number" name="compartmentNumber" required className={fieldClass} placeholder="1" />
+          <input
+            id="cp-number"
+            name="compartmentNumber"
+            required
+            className={fieldClass}
+            placeholder="1"
+            defaultValue={compartment?.compartment_number ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="cp-capacity" className={labelClass}>Capacity</label>
-          <input id="cp-capacity" name="capacity" type="number" step="0.001" min="0.001" required className={fieldClass} />
+          <input
+            id="cp-capacity"
+            name="capacity"
+            type="number"
+            step="0.001"
+            min="0.001"
+            required
+            className={fieldClass}
+            defaultValue={compartment ? String(compartment.capacity) : ""}
+          />
         </div>
       </div>
       <div>
         <label htmlFor="cp-compatibility" className={labelClass}>Product compatibility</label>
-        <input id="cp-compatibility" name="productCompatibility" className={fieldClass} />
+        <input
+          id="cp-compatibility"
+          name="productCompatibility"
+          className={fieldClass}
+          defaultValue={compartment?.product_compatibility ?? ""}
+        />
       </div>
+      {compartment ? (
+        <p className="text-xs text-[var(--muted)]">
+          The truck cannot be changed here, so historical loading records stay attached to the same vehicle.
+        </p>
+      ) : null}
       <Feedback state={state} />
       <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
-        {pending ? "Saving…" : "Save compartment"}
+        {pending ? "Saving…" : compartment ? "Save changes" : "Save compartment"}
       </button>
     </form>
   );

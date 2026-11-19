@@ -10,7 +10,7 @@ import { StatusToggle } from "@/components/ui/status-toggle";
 import { Tabs } from "@/components/ui/tabs";
 import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
 import { CompartmentForm, DriverForm, TransporterForm, TruckForm } from "./fleet-forms";
-import { setDriverStatus, setTransporterStatus, setTruckStatus } from "./actions";
+import { setCompartmentStatus, setDriverStatus, setTransporterStatus, setTruckStatus } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +44,7 @@ type Compartment = {
   compartment_number: string;
   capacity: number;
   product_compatibility: string | null;
+  status: string;
 };
 
 type Driver = {
@@ -136,7 +137,7 @@ export default async function FleetPage({
       .order("registration_number"),
     supabase
       .from("truck_compartments")
-      .select("id, truck_id, compartment_number, capacity, product_compatibility")
+      .select("id, truck_id, compartment_number, capacity, product_compatibility, status")
       .order("compartment_number"),
     supabase
       .from("drivers")
@@ -186,8 +187,10 @@ export default async function FleetPage({
   const editId = params.edit;
   const editingTransporter = editId ? transporters.find((item) => item.id === editId) ?? null : null;
   const editingTruck = editId ? trucks.find((item) => item.id === editId) ?? null : null;
+  const editingCompartment = editId ? compartments.find((item) => item.id === editId) ?? null : null;
   const editingDriver = editId ? drivers.find((item) => item.id === editId) ?? null : null;
-  const editMissing = Boolean(editId) && !editingTransporter && !editingTruck && !editingDriver;
+  const editMissing =
+    Boolean(editId) && !editingTransporter && !editingTruck && !editingCompartment && !editingDriver;
 
   const compartmentsByTruck = new Map<string, Compartment[]>();
   for (const compartment of compartments) {
@@ -467,34 +470,67 @@ export default async function FleetPage({
 
       {tab === "compartments" ? (
         <div className="space-y-6">
+          {editMissing ? (
+            <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              That record could not be found. It may have been removed.
+            </p>
+          ) : null}
+
           <Card>
             <CardHeader
               title="Compartments"
-              description="Loading is recorded per compartment, and loaded quantity cannot exceed its capacity."
+              description="Loading is recorded per compartment, and loaded quantity cannot exceed its capacity. Deactivating keeps history but hides the compartment from new loading."
             />
             <CardBody>
               {compartments.length === 0 ? (
                 <EmptyState title="No compartments yet" description="Add the first compartment below." />
               ) : (
                 <TableScroll>
-                  <Table minWidth={720}>
+                  <Table minWidth={920}>
                     <THead>
                       <TR>
                         <TH>Truck</TH>
                         <TH>Compartment</TH>
                         <TH>Product compatibility</TH>
                         <TH align="right">Capacity</TH>
+                        <TH>Status</TH>
+                        {canManage ? <TH>Actions</TH> : null}
                       </TR>
                     </THead>
                     <TBody>
                       {compartments.map((compartment) => (
-                        <TR key={compartment.id}>
+                        <TR
+                          key={compartment.id}
+                          className={editingCompartment?.id === compartment.id ? "bg-[var(--brand-soft)]/40" : ""}
+                        >
                           <TD className="font-medium">
                             {truckById.get(compartment.truck_id)?.registration_number ?? "Truck"}
                           </TD>
                           <TD>{compartment.compartment_number}</TD>
                           <TD className="text-xs text-[var(--muted)]">{compartment.product_compatibility ?? "—"}</TD>
                           <TD align="right">{formatQuantity(Number(compartment.capacity))}</TD>
+                          <TD>
+                            <StatusBadge status={compartment.status} />
+                          </TD>
+                          {canManage ? (
+                            <TD>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <ButtonLink
+                                  href={`/workspace/fleet?tab=compartments&edit=${compartment.id}`}
+                                  size="sm"
+                                  variant="ghost"
+                                >
+                                  Edit
+                                </ButtonLink>
+                                <StatusToggle
+                                  action={setCompartmentStatus}
+                                  id={compartment.id}
+                                  name={`compartment ${compartment.compartment_number}`}
+                                  active={compartment.status === "active"}
+                                />
+                              </div>
+                            </TD>
+                          ) : null}
                         </TR>
                       ))}
                     </TBody>
@@ -506,16 +542,39 @@ export default async function FleetPage({
 
           {canManage ? (
             <Card>
-              <CardHeader title="Add compartment" description="Number and capacity are per truck." />
+              <CardHeader
+                title={editingCompartment ? "Edit compartment" : "Add compartment"}
+                description={
+                  editingCompartment
+                    ? "Number, capacity and compatibility can change. The truck is fixed so historical loading stays attached to the same vehicle."
+                    : "Number and capacity are per truck."
+                }
+              />
               <CardBody>
-                {truckOptions.length === 0 ? (
+                {!editingCompartment && truckOptions.length === 0 ? (
                   <EmptyState
                     title="No active truck to attach to"
                     description="Add or reactivate a truck before a compartment."
                   />
                 ) : (
-                  <CompartmentForm trucks={truckOptions} />
+                  <CompartmentForm
+                    key={editingCompartment?.id ?? "new"}
+                    trucks={truckOptions}
+                    compartment={editingCompartment ?? undefined}
+                    truckLabel={
+                      editingCompartment
+                        ? truckById.get(editingCompartment.truck_id)?.registration_number ?? "Truck"
+                        : undefined
+                    }
+                  />
                 )}
+                {editingCompartment ? (
+                  <div className="mt-3">
+                    <ButtonLink href="/workspace/fleet?tab=compartments" size="sm">
+                      Cancel edit
+                    </ButtonLink>
+                  </div>
+                ) : null}
               </CardBody>
             </Card>
           ) : null}

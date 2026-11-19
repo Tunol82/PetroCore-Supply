@@ -101,6 +101,13 @@ export const compartmentSchema = z.object({
   productCompatibility: optionalText(500),
 });
 
+export const compartmentUpdateSchema = z.object({
+  id: uuid("Select a compartment."),
+  compartmentNumber: z.string().trim().min(1, "Enter the compartment number.").max(30),
+  capacity: z.coerce.number().positive("Capacity must be greater than zero."),
+  productCompatibility: optionalText(500),
+});
+
 const driverBaseSchema = z.object({
   transporterId: optionalUuid("Select a transporter."),
   driverCode: z.string().trim().min(2, "Enter a driver code.").max(40),

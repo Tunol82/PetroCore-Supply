@@ -48,7 +48,7 @@ type Truck = { id: string; registration_number: string; status: string };
 type Driver = { id: string; full_name: string; driver_code: string; status: string };
 type Transporter = { id: string; business_name: string; status: string };
 type Product = { id: string; product_code: string; product_name: string };
-type Compartment = { id: string; truck_id: string; compartment_number: string; capacity: number };
+type Compartment = { id: string; truck_id: string; compartment_number: string; capacity: number; status: string };
 type ProcurementBatch = { id: string; batch_number: string; product_id: string };
 type SalesOrderItemRef = { id: string; sales_order_id: string; product_id: string };
 type SalesOrderRef = { id: string; order_number: string };
@@ -166,7 +166,10 @@ export default async function DispatchPage({
       .select("id, trip_loading_record_id, procurement_batch_id, product_id, allocated_quantity, created_at")
       .order("created_at", { ascending: false })
       .limit(100),
-    supabase.from("truck_compartments").select("id, truck_id, compartment_number, capacity").order("compartment_number"),
+    supabase
+      .from("truck_compartments")
+      .select("id, truck_id, compartment_number, capacity, status")
+      .order("compartment_number"),
     supabase.from("products").select("id, product_code, product_name").order("product_name"),
     supabase.from("procurement_batches").select("id, batch_number, product_id").order("created_at", { ascending: false }).limit(50),
     supabase.from("sales_order_items").select("id, sales_order_id, product_id"),
@@ -308,10 +311,12 @@ export default async function DispatchPage({
       id: transporter.id,
       label: transporter.business_name,
     }));
-  const compartmentOptions = compartments.map((compartment) => ({
-    id: compartment.id,
-    label: `${truckById.get(compartment.truck_id)?.registration_number ?? "Truck"} · compartment ${compartment.compartment_number}`,
-  }));
+  const compartmentOptions = compartments
+    .filter((compartment) => compartment.status === "active")
+    .map((compartment) => ({
+      id: compartment.id,
+      label: `${truckById.get(compartment.truck_id)?.registration_number ?? "Truck"} · compartment ${compartment.compartment_number}`,
+    }));
   const productOptions = products.map((product) => ({
     id: product.id,
     label: `${product.product_name} (${product.product_code})`,

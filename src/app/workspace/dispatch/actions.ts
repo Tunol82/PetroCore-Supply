@@ -307,6 +307,20 @@ export async function createLoadingRecord(
   const { context, error } = await requireManageAccess();
   if (!context) return { error: error ?? "Access denied.", success: null };
 
+  const { data: compartment } = await context.supabase
+    .from("truck_compartments")
+    .select("status")
+    .eq("id", parsed.data.compartmentId)
+    .maybeSingle();
+
+  if (!compartment) {
+    return { error: "That compartment was not found.", success: null };
+  }
+
+  if (compartment.status !== "active") {
+    return { error: "That compartment is inactive. Reactivate it before recording a load.", success: null };
+  }
+
   const { error: insertError } = await context.supabase.from("trip_loading_records").insert({
     organisation_id: context.tenant.organisationId,
     trip_id: parsed.data.tripId,

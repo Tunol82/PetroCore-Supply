@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assignmentSchema,
   compartmentSchema,
+  compartmentUpdateSchema,
   deliverySchema,
   discrepancySchema,
   driverSchema,
@@ -158,6 +159,19 @@ describe("fleet lifecycle", () => {
     expect(
       transporterUpdateSchema.parse({ id: transporterId, transporterCode: " TR-1 ", businessName: "Haulage" }),
     ).toMatchObject({ id: transporterId, transporterCode: "TR-1" });
+  });
+
+  it("requires the compartment id when updating", () => {
+    expect(compartmentUpdateSchema.safeParse({ compartmentNumber: "1", capacity: "1000" }).success).toBe(false);
+  });
+
+  it("accepts a compartment update and rejects a zero capacity", () => {
+    expect(
+      compartmentUpdateSchema.safeParse({ id: truckId, compartmentNumber: "1", capacity: "1000" }).success,
+    ).toBe(true);
+    expect(
+      compartmentUpdateSchema.safeParse({ id: truckId, compartmentNumber: "1", capacity: "0" }).success,
+    ).toBe(false);
   });
 });
 
