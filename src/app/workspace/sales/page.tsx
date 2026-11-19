@@ -362,7 +362,7 @@ export default async function SalesPage({
                           <TH>Category</TH>
                           <TH>Credit</TH>
                           <TH>Status</TH>
-                          <TH>Actions</TH>
+                          {canManage ? <TH>Actions</TH> : null}
                         </TR>
                       </THead>
                       <TBody>
@@ -378,23 +378,25 @@ export default async function SalesPage({
                             <TD>
                               <StatusBadge status={customer.status} />
                             </TD>
-                            <TD>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <ButtonLink
-                                  href={`/workspace/sales?tab=customers&edit=${customer.id}`}
-                                  size="sm"
-                                  variant="ghost"
-                                >
-                                  Edit
-                                </ButtonLink>
-                                <StatusToggle
-                                  action={setCustomerStatus}
-                                  id={customer.id}
-                                  name={customer.name}
-                                  active={customer.status === "active"}
-                                />
-                              </div>
-                            </TD>
+                            {canManage ? (
+                              <TD>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <ButtonLink
+                                    href={`/workspace/sales?tab=customers&edit=${customer.id}`}
+                                    size="sm"
+                                    variant="ghost"
+                                  >
+                                    Edit
+                                  </ButtonLink>
+                                  <StatusToggle
+                                    action={setCustomerStatus}
+                                    id={customer.id}
+                                    name={customer.name}
+                                    active={customer.status === "active"}
+                                  />
+                                </div>
+                              </TD>
+                            ) : null}
                           </TR>
                         ))}
                       </TBody>

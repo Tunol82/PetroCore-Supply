@@ -552,7 +552,7 @@ export default async function ProcurementPage({
                           <TH>Code</TH>
                           <TH>Name</TH>
                           <TH>Status</TH>
-                          <TH>Actions</TH>
+                          {canManage ? <TH>Actions</TH> : null}
                         </TR>
                       </THead>
                       <TBody>
@@ -566,23 +566,25 @@ export default async function ProcurementPage({
                             <TD>
                               <StatusBadge status={supplier.status} />
                             </TD>
-                            <TD>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <ButtonLink
-                                  href={`/workspace/procurement?tab=suppliers&edit=${supplier.id}`}
-                                  size="sm"
-                                  variant="ghost"
-                                >
-                                  Edit
-                                </ButtonLink>
-                                <StatusToggle
-                                  action={setSupplierStatus}
-                                  id={supplier.id}
-                                  name={supplier.name}
-                                  active={supplier.status === "active"}
-                                />
-                              </div>
-                            </TD>
+                            {canManage ? (
+                              <TD>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <ButtonLink
+                                    href={`/workspace/procurement?tab=suppliers&edit=${supplier.id}`}
+                                    size="sm"
+                                    variant="ghost"
+                                  >
+                                    Edit
+                                  </ButtonLink>
+                                  <StatusToggle
+                                    action={setSupplierStatus}
+                                    id={supplier.id}
+                                    name={supplier.name}
+                                    active={supplier.status === "active"}
+                                  />
+                                </div>
+                              </TD>
+                            ) : null}
                           </TR>
                         ))}
                       </TBody>
@@ -609,7 +611,7 @@ export default async function ProcurementPage({
                           <TH>Depot</TH>
                           <TH>Code</TH>
                           <TH>Status</TH>
-                          <TH>Actions</TH>
+                          {canManage ? <TH>Actions</TH> : null}
                         </TR>
                       </THead>
                       <TBody>
@@ -624,23 +626,25 @@ export default async function ProcurementPage({
                             <TD>
                               <StatusBadge status={depot.status} />
                             </TD>
-                            <TD>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <ButtonLink
-                                  href={`/workspace/procurement?tab=suppliers&edit=${depot.id}`}
-                                  size="sm"
-                                  variant="ghost"
-                                >
-                                  Edit
-                                </ButtonLink>
-                                <StatusToggle
-                                  action={setDepotStatus}
-                                  id={depot.id}
-                                  name={depot.name}
-                                  active={depot.status === "active"}
-                                />
-                              </div>
-                            </TD>
+                            {canManage ? (
+                              <TD>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <ButtonLink
+                                    href={`/workspace/procurement?tab=suppliers&edit=${depot.id}`}
+                                    size="sm"
+                                    variant="ghost"
+                                  >
+                                    Edit
+                                  </ButtonLink>
+                                  <StatusToggle
+                                    action={setDepotStatus}
+                                    id={depot.id}
+                                    name={depot.name}
+                                    active={depot.status === "active"}
+                                  />
+                                </div>
+                              </TD>
+                            ) : null}
                           </TR>
                         ))}
                       </TBody>
@@ -732,7 +736,7 @@ export default async function ProcurementPage({
                           <TH>Product</TH>
                           <TH>Unit</TH>
                           <TH>Status</TH>
-                          <TH>Actions</TH>
+                          {canManage ? <TH>Actions</TH> : null}
                         </TR>
                       </THead>
                       <TBody>
@@ -747,23 +751,25 @@ export default async function ProcurementPage({
                             <TD>
                               <StatusBadge status={product.status} />
                             </TD>
-                            <TD>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <ButtonLink
-                                  href={`/workspace/procurement?tab=catalogue&edit=${product.id}`}
-                                  size="sm"
-                                  variant="ghost"
-                                >
-                                  Edit
-                                </ButtonLink>
-                                <StatusToggle
-                                  action={setProductStatus}
-                                  id={product.id}
-                                  name={product.product_name}
-                                  active={product.status === "active"}
-                                />
-                              </div>
-                            </TD>
+                            {canManage ? (
+                              <TD>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <ButtonLink
+                                    href={`/workspace/procurement?tab=catalogue&edit=${product.id}`}
+                                    size="sm"
+                                    variant="ghost"
+                                  >
+                                    Edit
+                                  </ButtonLink>
+                                  <StatusToggle
+                                    action={setProductStatus}
+                                    id={product.id}
+                                    name={product.product_name}
+                                    active={product.status === "active"}
+                                  />
+                                </div>
+                              </TD>
+                            ) : null}
                           </TR>
                         ))}
                       </TBody>
