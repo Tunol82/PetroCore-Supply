@@ -40,6 +40,17 @@ export const customerSchema = z.object({
   creditStatus: z.enum(CREDIT_STATUSES),
 });
 
+export const CUSTOMER_STATUSES = ["active", "inactive"] as const;
+
+export const customerStatusSchema = z.object({
+  id: uuid("Select a customer."),
+  status: z.enum(CUSTOMER_STATUSES),
+});
+
+export const customerUpdateSchema = customerSchema.extend({
+  id: uuid("Select a customer."),
+});
+
 export const customerLocationSchema = z.object({
   customerId: uuid("Select a customer."),
   locationName: z.string().trim().min(2, "Enter the location name.").max(150),

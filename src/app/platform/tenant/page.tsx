@@ -138,7 +138,7 @@ export default async function PlatformTenantPage({
             {organisation?.display_name ?? "Tenant"}
           </h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            {organisation?.organisation_code ?? "unknown"} Â· {organisation?.status ?? "unknown"}
+            {organisation?.organisation_code ?? "unknown"} · {organisation?.status ?? "unknown"}
           </p>
 
           <dl className="mt-6 grid gap-4 sm:grid-cols-3">

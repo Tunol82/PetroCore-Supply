@@ -14,6 +14,9 @@ import {
   createSupplier,
   createSupplierProduct,
   recordBatch,
+  updateDepot,
+  updateProduct,
+  updateSupplier,
   type ProcurementActionState,
 } from "./actions";
 
@@ -48,61 +51,121 @@ function Feedback({ state }: { state: ProcurementActionState }) {
   return null;
 }
 
-export function SupplierForm() {
-  const [state, formAction, pending] = useActionState(createSupplier, initialState);
+export type SupplierRecord = {
+  id: string;
+  supplier_code: string;
+  name: string;
+  contact_person: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  payment_terms: string | null;
+};
+
+export function SupplierForm({ supplier }: { supplier?: SupplierRecord }) {
+  const [state, formAction, pending] = useActionState(supplier ? updateSupplier : createSupplier, initialState);
 
   return (
     <form action={formAction} className="space-y-3">
       <UnsavedGuard />
+      {supplier ? <input type="hidden" name="id" value={supplier.id} /> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="supplier-code" className={labelClass}>Supplier code</label>
-          <input id="supplier-code" name="supplierCode" required className={fieldClass} placeholder="SUP-001" />
+          <input
+            id="supplier-code"
+            name="supplierCode"
+            required
+            className={fieldClass}
+            placeholder="SUP-001"
+            defaultValue={supplier?.supplier_code ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="supplier-name" className={labelClass}>Supplier name</label>
-          <input id="supplier-name" name="name" required className={fieldClass} placeholder="North Depot Ltd" />
+          <input
+            id="supplier-name"
+            name="name"
+            required
+            className={fieldClass}
+            placeholder="North Depot Ltd"
+            defaultValue={supplier?.name ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="supplier-contact" className={labelClass}>Contact person</label>
-          <input id="supplier-contact" name="contactPerson" className={fieldClass} />
+          <input
+            id="supplier-contact"
+            name="contactPerson"
+            className={fieldClass}
+            defaultValue={supplier?.contact_person ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="supplier-phone" className={labelClass}>Phone</label>
-          <input id="supplier-phone" name="phone" className={fieldClass} />
+          <input id="supplier-phone" name="phone" className={fieldClass} defaultValue={supplier?.phone ?? ""} />
         </div>
         <div>
           <label htmlFor="supplier-email" className={labelClass}>Email</label>
-          <input id="supplier-email" name="email" type="email" className={fieldClass} />
+          <input
+            id="supplier-email"
+            name="email"
+            type="email"
+            className={fieldClass}
+            defaultValue={supplier?.email ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="supplier-terms" className={labelClass}>Payment terms</label>
-          <input id="supplier-terms" name="paymentTerms" className={fieldClass} placeholder="30 days" />
+          <input
+            id="supplier-terms"
+            name="paymentTerms"
+            className={fieldClass}
+            placeholder="30 days"
+            defaultValue={supplier?.payment_terms ?? ""}
+          />
         </div>
       </div>
       <div>
         <label htmlFor="supplier-address" className={labelClass}>Address</label>
-        <input id="supplier-address" name="address" className={fieldClass} />
+        <input id="supplier-address" name="address" className={fieldClass} defaultValue={supplier?.address ?? ""} />
       </div>
       <Feedback state={state} />
       <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
-        {pending ? "Saving…" : "Save supplier"}
+        {pending ? "Saving…" : supplier ? "Save changes" : "Save supplier"}
       </button>
     </form>
   );
 }
 
-export function DepotForm({ suppliers }: { suppliers: Option[] }) {
-  const [state, formAction, pending] = useActionState(createDepot, initialState);
+export type DepotRecord = {
+  id: string;
+  supplier_id: string;
+  depot_code: string;
+  name: string;
+  location_description: string | null;
+  contact_person: string | null;
+  phone: string | null;
+};
+
+export function DepotForm({ suppliers, depot }: { suppliers: Option[]; depot?: DepotRecord }) {
+  const [state, formAction, pending] = useActionState(depot ? updateDepot : createDepot, initialState);
 
   return (
     <form action={formAction} className="space-y-3">
       <UnsavedGuard />
+      {depot ? <input type="hidden" name="id" value={depot.id} /> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="depot-supplier" className={labelClass}>Supplier</label>
-          <select id="depot-supplier" name="supplierId" required className={fieldClass} defaultValue="">
+          <select
+            id="depot-supplier"
+            name="supplierId"
+            required
+            className={fieldClass}
+            defaultValue={depot?.supplier_id ?? ""}
+          >
             <option value="" disabled>Select a supplier</option>
             {suppliers.map((supplier) => (
               <option key={supplier.id} value={supplier.id}>{supplier.label}</option>
@@ -111,66 +174,123 @@ export function DepotForm({ suppliers }: { suppliers: Option[] }) {
         </div>
         <div>
           <label htmlFor="depot-code" className={labelClass}>Depot code</label>
-          <input id="depot-code" name="depotCode" required className={fieldClass} placeholder="DEP-01" />
+          <input
+            id="depot-code"
+            name="depotCode"
+            required
+            className={fieldClass}
+            placeholder="DEP-01"
+            defaultValue={depot?.depot_code ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="depot-name" className={labelClass}>Depot name</label>
-          <input id="depot-name" name="name" required className={fieldClass} />
+          <input id="depot-name" name="name" required className={fieldClass} defaultValue={depot?.name ?? ""} />
         </div>
         <div>
           <label htmlFor="depot-location" className={labelClass}>Location description</label>
-          <input id="depot-location" name="locationDescription" className={fieldClass} />
+          <input
+            id="depot-location"
+            name="locationDescription"
+            className={fieldClass}
+            defaultValue={depot?.location_description ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="depot-contact" className={labelClass}>Contact person</label>
-          <input id="depot-contact" name="contactPerson" className={fieldClass} />
+          <input
+            id="depot-contact"
+            name="contactPerson"
+            className={fieldClass}
+            defaultValue={depot?.contact_person ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="depot-phone" className={labelClass}>Phone</label>
-          <input id="depot-phone" name="phone" className={fieldClass} />
+          <input id="depot-phone" name="phone" className={fieldClass} defaultValue={depot?.phone ?? ""} />
         </div>
       </div>
       <Feedback state={state} />
       <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
-        {pending ? "Saving…" : "Save depot"}
+        {pending ? "Saving…" : depot ? "Save changes" : "Save depot"}
       </button>
     </form>
   );
 }
 
-export function ProductForm() {
-  const [state, formAction, pending] = useActionState(createProduct, initialState);
+export type ProductRecord = {
+  id: string;
+  product_code: string;
+  product_name: string;
+  product_type: string;
+  unit_of_measure: string;
+  description: string | null;
+};
+
+export function ProductForm({ product }: { product?: ProductRecord }) {
+  const [state, formAction, pending] = useActionState(product ? updateProduct : createProduct, initialState);
 
   return (
     <form action={formAction} className="space-y-3">
       <UnsavedGuard />
+      {product ? <input type="hidden" name="id" value={product.id} /> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="product-code" className={labelClass}>Product code</label>
-          <input id="product-code" name="productCode" required className={fieldClass} placeholder="PMS" />
+          <input
+            id="product-code"
+            name="productCode"
+            required
+            className={fieldClass}
+            placeholder="PMS"
+            defaultValue={product?.product_code ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="product-name" className={labelClass}>Product name</label>
-          <input id="product-name" name="productName" required className={fieldClass} />
+          <input
+            id="product-name"
+            name="productName"
+            required
+            className={fieldClass}
+            defaultValue={product?.product_name ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="product-type" className={labelClass}>Product type</label>
-          <input id="product-type" name="productType" required className={fieldClass} placeholder="fuel" />
+          <input
+            id="product-type"
+            name="productType"
+            required
+            className={fieldClass}
+            placeholder="fuel"
+            defaultValue={product?.product_type ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="product-unit" className={labelClass}>Unit of measure</label>
-          <input id="product-unit" name="unitOfMeasure" className={fieldClass} defaultValue="litres" />
+          <input
+            id="product-unit"
+            name="unitOfMeasure"
+            className={fieldClass}
+            defaultValue={product?.unit_of_measure ?? "litres"}
+          />
         </div>
       </div>
       <div>
         <label htmlFor="product-description" className={labelClass}>Description</label>
-        <input id="product-description" name="description" className={fieldClass} />
+        <input
+          id="product-description"
+          name="description"
+          className={fieldClass}
+          defaultValue={product?.description ?? ""}
+        />
       </div>
       <Feedback state={state} />
       <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
-        {pending ? "Saving…" : "Save product"}
+        {pending ? "Saving…" : product ? "Save changes" : "Save product"}
       </button>
     </form>
   );

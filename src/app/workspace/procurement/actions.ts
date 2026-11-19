@@ -8,11 +8,15 @@ import {
   costCategorySchema,
   costComponentSchema,
   depotSchema,
+  depotUpdateSchema,
+  masterStatusSchema,
   productSchema,
+  productUpdateSchema,
   purchaseOrderItemSchema,
   purchaseOrderSchema,
   supplierProductSchema,
   supplierSchema,
+  supplierUpdateSchema,
 } from "@/modules/procurement/validation";
 
 export type ProcurementActionState = {
@@ -79,6 +83,80 @@ function duplicateMessage(error: { code?: string }, what: string): string {
   return error.code === "23505" ? `${what} already exists.` : `${what} could not be saved.`;
 }
 
+function missingMessage(label: string): string {
+  return `That ${label} was not found. It may have been removed.`;
+}
+
+type MasterTable = "suppliers" | "supplier_depots" | "products";
+
+/**
+ * Activates or deactivates a master record. Nothing is deleted: history,
+ * purchase orders and batches keep pointing at the same row, while option
+ * lists for new documents only offer active records.
+ */
+async function setMasterStatus(
+  table: MasterTable,
+  label: string,
+  _previous: ProcurementActionState,
+  formData: FormData,
+): Promise<ProcurementActionState> {
+  const parsed = masterStatusSchema.safeParse({
+    id: formData.get("id"),
+    status: formData.get("status"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { data: updated, error: updateError } = await context.supabase
+    .from(table)
+    .update({ status: parsed.data.status })
+    .eq("id", parsed.data.id)
+    .eq("organisation_id", context.tenant.organisationId)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) {
+    return { error: `The ${label.toLowerCase()} could not be updated.`, success: null };
+  }
+
+  if (!updated) {
+    return { error: missingMessage(label.toLowerCase()), success: null };
+  }
+
+  revalidatePath("/workspace/procurement");
+
+  return {
+    error: null,
+    success: parsed.data.status === "active" ? `${label} reactivated.` : `${label} deactivated.`,
+  };
+}
+
+export async function setSupplierStatus(
+  previous: ProcurementActionState,
+  formData: FormData,
+): Promise<ProcurementActionState> {
+  return setMasterStatus("suppliers", "Supplier", previous, formData);
+}
+
+export async function setDepotStatus(
+  previous: ProcurementActionState,
+  formData: FormData,
+): Promise<ProcurementActionState> {
+  return setMasterStatus("supplier_depots", "Depot", previous, formData);
+}
+
+export async function setProductStatus(
+  previous: ProcurementActionState,
+  formData: FormData,
+): Promise<ProcurementActionState> {
+  return setMasterStatus("products", "Product", previous, formData);
+}
+
 export async function createSupplier(
   _previous: ProcurementActionState,
   formData: FormData,
@@ -119,6 +197,62 @@ export async function createSupplier(
   return { error: null, success: "Supplier saved." };
 }
 
+export async function updateSupplier(
+  _previous: ProcurementActionState,
+  formData: FormData,
+): Promise<ProcurementActionState> {
+  const parsed = supplierUpdateSchema.safeParse({
+    id: formData.get("id"),
+    supplierCode: formData.get("supplierCode"),
+    name: formData.get("name"),
+    contactPerson: formData.get("contactPerson"),
+    phone: formData.get("phone"),
+    email: formData.get("email"),
+    address: formData.get("address"),
+    paymentTerms: formData.get("paymentTerms"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { data: updated, error: updateError } = await context.supabase
+    .from("suppliers")
+    .update({
+      supplier_code: parsed.data.supplierCode,
+      name: parsed.data.name,
+      contact_person: textOrNull(parsed.data.contactPerson),
+      phone: textOrNull(parsed.data.phone),
+      email: textOrNull(parsed.data.email),
+      address: textOrNull(parsed.data.address),
+      payment_terms: textOrNull(parsed.data.paymentTerms),
+    })
+    .eq("id", parsed.data.id)
+    .eq("organisation_id", context.tenant.organisationId)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) {
+    return {
+      error:
+        updateError.code === "23505"
+          ? "That supplier code is already in use."
+          : "The supplier could not be updated.",
+      success: null,
+    };
+  }
+
+  if (!updated) {
+    return { error: missingMessage("supplier"), success: null };
+  }
+
+  revalidatePath("/workspace/procurement");
+  return { error: null, success: "Supplier updated." };
+}
+
 export async function createDepot(
   _previous: ProcurementActionState,
   formData: FormData,
@@ -157,6 +291,60 @@ export async function createDepot(
   return { error: null, success: "Depot saved." };
 }
 
+export async function updateDepot(
+  _previous: ProcurementActionState,
+  formData: FormData,
+): Promise<ProcurementActionState> {
+  const parsed = depotUpdateSchema.safeParse({
+    id: formData.get("id"),
+    supplierId: formData.get("supplierId"),
+    depotCode: formData.get("depotCode"),
+    name: formData.get("name"),
+    locationDescription: formData.get("locationDescription"),
+    contactPerson: formData.get("contactPerson"),
+    phone: formData.get("phone"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { data: updated, error: updateError } = await context.supabase
+    .from("supplier_depots")
+    .update({
+      supplier_id: parsed.data.supplierId,
+      depot_code: parsed.data.depotCode,
+      name: parsed.data.name,
+      location_description: textOrNull(parsed.data.locationDescription),
+      contact_person: textOrNull(parsed.data.contactPerson),
+      phone: textOrNull(parsed.data.phone),
+    })
+    .eq("id", parsed.data.id)
+    .eq("organisation_id", context.tenant.organisationId)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) {
+    return {
+      error:
+        updateError.code === "23505"
+          ? "That depot code is already in use."
+          : "The depot could not be updated.",
+      success: null,
+    };
+  }
+
+  if (!updated) {
+    return { error: missingMessage("depot"), success: null };
+  }
+
+  revalidatePath("/workspace/procurement");
+  return { error: null, success: "Depot updated." };
+}
+
 export async function createProduct(
   _previous: ProcurementActionState,
   formData: FormData,
@@ -191,6 +379,58 @@ export async function createProduct(
 
   revalidatePath("/workspace/procurement");
   return { error: null, success: "Product saved." };
+}
+
+export async function updateProduct(
+  _previous: ProcurementActionState,
+  formData: FormData,
+): Promise<ProcurementActionState> {
+  const parsed = productUpdateSchema.safeParse({
+    id: formData.get("id"),
+    productCode: formData.get("productCode"),
+    productName: formData.get("productName"),
+    productType: formData.get("productType"),
+    unitOfMeasure: formData.get("unitOfMeasure") || "litres",
+    description: formData.get("description"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { data: updated, error: updateError } = await context.supabase
+    .from("products")
+    .update({
+      product_code: parsed.data.productCode,
+      product_name: parsed.data.productName,
+      product_type: parsed.data.productType,
+      unit_of_measure: parsed.data.unitOfMeasure,
+      description: textOrNull(parsed.data.description),
+    })
+    .eq("id", parsed.data.id)
+    .eq("organisation_id", context.tenant.organisationId)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) {
+    return {
+      error:
+        updateError.code === "23505"
+          ? "That product code is already in use."
+          : "The product could not be updated.",
+      success: null,
+    };
+  }
+
+  if (!updated) {
+    return { error: missingMessage("product"), success: null };
+  }
+
+  revalidatePath("/workspace/procurement");
+  return { error: null, success: "Product updated." };
 }
 
 export async function createPurchaseOrder(

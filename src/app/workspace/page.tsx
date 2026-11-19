@@ -346,7 +346,7 @@ export default async function WorkspacePage() {
       <PageHeader
         eyebrow="Workspace"
         title={tenant.organisationName}
-        description={`${tenant.organisationCode} Â· signed in as ${tenant.fullName}`}
+        description={`${tenant.organisationCode} · signed in as ${tenant.fullName}`}
         actions={<Badge tone="success">Active</Badge>}
       />
 

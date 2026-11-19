@@ -6,6 +6,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
+import { StatusToggle } from "@/components/ui/status-toggle";
 import { Tabs } from "@/components/ui/tabs";
 import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
 import {
@@ -17,12 +18,40 @@ import {
   SupplierForm,
   SupplierProductForm,
 } from "./procurement-forms";
+import { setDepotStatus, setProductStatus, setSupplierStatus } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-type Supplier = { id: string; supplier_code: string; name: string; status: string };
-type Depot = { id: string; supplier_id: string; depot_code: string; name: string };
-type Product = { id: string; product_code: string; product_name: string; unit_of_measure: string };
+type Supplier = {
+  id: string;
+  supplier_code: string;
+  name: string;
+  contact_person: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  payment_terms: string | null;
+  status: string;
+};
+type Depot = {
+  id: string;
+  supplier_id: string;
+  depot_code: string;
+  name: string;
+  location_description: string | null;
+  contact_person: string | null;
+  phone: string | null;
+  status: string;
+};
+type Product = {
+  id: string;
+  product_code: string;
+  product_name: string;
+  product_type: string;
+  description: string | null;
+  unit_of_measure: string;
+  status: string;
+};
 type Location = { id: string; location_name: string; location_code: string; status: string };
 
 type Batch = {
@@ -82,7 +111,7 @@ function formatMoney(value: number) {
 export default async function ProcurementPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; edit?: string }>;
 }) {
   if (!getSupabaseConfig()) {
     redirect("/workspace");
@@ -123,9 +152,18 @@ export default async function ProcurementPage({
     orderItemsResult,
     supplierProductsResult,
   ] = await Promise.all([
-    supabase.from("suppliers").select("id, supplier_code, name, status").order("name"),
-    supabase.from("supplier_depots").select("id, supplier_id, depot_code, name").order("name"),
-    supabase.from("products").select("id, product_code, product_name, unit_of_measure").order("product_name"),
+    supabase
+      .from("suppliers")
+      .select("id, supplier_code, name, contact_person, phone, email, address, payment_terms, status")
+      .order("name"),
+    supabase
+      .from("supplier_depots")
+      .select("id, supplier_id, depot_code, name, location_description, contact_person, phone, status")
+      .order("name"),
+    supabase
+      .from("products")
+      .select("id, product_code, product_name, product_type, description, unit_of_measure, status")
+      .order("product_name"),
     supabase
       .from("business_locations")
       .select("id, location_name, location_code, status")
@@ -196,7 +234,7 @@ export default async function ProcurementPage({
 
   const orderOptions = orders.map((order) => ({
     id: order.id,
-    label: `${order.po_number} Â· ${supplierById.get(order.supplier_id)?.name ?? "Unknown supplier"}`,
+    label: `${order.po_number} · ${supplierById.get(order.supplier_id)?.name ?? "Unknown supplier"}`,
   }));
 
   const purchaseOrderLineOptions = orderItems.map((item) => {
@@ -204,16 +242,25 @@ export default async function ProcurementPage({
     const product = productById.get(item.product_id);
     return {
       id: item.id,
-      label: `${order?.po_number ?? "Order"} Â· ${product?.product_name ?? "Product"}`,
+      label: `${order?.po_number ?? "Order"} · ${product?.product_name ?? "Product"}`,
     };
   });
+
+  const activeSuppliers = suppliers.filter((supplier) => supplier.status === "active");
+  const activeDepots = depots.filter((depot) => depot.status === "active");
+  const activeProducts = products.filter((product) => product.status === "active");
 
   const supplierOptions = suppliers.map((supplier) => ({
     id: supplier.id,
     label: `${supplier.name} (${supplier.supplier_code})`,
   }));
 
-  const productOptions = products.map((product) => ({
+  const activeSupplierOptions = activeSuppliers.map((supplier) => ({
+    id: supplier.id,
+    label: `${supplier.name} (${supplier.supplier_code})`,
+  }));
+
+  const productOptions = activeProducts.map((product) => ({
     id: product.id,
     label: `${product.product_name} (${product.product_code})`,
   }));
@@ -223,11 +270,17 @@ export default async function ProcurementPage({
     label: `${location.location_name} (${location.location_code})`,
   }));
 
-  const depotOptions = depots.map((depot) => ({
+  const depotOptions = activeDepots.map((depot) => ({
     id: depot.id,
     supplierId: depot.supplier_id,
     label: `${depot.name} (${depot.depot_code})`,
   }));
+
+  const editId = params.edit;
+  const editingSupplier = editId ? suppliers.find((supplier) => supplier.id === editId) ?? null : null;
+  const editingDepot = editId ? depots.find((depot) => depot.id === editId) ?? null : null;
+  const editingProduct = editId ? products.find((product) => product.id === editId) ?? null : null;
+  const editMissing = Boolean(editId) && !editingSupplier && !editingDepot && !editingProduct;
 
   const orderValue = orderItems.reduce((sum, item) => sum + Number(item.line_total), 0);
   const storageBatches = batches.filter((batch) => batch.fulfilment_type === "storage_receipt").length;
@@ -257,8 +310,8 @@ export default async function ProcurementPage({
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Purchase orders" value={orders.length} hint={`${formatMoney(orderValue)} total`} tone="brand" />
         <StatCard label="Procurement batches" value={batches.length} hint={`${storageBatches} storage receipt${storageBatches === 1 ? "" : "s"}`} />
-        <StatCard label="Suppliers" value={suppliers.length} hint={`${depots.length} depots`} />
-        <StatCard label="Products" value={products.length} hint={`${supplierProducts.length} supplier link${supplierProducts.length === 1 ? "" : "s"}`} />
+        <StatCard label="Suppliers" value={suppliers.length} hint={`${activeSuppliers.length} active, ${depots.length} depots`} />
+        <StatCard label="Products" value={products.length} hint={`${activeProducts.length} active, ${supplierProducts.length} supplier link${supplierProducts.length === 1 ? "" : "s"}`} />
       </div>
 
       <Tabs items={tabs} active={activeHref} />
@@ -295,9 +348,9 @@ export default async function ProcurementPage({
                         return (
                           <TR key={order.id}>
                             <TD className="font-medium">{order.po_number}</TD>
-                            <TD>{supplierById.get(order.supplier_id)?.name ?? "â€”"}</TD>
+                            <TD>{supplierById.get(order.supplier_id)?.name ?? "—"}</TD>
                             <TD className="text-xs text-[var(--muted)]">{order.order_date}</TD>
-                            <TD className="text-xs text-[var(--muted)]">{order.expected_date ?? "â€”"}</TD>
+                            <TD className="text-xs text-[var(--muted)]">{order.expected_date ?? "—"}</TD>
                             <TD>
                               <StatusBadge status={order.status} />
                             </TD>
@@ -334,8 +387,8 @@ export default async function ProcurementPage({
                     <TBody>
                       {orderItems.map((item) => (
                         <TR key={item.id}>
-                          <TD className="text-xs">{orderById.get(item.purchase_order_id)?.po_number ?? "â€”"}</TD>
-                          <TD>{productById.get(item.product_id)?.product_name ?? "â€”"}</TD>
+                          <TD className="text-xs">{orderById.get(item.purchase_order_id)?.po_number ?? "—"}</TD>
+                          <TD>{productById.get(item.product_id)?.product_name ?? "—"}</TD>
                           <TD align="right">{formatQuantity(Number(item.ordered_quantity))}</TD>
                           <TD align="right">{formatMoney(Number(item.agreed_unit_price))}</TD>
                           <TD align="right">{formatMoney(Number(item.discount_amount))}</TD>
@@ -354,7 +407,14 @@ export default async function ProcurementPage({
               <Card>
                 <CardHeader title="Create purchase order" description="Depot options follow the chosen supplier." />
                 <CardBody>
-                  <PurchaseOrderForm suppliers={supplierOptions} depots={depotOptions} />
+                  {activeSupplierOptions.length === 0 ? (
+                    <EmptyState
+                      title="No active supplier"
+                      description="Add or reactivate a supplier before raising a purchase order."
+                    />
+                  ) : (
+                    <PurchaseOrderForm suppliers={activeSupplierOptions} depots={depotOptions} />
+                  )}
                 </CardBody>
               </Card>
               <Card>
@@ -402,26 +462,26 @@ export default async function ProcurementPage({
                       {batches.map((batch) => (
                         <TR key={batch.id}>
                           <TD className="font-medium">{batch.batch_number}</TD>
-                          <TD>{productById.get(batch.product_id)?.product_name ?? "â€”"}</TD>
+                          <TD>{productById.get(batch.product_id)?.product_name ?? "—"}</TD>
                           <TD className="text-xs">
                             {batch.purchase_order_item_id
                               ? orderById.get(
                                   orderItemById.get(batch.purchase_order_item_id)?.purchase_order_id ?? "",
-                                )?.po_number ?? "â€”"
-                              : "â€”"}
+                                )?.po_number ?? "—"
+                              : "—"}
                           </TD>
                           <TD>
-                            {supplierById.get(batch.supplier_id)?.name ?? "â€”"}
+                            {supplierById.get(batch.supplier_id)?.name ?? "—"}
                             <span className="block text-xs text-[var(--muted)]">
-                              {depotById.get(batch.supplier_depot_id)?.name ?? "â€”"}
+                              {depotById.get(batch.supplier_depot_id)?.name ?? "—"}
                             </span>
                           </TD>
                           <TD align="right">{formatQuantity(Number(batch.supplier_quantity))}</TD>
                           <TD align="right">
-                            {batch.loaded_quantity === null ? "â€”" : formatQuantity(Number(batch.loaded_quantity))}
+                            {batch.loaded_quantity === null ? "—" : formatQuantity(Number(batch.loaded_quantity))}
                           </TD>
                           <TD align="right">
-                            {batch.received_quantity === null ? "â€”" : formatQuantity(Number(batch.received_quantity))}
+                            {batch.received_quantity === null ? "—" : formatQuantity(Number(batch.received_quantity))}
                           </TD>
                           <TD className="text-xs">
                             {batch.fulfilment_type === "storage_receipt" ? "Storage" : "Direct"}
@@ -447,13 +507,20 @@ export default async function ProcurementPage({
             <Card>
               <CardHeader title="Record a batch" description="Storage receipts can later be received into inventory." />
               <CardBody>
-                <BatchForm
-                  suppliers={supplierOptions}
-                  depots={depotOptions}
-                  products={productOptions}
-                  locations={locationOptions}
-                  purchaseOrderLines={purchaseOrderLineOptions}
-                />
+                {activeSupplierOptions.length === 0 || productOptions.length === 0 ? (
+                  <EmptyState
+                    title="Active supplier and product required"
+                    description="Add or reactivate both before recording a batch."
+                  />
+                ) : (
+                  <BatchForm
+                    suppliers={activeSupplierOptions}
+                    depots={depotOptions}
+                    products={productOptions}
+                    locations={locationOptions}
+                    purchaseOrderLines={purchaseOrderLineOptions}
+                  />
+                )}
               </CardBody>
             </Card>
           ) : null}
@@ -462,29 +529,59 @@ export default async function ProcurementPage({
 
       {tab === "suppliers" ? (
         <div className="space-y-6">
+          {editMissing ? (
+            <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              That record could not be found. It may have been removed.
+            </p>
+          ) : null}
+
           <div className="space-y-6">
             <Card>
-              <CardHeader title="Suppliers" description="Codes and status." />
+              <CardHeader
+                title="Suppliers"
+                description="Codes and status. Deactivating keeps history but hides the supplier from new documents."
+              />
               <CardBody>
                 {suppliers.length === 0 ? (
                   <EmptyState title="No suppliers yet" description="Add one below." />
                 ) : (
                   <TableScroll>
-                    <Table minWidth={520}>
+                    <Table minWidth={720}>
                       <THead>
                         <TR>
                           <TH>Code</TH>
                           <TH>Name</TH>
                           <TH>Status</TH>
+                          <TH>Actions</TH>
                         </TR>
                       </THead>
                       <TBody>
                         {suppliers.map((supplier) => (
-                          <TR key={supplier.id}>
+                          <TR
+                            key={supplier.id}
+                            className={editingSupplier?.id === supplier.id ? "bg-[var(--brand-soft)]/40" : ""}
+                          >
                             <TD className="font-medium">{supplier.supplier_code}</TD>
                             <TD>{supplier.name}</TD>
                             <TD>
                               <StatusBadge status={supplier.status} />
+                            </TD>
+                            <TD>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <ButtonLink
+                                  href={`/workspace/procurement?tab=suppliers&edit=${supplier.id}`}
+                                  size="sm"
+                                  variant="ghost"
+                                >
+                                  Edit
+                                </ButtonLink>
+                                <StatusToggle
+                                  action={setSupplierStatus}
+                                  id={supplier.id}
+                                  name={supplier.name}
+                                  active={supplier.status === "active"}
+                                />
+                              </div>
                             </TD>
                           </TR>
                         ))}
@@ -496,26 +593,54 @@ export default async function ProcurementPage({
             </Card>
 
             <Card>
-              <CardHeader title="Supplier depots" description="Collection points per supplier." />
+              <CardHeader
+                title="Supplier depots"
+                description="Collection points per supplier. Deactivating keeps history but hides the depot from new documents."
+              />
               <CardBody>
                 {depots.length === 0 ? (
                   <EmptyState title="No depots yet" description="Add one below." />
                 ) : (
                   <TableScroll>
-                    <Table minWidth={560}>
+                    <Table minWidth={760}>
                       <THead>
                         <TR>
                           <TH>Supplier</TH>
                           <TH>Depot</TH>
                           <TH>Code</TH>
+                          <TH>Status</TH>
+                          <TH>Actions</TH>
                         </TR>
                       </THead>
                       <TBody>
                         {depots.map((depot) => (
-                          <TR key={depot.id}>
-                            <TD className="text-xs">{supplierById.get(depot.supplier_id)?.name ?? "â€”"}</TD>
+                          <TR
+                            key={depot.id}
+                            className={editingDepot?.id === depot.id ? "bg-[var(--brand-soft)]/40" : ""}
+                          >
+                            <TD className="text-xs">{supplierById.get(depot.supplier_id)?.name ?? "—"}</TD>
                             <TD>{depot.name}</TD>
                             <TD className="text-xs text-[var(--muted)]">{depot.depot_code}</TD>
+                            <TD>
+                              <StatusBadge status={depot.status} />
+                            </TD>
+                            <TD>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <ButtonLink
+                                  href={`/workspace/procurement?tab=suppliers&edit=${depot.id}`}
+                                  size="sm"
+                                  variant="ghost"
+                                >
+                                  Edit
+                                </ButtonLink>
+                                <StatusToggle
+                                  action={setDepotStatus}
+                                  id={depot.id}
+                                  name={depot.name}
+                                  active={depot.status === "active"}
+                                />
+                              </div>
+                            </TD>
                           </TR>
                         ))}
                       </TBody>
@@ -529,19 +654,51 @@ export default async function ProcurementPage({
           {canManage ? (
             <div className="grid gap-6 xl:grid-cols-2">
               <Card>
-                <CardHeader title="Add supplier" description="Code must be unique for this company." />
+                <CardHeader
+                  title={editingSupplier ? "Edit supplier" : "Add supplier"}
+                  description={
+                    editingSupplier
+                      ? "Changes apply to future documents. Existing records keep their details."
+                      : "Code must be unique for this company."
+                  }
+                />
                 <CardBody>
-                  <SupplierForm />
+                  <SupplierForm key={editingSupplier?.id ?? "new"} supplier={editingSupplier ?? undefined} />
+                  {editingSupplier ? (
+                    <div className="mt-3">
+                      <ButtonLink href="/workspace/procurement?tab=suppliers" size="sm">
+                        Cancel edit
+                      </ButtonLink>
+                    </div>
+                  ) : null}
                 </CardBody>
               </Card>
               <Card>
-                <CardHeader title="Add supplier depot" description="Linked to an existing supplier." />
+                <CardHeader
+                  title={editingDepot ? "Edit supplier depot" : "Add supplier depot"}
+                  description={
+                    editingDepot
+                      ? "Changes apply to future documents. Existing batches keep their depot."
+                      : "Linked to an existing supplier."
+                  }
+                />
                 <CardBody>
                   {suppliers.length === 0 ? (
                     <EmptyState title="No supplier yet" description="Add a supplier before a depot." />
                   ) : (
-                    <DepotForm suppliers={supplierOptions} />
+                    <DepotForm
+                      key={editingDepot?.id ?? "new"}
+                      suppliers={supplierOptions}
+                      depot={editingDepot ?? undefined}
+                    />
                   )}
+                  {editingDepot ? (
+                    <div className="mt-3">
+                      <ButtonLink href="/workspace/procurement?tab=suppliers" size="sm">
+                        Cancel edit
+                      </ButtonLink>
+                    </div>
+                  ) : null}
                 </CardBody>
               </Card>
             </div>
@@ -551,28 +708,62 @@ export default async function ProcurementPage({
 
       {tab === "catalogue" ? (
         <div className="space-y-6">
+          {editMissing ? (
+            <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              That record could not be found. It may have been removed.
+            </p>
+          ) : null}
+
           <div className="space-y-6">
             <Card>
-              <CardHeader title="Products" description="Shared product catalogue for this company." />
+              <CardHeader
+                title="Products"
+                description="Shared product catalogue. Deactivating keeps history but hides the product from new documents."
+              />
               <CardBody>
                 {products.length === 0 ? (
                   <EmptyState title="No products yet" description="Add one below." />
                 ) : (
                   <TableScroll>
-                    <Table minWidth={520}>
+                    <Table minWidth={720}>
                       <THead>
                         <TR>
                           <TH>Code</TH>
                           <TH>Product</TH>
                           <TH>Unit</TH>
+                          <TH>Status</TH>
+                          <TH>Actions</TH>
                         </TR>
                       </THead>
                       <TBody>
                         {products.map((product) => (
-                          <TR key={product.id}>
+                          <TR
+                            key={product.id}
+                            className={editingProduct?.id === product.id ? "bg-[var(--brand-soft)]/40" : ""}
+                          >
                             <TD className="font-medium">{product.product_code}</TD>
                             <TD>{product.product_name}</TD>
                             <TD className="text-xs text-[var(--muted)]">{product.unit_of_measure}</TD>
+                            <TD>
+                              <StatusBadge status={product.status} />
+                            </TD>
+                            <TD>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <ButtonLink
+                                  href={`/workspace/procurement?tab=catalogue&edit=${product.id}`}
+                                  size="sm"
+                                  variant="ghost"
+                                >
+                                  Edit
+                                </ButtonLink>
+                                <StatusToggle
+                                  action={setProductStatus}
+                                  id={product.id}
+                                  name={product.product_name}
+                                  active={product.status === "active"}
+                                />
+                              </div>
+                            </TD>
                           </TR>
                         ))}
                       </TBody>
@@ -601,9 +792,9 @@ export default async function ProcurementPage({
                       <TBody>
                         {supplierProducts.map((link) => (
                           <TR key={link.id}>
-                            <TD className="text-xs">{supplierById.get(link.supplier_id)?.name ?? "â€”"}</TD>
-                            <TD>{productById.get(link.product_id)?.product_name ?? "â€”"}</TD>
-                            <TD className="text-xs text-[var(--muted)]">{link.supplier_product_code ?? "â€”"}</TD>
+                            <TD className="text-xs">{supplierById.get(link.supplier_id)?.name ?? "—"}</TD>
+                            <TD>{productById.get(link.product_id)?.product_name ?? "—"}</TD>
+                            <TD className="text-xs text-[var(--muted)]">{link.supplier_product_code ?? "—"}</TD>
                             <TD>
                               <StatusBadge status={link.status} />
                             </TD>
@@ -620,18 +811,35 @@ export default async function ProcurementPage({
           {canManage ? (
             <div className="grid gap-6 xl:grid-cols-2">
               <Card>
-                <CardHeader title="Add product" description="Unit defaults to litres." />
+                <CardHeader
+                  title={editingProduct ? "Edit product" : "Add product"}
+                  description={
+                    editingProduct
+                      ? "Changes apply to future documents. Existing batches keep their recorded product details."
+                      : "Unit defaults to litres."
+                  }
+                />
                 <CardBody>
-                  <ProductForm />
+                  <ProductForm key={editingProduct?.id ?? "new"} product={editingProduct ?? undefined} />
+                  {editingProduct ? (
+                    <div className="mt-3">
+                      <ButtonLink href="/workspace/procurement?tab=catalogue" size="sm">
+                        Cancel edit
+                      </ButtonLink>
+                    </div>
+                  ) : null}
                 </CardBody>
               </Card>
               <Card>
                 <CardHeader title="Link supplier to product" description="Optional supplier product code." />
                 <CardBody>
-                  {suppliers.length === 0 || products.length === 0 ? (
-                    <EmptyState title="Supplier and product required" description="Add both before linking." />
+                  {activeSupplierOptions.length === 0 || productOptions.length === 0 ? (
+                    <EmptyState
+                      title="Active supplier and product required"
+                      description="Add or reactivate both before linking."
+                    />
                   ) : (
-                    <SupplierProductForm suppliers={supplierOptions} products={productOptions} />
+                    <SupplierProductForm suppliers={activeSupplierOptions} products={productOptions} />
                   )}
                 </CardBody>
               </Card>

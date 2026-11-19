@@ -17,6 +17,7 @@ const aliases: Record<string, Tone> = {
   held: "warning",
   closed: "neutral",
   active: "success",
+  inactive: "neutral",
   released: "neutral",
   fulfilled: "brand",
   partially_fulfilled: "warning",

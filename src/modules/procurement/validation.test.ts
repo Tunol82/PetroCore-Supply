@@ -4,11 +4,15 @@ import {
   costCategorySchema,
   costComponentSchema,
   depotSchema,
+  depotUpdateSchema,
+  masterStatusSchema,
   productSchema,
+  productUpdateSchema,
   purchaseOrderItemSchema,
   purchaseOrderSchema,
   supplierProductSchema,
   supplierSchema,
+  supplierUpdateSchema,
 } from "./validation";
 
 const supplierId = "11111111-1111-1111-1111-111111111111";
@@ -156,6 +160,46 @@ describe("batch purchase-order linkage", () => {
     expect(
       batchSchema.safeParse({ ...base, purchaseOrderItemId: "not-a-uuid" }).success,
     ).toBe(false);
+  });
+});
+
+describe("master data lifecycle", () => {
+  it("accepts active and inactive status values", () => {
+    expect(masterStatusSchema.safeParse({ id: supplierId, status: "active" }).success).toBe(true);
+    expect(masterStatusSchema.safeParse({ id: supplierId, status: "inactive" }).success).toBe(true);
+  });
+
+  it("rejects an unknown status", () => {
+    expect(masterStatusSchema.safeParse({ id: supplierId, status: "archived" }).success).toBe(false);
+  });
+
+  it("requires a record id for a status change", () => {
+    expect(masterStatusSchema.safeParse({ status: "inactive" }).success).toBe(false);
+  });
+
+  it("requires the record id when updating master data", () => {
+    expect(supplierUpdateSchema.safeParse({ supplierCode: "SUP-1", name: "North" }).success).toBe(false);
+    expect(depotUpdateSchema.safeParse({ supplierId, depotCode: "D1", name: "Depot" }).success).toBe(false);
+    expect(
+      productUpdateSchema.safeParse({ productCode: "PMS", productName: "Petrol", productType: "fuel" }).success,
+    ).toBe(false);
+  });
+
+  it("keeps create validation rules on update", () => {
+    expect(
+      supplierUpdateSchema.safeParse({ id: supplierId, supplierCode: "SUP-1", name: "" }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a complete update", () => {
+    expect(
+      productUpdateSchema.parse({
+        id: productId,
+        productCode: " PMS ",
+        productName: "Premium Motor Spirit",
+        productType: "fuel",
+      }),
+    ).toMatchObject({ id: productId, productCode: "PMS", unitOfMeasure: "litres" });
   });
 });
 

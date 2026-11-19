@@ -1,5 +1,6 @@
 "use client";
 
+import { UnsavedGuard } from "@/components/ui/unsaved-guard";
 import { ToastOnState } from "@/components/ui/toast";
 
 import { useActionState, useState } from "react";
@@ -8,6 +9,7 @@ import {
   createCustomer,
   createCustomerLocation,
   createSalesOrder,
+  updateCustomer,
   type SalesActionState,
 } from "./actions";
 
@@ -42,23 +44,50 @@ function Feedback({ state }: { state: SalesActionState }) {
   return null;
 }
 
-export function CustomerForm() {
-  const [state, formAction, pending] = useActionState(createCustomer, initialState);
+export type CustomerRecord = {
+  id: string;
+  customer_code: string;
+  name: string;
+  customer_category: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  credit_limit: number;
+  payment_terms: string | null;
+  credit_status: string;
+};
+
+export function CustomerForm({ customer }: { customer?: CustomerRecord }) {
+  const [state, formAction, pending] = useActionState(customer ? updateCustomer : createCustomer, initialState);
 
   return (
     <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
+      {customer ? <input type="hidden" name="id" value={customer.id} /> : null}
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label htmlFor="cust-code" className={labelClass}>Customer code</label>
-          <input id="cust-code" name="customerCode" required className={fieldClass} placeholder="CUS-001" />
+          <input
+            id="cust-code"
+            name="customerCode"
+            required
+            className={fieldClass}
+            placeholder="CUS-001"
+            defaultValue={customer?.customer_code ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="cust-name" className={labelClass}>Customer name</label>
-          <input id="cust-name" name="name" required className={fieldClass} />
+          <input id="cust-name" name="name" required className={fieldClass} defaultValue={customer?.name ?? ""} />
         </div>
         <div>
           <label htmlFor="cust-category" className={labelClass}>Category</label>
-          <select id="cust-category" name="customerCategory" className={fieldClass} defaultValue="business">
+          <select
+            id="cust-category"
+            name="customerCategory"
+            className={fieldClass}
+            defaultValue={customer?.customer_category ?? "business"}
+          >
             <option value="individual">Individual</option>
             <option value="business">Business</option>
             <option value="petrol_station">Petrol station</option>
@@ -68,23 +97,48 @@ export function CustomerForm() {
         </div>
         <div>
           <label htmlFor="cust-phone" className={labelClass}>Phone</label>
-          <input id="cust-phone" name="phone" className={fieldClass} />
+          <input id="cust-phone" name="phone" className={fieldClass} defaultValue={customer?.phone ?? ""} />
         </div>
         <div>
           <label htmlFor="cust-email" className={labelClass}>Email</label>
-          <input id="cust-email" name="email" type="email" className={fieldClass} />
+          <input
+            id="cust-email"
+            name="email"
+            type="email"
+            className={fieldClass}
+            defaultValue={customer?.email ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="cust-terms" className={labelClass}>Payment terms</label>
-          <input id="cust-terms" name="paymentTerms" className={fieldClass} placeholder="30 days" />
+          <input
+            id="cust-terms"
+            name="paymentTerms"
+            className={fieldClass}
+            placeholder="30 days"
+            defaultValue={customer?.payment_terms ?? ""}
+          />
         </div>
         <div>
           <label htmlFor="cust-credit-limit" className={labelClass}>Credit limit</label>
-          <input id="cust-credit-limit" name="creditLimit" type="number" step="0.01" min="0" defaultValue="0" className={fieldClass} />
+          <input
+            id="cust-credit-limit"
+            name="creditLimit"
+            type="number"
+            step="0.01"
+            min="0"
+            className={fieldClass}
+            defaultValue={customer ? String(customer.credit_limit) : "0"}
+          />
         </div>
         <div>
           <label htmlFor="cust-credit-status" className={labelClass}>Credit status</label>
-          <select id="cust-credit-status" name="creditStatus" className={fieldClass} defaultValue="active">
+          <select
+            id="cust-credit-status"
+            name="creditStatus"
+            className={fieldClass}
+            defaultValue={customer?.credit_status ?? "active"}
+          >
             <option value="active">Active</option>
             <option value="on_hold">On hold</option>
             <option value="suspended">Suspended</option>
@@ -93,13 +147,13 @@ export function CustomerForm() {
         </div>
         <div>
           <label htmlFor="cust-address" className={labelClass}>Address</label>
-          <input id="cust-address" name="address" className={fieldClass} />
+          <input id="cust-address" name="address" className={fieldClass} defaultValue={customer?.address ?? ""} />
         </div>
       </div>
       <Feedback state={state} />
       <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
-        {pending ? "Saving…" : "Save customer"}
+        {pending ? "Saving…" : customer ? "Save changes" : "Save customer"}
       </button>
     </form>
   );

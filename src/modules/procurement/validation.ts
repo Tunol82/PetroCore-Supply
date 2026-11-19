@@ -44,6 +44,25 @@ export const productSchema = z.object({
   description: optionalText(500),
 });
 
+export const MASTER_STATUSES = ["active", "inactive"] as const;
+
+export const masterStatusSchema = z.object({
+  id: uuid("Select a record."),
+  status: z.enum(MASTER_STATUSES),
+});
+
+export const supplierUpdateSchema = supplierSchema.extend({
+  id: uuid("Select a supplier."),
+});
+
+export const depotUpdateSchema = depotSchema.extend({
+  id: uuid("Select a depot."),
+});
+
+export const productUpdateSchema = productSchema.extend({
+  id: uuid("Select a product."),
+});
+
 export const batchSchema = z
   .object({
     batchNumber: z.string().trim().min(2, "Enter the batch reference.").max(60),

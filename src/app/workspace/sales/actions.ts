@@ -6,6 +6,8 @@ import { getCurrentTenant, type CurrentTenant } from "@/modules/tenant/current-t
 import {
   customerLocationSchema,
   customerSchema,
+  customerStatusSchema,
+  customerUpdateSchema,
   salesOrderItemSchema,
   salesOrderSchema,
 } from "@/modules/sales/validation";
@@ -74,6 +76,10 @@ function duplicateMessage(error: { code?: string }, what: string): string {
   return error.code === "23505" ? `${what} already exists.` : `${what} could not be saved.`;
 }
 
+function missingMessage(label: string): string {
+  return `That ${label} was not found. It may have been removed.`;
+}
+
 export async function createCustomer(
   _previous: SalesActionState,
   formData: FormData,
@@ -116,6 +122,106 @@ export async function createCustomer(
 
   revalidatePath("/workspace/sales");
   return { error: null, success: "Customer saved." };
+}
+
+export async function updateCustomer(
+  _previous: SalesActionState,
+  formData: FormData,
+): Promise<SalesActionState> {
+  const parsed = customerUpdateSchema.safeParse({
+    id: formData.get("id"),
+    customerCode: formData.get("customerCode"),
+    name: formData.get("name"),
+    customerCategory: formData.get("customerCategory"),
+    phone: formData.get("phone"),
+    email: formData.get("email"),
+    address: formData.get("address"),
+    creditLimit: formData.get("creditLimit"),
+    paymentTerms: formData.get("paymentTerms"),
+    creditStatus: formData.get("creditStatus"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { data: updated, error: updateError } = await context.supabase
+    .from("customers")
+    .update({
+      customer_code: parsed.data.customerCode,
+      name: parsed.data.name,
+      customer_category: parsed.data.customerCategory,
+      phone: textOrNull(parsed.data.phone),
+      email: textOrNull(parsed.data.email),
+      address: textOrNull(parsed.data.address),
+      credit_limit: parsed.data.creditLimit,
+      payment_terms: textOrNull(parsed.data.paymentTerms),
+      credit_status: parsed.data.creditStatus,
+    })
+    .eq("id", parsed.data.id)
+    .eq("organisation_id", context.tenant.organisationId)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) {
+    return {
+      error:
+        updateError.code === "23505"
+          ? "That customer code is already in use."
+          : "The customer could not be updated.",
+      success: null,
+    };
+  }
+
+  if (!updated) {
+    return { error: missingMessage("customer"), success: null };
+  }
+
+  revalidatePath("/workspace/sales");
+  return { error: null, success: "Customer updated." };
+}
+
+export async function setCustomerStatus(
+  _previous: SalesActionState,
+  formData: FormData,
+): Promise<SalesActionState> {
+  const parsed = customerStatusSchema.safeParse({
+    id: formData.get("id"),
+    status: formData.get("status"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssue(parsed), success: null };
+  }
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const { data: updated, error: updateError } = await context.supabase
+    .from("customers")
+    .update({ status: parsed.data.status })
+    .eq("id", parsed.data.id)
+    .eq("organisation_id", context.tenant.organisationId)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) {
+    return { error: "The customer could not be updated.", success: null };
+  }
+
+  if (!updated) {
+    return { error: missingMessage("customer"), success: null };
+  }
+
+  revalidatePath("/workspace/sales");
+
+  return {
+    error: null,
+    success: parsed.data.status === "active" ? "Customer reactivated." : "Customer deactivated.",
+  };
 }
 
 export async function createCustomerLocation(

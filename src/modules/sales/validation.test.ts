@@ -3,6 +3,8 @@ import {
   CUSTOMER_CATEGORIES,
   customerLocationSchema,
   customerSchema,
+  customerStatusSchema,
+  customerUpdateSchema,
   salesOrderItemSchema,
   salesOrderSchema,
 } from "./validation";
@@ -45,6 +47,41 @@ describe("customerSchema", () => {
         customerCategory: "business",
         creditStatus: "active",
         creditLimit: "-1",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("customer lifecycle", () => {
+  it("accepts active and inactive status values", () => {
+    expect(customerStatusSchema.safeParse({ id: customerId, status: "active" }).success).toBe(true);
+    expect(customerStatusSchema.safeParse({ id: customerId, status: "inactive" }).success).toBe(true);
+  });
+
+  it("rejects an unknown status", () => {
+    expect(customerStatusSchema.safeParse({ id: customerId, status: "archived" }).success).toBe(false);
+  });
+
+  it("requires the customer id on update", () => {
+    expect(
+      customerUpdateSchema.safeParse({
+        customerCode: "CUS-1",
+        name: "Customer One",
+        customerCategory: "business",
+        creditStatus: "active",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("keeps credit rules on update", () => {
+    expect(
+      customerUpdateSchema.safeParse({
+        id: customerId,
+        customerCode: "CUS-1",
+        name: "Customer One",
+        customerCategory: "business",
+        creditStatus: "active",
+        creditLimit: "-5",
       }).success,
     ).toBe(false);
   });

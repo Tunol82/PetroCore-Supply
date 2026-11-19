@@ -6,9 +6,11 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
+import { StatusToggle } from "@/components/ui/status-toggle";
 import { Tabs } from "@/components/ui/tabs";
 import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
 import { CustomerForm, CustomerLocationForm, SalesOrderForm, SalesOrderItemForm } from "./sales-forms";
+import { setCustomerStatus } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,11 @@ type Customer = {
   customer_code: string;
   name: string;
   customer_category: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  credit_limit: number;
+  payment_terms: string | null;
   credit_status: string;
   status: string;
 };
@@ -49,7 +56,7 @@ type SalesOrderItem = {
   line_total: number;
 };
 
-type Product = { id: string; product_code: string; product_name: string };
+type Product = { id: string; product_code: string; product_name: string; status: string };
 
 const TABS = ["orders", "customers"] as const;
 
@@ -67,7 +74,7 @@ function formatQuantity(value: number) {
 export default async function SalesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; edit?: string }>;
 }) {
   if (!getSupabaseConfig()) {
     redirect("/workspace");
@@ -101,7 +108,9 @@ export default async function SalesPage({
   const [customersResult, locationsResult, ordersResult, itemsResult, productsResult] = await Promise.all([
     supabase
       .from("customers")
-      .select("id, customer_code, name, customer_category, credit_status, status")
+      .select(
+        "id, customer_code, name, customer_category, phone, email, address, credit_limit, payment_terms, credit_status, status",
+      )
       .order("name"),
     supabase
       .from("customer_locations")
@@ -115,7 +124,7 @@ export default async function SalesPage({
     supabase
       .from("sales_order_items")
       .select("id, sales_order_id, product_id, quantity, selling_price, discount_amount, delivery_fee, line_total"),
-    supabase.from("products").select("id, product_code, product_name").order("product_name"),
+    supabase.from("products").select("id, product_code, product_name, status").order("product_name"),
   ]);
 
   const queryError =
@@ -150,10 +159,16 @@ export default async function SalesPage({
     itemsByOrder.set(item.sales_order_id, current);
   }
 
-  const customerOptions = customers.map((customer) => ({
+  const activeCustomers = customers.filter((customer) => customer.status === "active");
+
+  const customerOptions = activeCustomers.map((customer) => ({
     id: customer.id,
     label: `${customer.name} (${customer.customer_code})`,
   }));
+
+  const editId = params.edit;
+  const editingCustomer = editId ? customers.find((customer) => customer.id === editId) ?? null : null;
+  const editMissing = Boolean(editId) && !editingCustomer;
 
   const locationOptions = locations.map((location) => ({
     id: location.id,
@@ -166,10 +181,12 @@ export default async function SalesPage({
     label: `${order.order_number} · ${customerById.get(order.customer_id)?.name ?? "customer"}`,
   }));
 
-  const productOptions = products.map((product) => ({
-    id: product.id,
-    label: `${product.product_code} · ${product.product_name}`,
-  }));
+  const productOptions = products
+    .filter((product) => product.status === "active")
+    .map((product) => ({
+      id: product.id,
+      label: `${product.product_code} · ${product.product_name}`,
+    }));
 
   const orderValue = items.reduce((sum, item) => sum + Number(item.line_total), 0);
 
@@ -190,7 +207,7 @@ export default async function SalesPage({
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Sales orders" value={orders.length} hint="Latest 50" />
         <StatCard label="Order value" value={formatMoney(orderValue)} hint="All listed lines" tone="brand" />
-        <StatCard label="Customers" value={customers.length} hint="Active and inactive" />
+        <StatCard label="Customers" value={customers.length} hint={`${activeCustomers.length} active`} />
         <StatCard label="Delivery locations" value={locations.length} hint="Across all customers" />
       </div>
 
@@ -288,7 +305,14 @@ export default async function SalesPage({
               <Card>
                 <CardHeader title="Create sales order" description="One customer and optional delivery location." />
                 <CardBody>
-                  <SalesOrderForm customers={customerOptions} locations={locationOptions} />
+                  {customerOptions.length === 0 ? (
+                    <EmptyState
+                      title="No active customer"
+                      description="Add or reactivate a customer before creating an order."
+                    />
+                  ) : (
+                    <SalesOrderForm customers={customerOptions} locations={locationOptions} />
+                  )}
                 </CardBody>
               </Card>
               <Card>
@@ -296,6 +320,11 @@ export default async function SalesPage({
                 <CardBody>
                   {orders.length === 0 ? (
                     <EmptyState title="No order yet" description="Create a sales order before adding lines." />
+                  ) : productOptions.length === 0 ? (
+                    <EmptyState
+                      title="No active product"
+                      description="Add or reactivate a product before adding lines."
+                    />
                   ) : (
                     <SalesOrderItemForm orders={orderOptions} products={productOptions} />
                   )}
@@ -308,15 +337,24 @@ export default async function SalesPage({
 
       {tab === "customers" ? (
         <div className="space-y-6">
+          {editMissing ? (
+            <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              That record could not be found. It may have been removed.
+            </p>
+          ) : null}
+
           <div className="space-y-6">
             <Card>
-              <CardHeader title="Customers" description="Codes, category, credit status and state." />
+              <CardHeader
+                title="Customers"
+                description="Codes, category, credit status and state. Deactivating keeps history but hides the customer from new orders."
+              />
               <CardBody>
                 {customers.length === 0 ? (
                   <EmptyState title="No customers yet" description="Add the first customer below." />
                 ) : (
                   <TableScroll>
-                    <Table minWidth={620}>
+                    <Table minWidth={820}>
                       <THead>
                         <TR>
                           <TH>Code</TH>
@@ -324,17 +362,38 @@ export default async function SalesPage({
                           <TH>Category</TH>
                           <TH>Credit</TH>
                           <TH>Status</TH>
+                          <TH>Actions</TH>
                         </TR>
                       </THead>
                       <TBody>
                         {customers.map((customer) => (
-                          <TR key={customer.id}>
+                          <TR
+                            key={customer.id}
+                            className={editingCustomer?.id === customer.id ? "bg-[var(--brand-soft)]/40" : ""}
+                          >
                             <TD className="font-medium">{customer.customer_code}</TD>
                             <TD>{customer.name}</TD>
                             <TD className="text-xs text-[var(--muted)]">{customer.customer_category}</TD>
                             <TD className="text-xs text-[var(--muted)]">{customer.credit_status}</TD>
                             <TD>
                               <StatusBadge status={customer.status} />
+                            </TD>
+                            <TD>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <ButtonLink
+                                  href={`/workspace/sales?tab=customers&edit=${customer.id}`}
+                                  size="sm"
+                                  variant="ghost"
+                                >
+                                  Edit
+                                </ButtonLink>
+                                <StatusToggle
+                                  action={setCustomerStatus}
+                                  id={customer.id}
+                                  name={customer.name}
+                                  active={customer.status === "active"}
+                                />
+                              </div>
                             </TD>
                           </TR>
                         ))}
@@ -379,16 +438,33 @@ export default async function SalesPage({
           {canManage ? (
             <div className="grid gap-6 xl:grid-cols-2">
               <Card>
-                <CardHeader title="Add customer" description="Code must be unique for this company." />
+                <CardHeader
+                  title={editingCustomer ? "Edit customer" : "Add customer"}
+                  description={
+                    editingCustomer
+                      ? "Changes apply to future documents. Existing orders keep their recorded customer details."
+                      : "Code must be unique for this company."
+                  }
+                />
                 <CardBody>
-                  <CustomerForm />
+                  <CustomerForm key={editingCustomer?.id ?? "new"} customer={editingCustomer ?? undefined} />
+                  {editingCustomer ? (
+                    <div className="mt-3">
+                      <ButtonLink href="/workspace/sales?tab=customers" size="sm">
+                        Cancel edit
+                      </ButtonLink>
+                    </div>
+                  ) : null}
                 </CardBody>
               </Card>
               <Card>
-                <CardHeader title="Add delivery location" description="Linked to an existing customer." />
+                <CardHeader title="Add delivery location" description="Linked to an active customer." />
                 <CardBody>
-                  {customers.length === 0 ? (
-                    <EmptyState title="No customer yet" description="Add a customer before a location." />
+                  {customerOptions.length === 0 ? (
+                    <EmptyState
+                      title="No active customer"
+                      description="Add or reactivate a customer before a location."
+                    />
                   ) : (
                     <CustomerLocationForm customers={customerOptions} />
                   )}
