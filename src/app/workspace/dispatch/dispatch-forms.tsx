@@ -1,6 +1,7 @@
 "use client";
 
 import { UnsavedGuard } from "@/components/ui/unsaved-guard";
+import { FormDraft } from "@/components/ui/form-draft";
 
 import { ToastOnState } from "@/components/ui/toast";
 
@@ -221,6 +222,7 @@ export function LoadingRecordForm({
   return (
     <form action={formAction} className="space-y-3">
       <UnsavedGuard />
+      <FormDraft storageKey="loading:new" state={state} />
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label htmlFor="ld-trip" className={labelClass}>Trip</label>
