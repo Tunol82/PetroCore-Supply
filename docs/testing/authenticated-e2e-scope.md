@@ -2,7 +2,7 @@
 
 | Field | Detail |
 |---|---|
-| Status | **Proposed — awaiting backend choice** |
+| Status | **Implemented — interim ORG-E2E tenant** |
 | Date | 2026-11-19 |
 | Owner question | Which Supabase backend should the authenticated suite run against? |
 | Related | `docs/AI_HANDOVER.md` section 6; `playwright.config.ts`; `supabase/seed/demo-tenant.sql` |
@@ -147,3 +147,43 @@ The P0 slice is roughly **one working day** after the backend exists.
 4. Add the secrets-gated CI job and a short runbook.
 
 Nothing in this scope changes application behaviour. The only production code touched would be if a test exposes a real defect.
+
+## 13. Implementation note — 2026-11-19
+
+**Backend:** a dedicated project was attempted in the PetroCore-Supply organisation but Supabase refused it: the owner has reached the free-plan limit of two active projects. The interim option is live instead: an isolated **`ORG-E2E`** tenant in the existing non-production project, guarded by RLS and a run prefix. Creating a dedicated project later only requires pointing the same environment variables at it and applying the seed; no test code changes.
+
+**Files:**
+
+| File | Purpose |
+|---|---|
+| `supabase/seed/e2e-tenant.sql` | Idempotent tenant, roles, location and fixtures (`E2E-SUP`, `E2E-PMS`, `E2E-PO-1`, truck, driver, customer) |
+| `tests/e2e-auth/env.ts` | `.env.e2e.local` loader, required variables and the project guard |
+| `tests/e2e-auth/global-setup.ts` | Tenant check, auth users/profiles/roles, session minting and interrupted-run recovery |
+| `tests/e2e-auth/session.ts` | Cached owner/viewer sessions under the gitignored `.auth/` |
+| `tests/e2e-auth/fixtures.ts` | Cookie injection, service client, select-by-text helper |
+| `tests/e2e-auth/master-data.spec.ts` | Create → edit → deactivate → hidden from PO options → reactivate |
+| `tests/e2e-auth/matching.spec.ts` | Batch with invoice price → `Price Variance`, `+50.00`, `+50,000.00` |
+| `tests/e2e-auth/read-only.spec.ts` | Viewer sees data with no management controls |
+| `playwright.auth.config.ts` | Real env, serial workers, reuses the running dev server |
+| `.github/workflows/e2e-auth.yml` | Nightly/manual job, skips cleanly without secrets |
+
+**Run locally:**
+
+```bash
+# once, against the configured project
+# apply supabase/seed/e2e-tenant.sql in the SQL editor or with the Management API
+
+cp .env.e2e.example .env.e2e.local
+# fill the URL, anon key, service key and ref; set E2E_ALLOW_DEMO_PROJECT=1 only
+# for the interim ORG-E2E tenant
+
+npm run test:e2e:auth
+```
+
+Global setup creates `e2e.owner@…` with Administrator and `e2e.viewer@…` with view-only permissions, then mints both sessions once and caches them. Tests never call the auth endpoint per test, so a flaky link endpoint cannot fail an individual spec.
+
+**Safety:** the guard rejects any ref outside `E2E_ALLOWED_PROJECT_REF`, and rejects the demo project unless `E2E_ALLOW_DEMO_PROJECT=1`. Global setup recovers only `E2E-RUN-` records in `ORG-E2E`; cleanup runs in `afterAll` and deletes by unique code/batch number.
+
+**CI:** the workflow reads `E2E_SUPABASE_URL`, `E2E_SUPABASE_ANON_KEY`, `E2E_SUPABASE_SERVICE_ROLE_KEY` and `E2E_ALLOWED_PROJECT_REF` from repository secrets and skips when they are absent. The E2E seed must be applied once to the target project. It deliberately does not set `E2E_ALLOW_DEMO_PROJECT`, so a shared project cannot be used by CI accidentally.
+
+**Known limitation:** during the first implementation run, Supabase connectivity from the development machine was intermittent (10-second connect timeouts), which redirected some authenticated requests to `/login`. The suite now mints both sessions once in global setup, caches them under the gitignored `tests/e2e-auth/.auth/`, and tests reuse the cookies. With connectivity restored, the full suite passed **3/3** on 2026-11-19 in 1.0 minute, and the database held no `E2E-RUN-` records afterwards. A stable network is still required; the CI job is nightly/manual for that reason.

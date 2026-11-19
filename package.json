@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:auth": "playwright test -c playwright.auth.config.ts",
     "verify:live": "node scripts/live-auth-check.mjs",
     "verify:live:inventory": "node scripts/live-inventory-check.mjs",
     "verify:live:fulfilment": "node scripts/live-fulfilment-check.mjs",

@@ -1,0 +1,67 @@
+# Authenticated end-to-end tests.
+#
+# The E2E tenant (supabase/seed/e2e-tenant.sql) must be applied once to the
+# target project. This workflow never enables E2E_ALLOW_DEMO_PROJECT, so it
+# refuses to run against the shared demo project unless that flag is set by
+# hand in a local environment.
+name: Authenticated E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  authenticated:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      E2E_ALLOWED_PROJECT_REF: ${{ secrets.E2E_ALLOWED_PROJECT_REF }}
+      E2E_ORG_ID: eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee
+      E2E_OWNER_EMAIL: e2e.owner@petrocore.test
+      E2E_VIEWER_EMAIL: e2e.viewer@petrocore.test
+    steps:
+      - name: Check for E2E secrets
+        id: config
+        run: |
+          if [ -z "$E2E_SUPABASE_URL" ] || [ -z "$E2E_SUPABASE_ANON_KEY" ] || [ -z "$E2E_SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$E2E_ALLOWED_PROJECT_REF" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Authenticated E2E secrets are not configured. Skipping."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check out source
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        if: steps.config.outputs.configured == 'true'
+        run: npm ci
+      - name: Install Playwright browser
+        if: steps.config.outputs.configured == 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Run authenticated end-to-end tests
+        if: steps.config.outputs.configured == 'true'
+        run: npm run test:e2e:auth
+      - name: Upload results
+        if: failure() && steps.config.outputs.configured == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: authenticated-e2e-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
