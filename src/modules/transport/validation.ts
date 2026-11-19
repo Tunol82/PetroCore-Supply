@@ -52,23 +52,46 @@ export const transporterSchema = z.object({
   paymentTerms: optionalText(40),
 });
 
-export const truckSchema = z
-  .object({
-    registrationNumber: z.string().trim().min(2, "Enter the registration number.").max(40),
-    transporterId: optionalUuid("Select a transporter."),
-    make: optionalText(100),
-    model: optionalText(100),
-    year: z.preprocess(
-      (value) => (value === "" || value === null || value === undefined ? undefined : value),
-      z.coerce.number().int().min(1900).max(2100).optional(),
-    ),
-    capacity: z.coerce.number().positive("Capacity must be greater than zero."),
-    ownershipType: z.enum(OWNERSHIP_TYPES),
-    status: z.enum(TRUCK_STATUSES),
-  })
+export const FLEET_STATUSES = ["active", "inactive"] as const;
+
+export const fleetStatusSchema = z.object({
+  id: uuid("Select a record."),
+  status: z.enum(FLEET_STATUSES),
+});
+
+export const transporterUpdateSchema = transporterSchema.extend({
+  id: uuid("Select a transporter."),
+});
+
+const truckBaseSchema = z.object({
+  registrationNumber: z.string().trim().min(2, "Enter the registration number.").max(40),
+  transporterId: optionalUuid("Select a transporter."),
+  make: optionalText(100),
+  model: optionalText(100),
+  year: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? undefined : value),
+    z.coerce.number().int().min(1900).max(2100).optional(),
+  ),
+  capacity: z.coerce.number().positive("Capacity must be greater than zero."),
+  ownershipType: z.enum(OWNERSHIP_TYPES),
+  status: z.enum(TRUCK_STATUSES),
+});
+
+const thirdPartyTruckRefinement = {
+  message: "A third-party truck must be linked to a transporter.",
+  path: ["transporterId"],
+};
+
+export const truckSchema = truckBaseSchema.refine(
+  (value) => value.ownershipType !== "third_party" || Boolean(value.transporterId),
+  thirdPartyTruckRefinement,
+);
+
+export const truckUpdateSchema = truckBaseSchema
+  .extend({ id: uuid("Select a truck.") })
   .refine(
     (value) => value.ownershipType !== "third_party" || Boolean(value.transporterId),
-    { message: "A third-party truck must be linked to a transporter.", path: ["transporterId"] },
+    thirdPartyTruckRefinement,
   );
 
 export const compartmentSchema = z.object({
@@ -78,19 +101,31 @@ export const compartmentSchema = z.object({
   productCompatibility: optionalText(500),
 });
 
-export const driverSchema = z
-  .object({
-    transporterId: optionalUuid("Select a transporter."),
-    driverCode: z.string().trim().min(2, "Enter a driver code.").max(40),
-    fullName: z.string().trim().min(2, "Enter the driver name.").max(200),
-    phone: optionalText(30),
-    licenceNumber: z.string().trim().min(2, "Enter the licence number.").max(80),
-    licenceExpiry: optionalDate,
-    driverType: z.enum(DRIVER_TYPES),
-  })
+const driverBaseSchema = z.object({
+  transporterId: optionalUuid("Select a transporter."),
+  driverCode: z.string().trim().min(2, "Enter a driver code.").max(40),
+  fullName: z.string().trim().min(2, "Enter the driver name.").max(200),
+  phone: optionalText(30),
+  licenceNumber: z.string().trim().min(2, "Enter the licence number.").max(80),
+  licenceExpiry: optionalDate,
+  driverType: z.enum(DRIVER_TYPES),
+});
+
+const thirdPartyDriverRefinement = {
+  message: "A third-party driver must be linked to a transporter.",
+  path: ["transporterId"],
+};
+
+export const driverSchema = driverBaseSchema.refine(
+  (value) => value.driverType !== "third_party" || Boolean(value.transporterId),
+  thirdPartyDriverRefinement,
+);
+
+export const driverUpdateSchema = driverBaseSchema
+  .extend({ id: uuid("Select a driver.") })
   .refine(
     (value) => value.driverType !== "third_party" || Boolean(value.transporterId),
-    { message: "A third-party driver must be linked to a transporter.", path: ["transporterId"] },
+    thirdPartyDriverRefinement,
   );
 
 export const tripSchema = z

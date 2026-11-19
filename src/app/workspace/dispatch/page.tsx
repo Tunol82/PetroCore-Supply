@@ -44,9 +44,9 @@ type Assignment = {
 
 type Depot = { id: string; name: string; depot_code: string };
 type Location = { id: string; location_name: string; location_code: string };
-type Truck = { id: string; registration_number: string };
-type Driver = { id: string; full_name: string; driver_code: string };
-type Transporter = { id: string; business_name: string };
+type Truck = { id: string; registration_number: string; status: string };
+type Driver = { id: string; full_name: string; driver_code: string; status: string };
+type Transporter = { id: string; business_name: string; status: string };
 type Product = { id: string; product_code: string; product_name: string };
 type Compartment = { id: string; truck_id: string; compartment_number: string; capacity: number };
 type ProcurementBatch = { id: string; batch_number: string; product_id: string };
@@ -139,9 +139,9 @@ export default async function DispatchPage({
         .select("id, location_name, location_code")
         .eq("status", "active")
         .order("location_name"),
-      supabase.from("trucks").select("id, registration_number").order("registration_number"),
-      supabase.from("drivers").select("id, full_name, driver_code").order("full_name"),
-      supabase.from("transporters").select("id, business_name").order("business_name"),
+      supabase.from("trucks").select("id, registration_number, status").order("registration_number"),
+      supabase.from("drivers").select("id, full_name, driver_code, status").order("full_name"),
+      supabase.from("transporters").select("id, business_name, status").order("business_name"),
     ]);
 
   const [
@@ -296,12 +296,18 @@ export default async function DispatchPage({
     label: `${location.location_name} (${location.location_code})`,
   }));
   const tripOptions = trips.map((trip) => ({ id: trip.id, label: trip.trip_number }));
-  const truckOptions = trucks.map((truck) => ({ id: truck.id, label: truck.registration_number }));
-  const driverOptions = drivers.map((driver) => ({ id: driver.id, label: `${driver.full_name} (${driver.driver_code})` }));
-  const transporterOptions = transporters.map((transporter) => ({
-    id: transporter.id,
-    label: transporter.business_name,
-  }));
+  const truckOptions = trucks
+    .filter((truck) => truck.status === "active")
+    .map((truck) => ({ id: truck.id, label: truck.registration_number }));
+  const driverOptions = drivers
+    .filter((driver) => driver.status === "active")
+    .map((driver) => ({ id: driver.id, label: `${driver.full_name} (${driver.driver_code})` }));
+  const transporterOptions = transporters
+    .filter((transporter) => transporter.status === "active")
+    .map((transporter) => ({
+      id: transporter.id,
+      label: transporter.business_name,
+    }));
   const compartmentOptions = compartments.map((compartment) => ({
     id: compartment.id,
     label: `${truckById.get(compartment.truck_id)?.registration_number ?? "Truck"} · compartment ${compartment.compartment_number}`,

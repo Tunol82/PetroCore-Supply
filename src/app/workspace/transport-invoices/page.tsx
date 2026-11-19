@@ -36,7 +36,7 @@ type InvoiceLine = {
   charge_category: string | null;
 };
 
-type Transporter = { id: string; business_name: string; transporter_code: string };
+type Transporter = { id: string; business_name: string; transporter_code: string; status: string };
 type Trip = { id: string; trip_number: string };
 
 const TABS = ["invoices", "lines"] as const;
@@ -105,7 +105,10 @@ export default async function TransportInvoicesPage({
       .select("id, invoice_id, description, quantity, unit_rate, line_total, charge_category")
       .order("created_at", { ascending: true })
       .limit(100),
-    supabase.from("transporters").select("id, business_name, transporter_code").order("business_name"),
+    supabase
+      .from("transporters")
+      .select("id, business_name, transporter_code, status")
+      .order("business_name"),
     supabase.from("trips").select("id, trip_number").order("created_at", { ascending: false }).limit(40),
     supabase
       .from("transporter_charge_categories")
@@ -245,10 +248,12 @@ export default async function TransportInvoicesPage({
               />
               <CardBody>
                 <TransporterInvoiceForm
-                  transporters={transporters.map((item) => ({
-                    id: item.id,
-                    label: `${item.transporter_code} · ${item.business_name}`,
-                  }))}
+                  transporters={transporters
+                    .filter((item) => item.status === "active")
+                    .map((item) => ({
+                      id: item.id,
+                      label: `${item.transporter_code} · ${item.business_name}`,
+                    }))}
                   trips={trips.map((item) => ({ id: item.id, label: item.trip_number }))}
                 />
               </CardBody>

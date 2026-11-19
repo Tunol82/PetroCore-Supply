@@ -141,6 +141,30 @@ export async function assignTrip(
   const { context, error } = await requireManageAccess();
   if (!context) return { error: error ?? "Access denied.", success: null };
 
+  const [{ data: truck }, { data: driver }, { data: transporter }] = await Promise.all([
+    context.supabase.from("trucks").select("status").eq("id", parsed.data.truckId).maybeSingle(),
+    context.supabase.from("drivers").select("status").eq("id", parsed.data.driverId).maybeSingle(),
+    parsed.data.transporterId
+      ? context.supabase
+          .from("transporters")
+          .select("status")
+          .eq("id", parsed.data.transporterId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  if (!truck || truck.status !== "active") {
+    return { error: "That truck is not active. Choose another or reactivate it.", success: null };
+  }
+
+  if (!driver || driver.status !== "active") {
+    return { error: "That driver is not active. Choose another or reactivate them.", success: null };
+  }
+
+  if (parsed.data.transporterId && (!transporter || transporter.status !== "active")) {
+    return { error: "That transporter is not active. Choose another or reactivate it.", success: null };
+  }
+
   const { error: insertError } = await context.supabase.from("trip_assignments").insert({
     organisation_id: context.tenant.organisationId,
     trip_id: parsed.data.tripId,

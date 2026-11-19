@@ -6,9 +6,11 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
+import { StatusToggle } from "@/components/ui/status-toggle";
 import { Tabs } from "@/components/ui/tabs";
 import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
 import { CompartmentForm, DriverForm, TransporterForm, TruckForm } from "./fleet-forms";
+import { setDriverStatus, setTransporterStatus, setTruckStatus } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,9 @@ type Transporter = {
   business_name: string;
   contact_person: string | null;
   phone: string | null;
+  email: string | null;
+  address: string | null;
+  payment_terms: string | null;
   status: string;
 };
 
@@ -87,7 +92,7 @@ function licenceState(value: string | null) {
 export default async function FleetPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; edit?: string }>;
 }) {
   if (!getSupabaseConfig()) {
     redirect("/workspace");
@@ -121,7 +126,9 @@ export default async function FleetPage({
   const [transportersResult, trucksResult, compartmentsResult, driversResult] = await Promise.all([
     supabase
       .from("transporters")
-      .select("id, transporter_code, business_name, contact_person, phone, status")
+      .select(
+        "id, transporter_code, business_name, contact_person, phone, email, address, payment_terms, status",
+      )
       .order("business_name"),
     supabase
       .from("trucks")
@@ -158,15 +165,29 @@ export default async function FleetPage({
   const transporterById = new Map(transporters.map((transporter) => [transporter.id, transporter]));
   const truckById = new Map(trucks.map((truck) => [truck.id, truck]));
 
+  const activeTransporters = transporters.filter((transporter) => transporter.status === "active");
+  const activeTrucks = trucks.filter((truck) => truck.status === "active");
+
   const transporterOptions = transporters.map((transporter) => ({
     id: transporter.id,
     label: `${transporter.business_name} (${transporter.transporter_code})`,
   }));
 
-  const truckOptions = trucks.map((truck) => ({
+  const activeTransporterOptions = activeTransporters.map((transporter) => ({
+    id: transporter.id,
+    label: `${transporter.business_name} (${transporter.transporter_code})`,
+  }));
+
+  const truckOptions = activeTrucks.map((truck) => ({
     id: truck.id,
     label: truck.registration_number,
   }));
+
+  const editId = params.edit;
+  const editingTransporter = editId ? transporters.find((item) => item.id === editId) ?? null : null;
+  const editingTruck = editId ? trucks.find((item) => item.id === editId) ?? null : null;
+  const editingDriver = editId ? drivers.find((item) => item.id === editId) ?? null : null;
+  const editMissing = Boolean(editId) && !editingTransporter && !editingTruck && !editingDriver;
 
   const compartmentsByTruck = new Map<string, Compartment[]>();
   for (const compartment of compartments) {
@@ -200,19 +221,26 @@ export default async function FleetPage({
         <StatCard
           label="Transporters"
           value={transporters.length}
-          hint={`${trucks.filter((truck) => truck.transporter_id).length} truck${
+          hint={`${activeTransporters.length} active, ${trucks.filter((truck) => truck.transporter_id).length} truck${
             trucks.filter((truck) => truck.transporter_id).length === 1 ? "" : "s"
           } assigned`}
         />
-        <StatCard label="Trucks" value={trucks.length} hint={`${formatQuantity(totalTruckCapacity)} capacity`} tone="brand" />
+        <StatCard
+          label="Trucks"
+          value={trucks.length}
+          hint={`${activeTrucks.length} active, ${formatQuantity(totalTruckCapacity)} capacity`}
+          tone="brand"
+        />
         <StatCard label="Compartments" value={compartments.length} hint={`${formatQuantity(totalCompartmentCapacity)} capacity`} />
         <StatCard
           label="Drivers"
           value={drivers.length}
           hint={
             licenceAlerts === 0
-              ? "No licence alerts"
-              : `${licenceAlerts} licence${licenceAlerts === 1 ? "" : "s"} expiring or expired`
+              ? `${drivers.filter((driver) => driver.status === "active").length} active, no licence alerts`
+              : `${drivers.filter((driver) => driver.status === "active").length} active, ${licenceAlerts} licence${
+                  licenceAlerts === 1 ? "" : "s"
+                } expiring or expired`
           }
         />
       </div>
@@ -221,14 +249,23 @@ export default async function FleetPage({
 
       {tab === "transporters" ? (
         <div className="space-y-6">
+          {editMissing ? (
+            <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              That record could not be found. It may have been removed.
+            </p>
+          ) : null}
+
           <Card>
-            <CardHeader title="Transporters" description="Haulage partners. Dispatch selects a transporter manually." />
+            <CardHeader
+              title="Transporters"
+              description="Haulage partners. Deactivating keeps history but hides the transporter from new trucks, drivers and invoices."
+            />
             <CardBody>
               {transporters.length === 0 ? (
                 <EmptyState title="No transporters yet" description="Add the first transporter below." />
               ) : (
                 <TableScroll>
-                  <Table minWidth={760}>
+                  <Table minWidth={820}>
                     <THead>
                       <TR>
                         <TH>Code</TH>
@@ -236,11 +273,15 @@ export default async function FleetPage({
                         <TH>Contact</TH>
                         <TH>Phone</TH>
                         <TH>Status</TH>
+                        {canManage ? <TH>Actions</TH> : null}
                       </TR>
                     </THead>
                     <TBody>
                       {transporters.map((transporter) => (
-                        <TR key={transporter.id}>
+                        <TR
+                          key={transporter.id}
+                          className={editingTransporter?.id === transporter.id ? "bg-[var(--brand-soft)]/40" : ""}
+                        >
                           <TD className="font-medium">{transporter.transporter_code}</TD>
                           <TD>{transporter.business_name}</TD>
                           <TD className="text-xs text-[var(--muted)]">{transporter.contact_person ?? "—"}</TD>
@@ -248,6 +289,25 @@ export default async function FleetPage({
                           <TD>
                             <StatusBadge status={transporter.status} />
                           </TD>
+                          {canManage ? (
+                            <TD>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <ButtonLink
+                                  href={`/workspace/fleet?tab=transporters&edit=${transporter.id}`}
+                                  size="sm"
+                                  variant="ghost"
+                                >
+                                  Edit
+                                </ButtonLink>
+                                <StatusToggle
+                                  action={setTransporterStatus}
+                                  id={transporter.id}
+                                  name={transporter.business_name}
+                                  active={transporter.status === "active"}
+                                />
+                              </div>
+                            </TD>
+                          ) : null}
                         </TR>
                       ))}
                     </TBody>
@@ -259,9 +319,26 @@ export default async function FleetPage({
 
           {canManage ? (
             <Card>
-              <CardHeader title="Add transporter" description="Code must be unique for this company." />
+              <CardHeader
+                title={editingTransporter ? "Edit transporter" : "Add transporter"}
+                description={
+                  editingTransporter
+                    ? "Changes apply to future documents. Existing trucks, drivers and invoices keep their link."
+                    : "Code must be unique for this company."
+                }
+              />
               <CardBody>
-                <TransporterForm />
+                <TransporterForm
+                  key={editingTransporter?.id ?? "new"}
+                  transporter={editingTransporter ?? undefined}
+                />
+                {editingTransporter ? (
+                  <div className="mt-3">
+                    <ButtonLink href="/workspace/fleet?tab=transporters" size="sm">
+                      Cancel edit
+                    </ButtonLink>
+                  </div>
+                ) : null}
               </CardBody>
             </Card>
           ) : null}
@@ -270,17 +347,23 @@ export default async function FleetPage({
 
       {tab === "trucks" ? (
         <div className="space-y-6">
+          {editMissing ? (
+            <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              That record could not be found. It may have been removed.
+            </p>
+          ) : null}
+
           <Card>
             <CardHeader
               title="Trucks"
-              description="Company-owned and third-party trucks. Compartment capacity is recorded separately."
+              description="Company-owned and third-party trucks. Deactivating keeps history but hides the truck from new dispatch assignments."
             />
             <CardBody>
               {trucks.length === 0 ? (
                 <EmptyState title="No trucks yet" description="Add the first truck below." />
               ) : (
                 <TableScroll>
-                  <Table minWidth={900}>
+                  <Table minWidth={1000}>
                     <THead>
                       <TR>
                         <TH>Registration</TH>
@@ -290,6 +373,7 @@ export default async function FleetPage({
                         <TH align="right">Capacity</TH>
                         <TH align="right">Compartments</TH>
                         <TH>Status</TH>
+                        {canManage ? <TH>Actions</TH> : null}
                       </TR>
                     </THead>
                     <TBody>
@@ -297,7 +381,10 @@ export default async function FleetPage({
                         const truckCompartments = compartmentsByTruck.get(truck.id) ?? [];
 
                         return (
-                          <TR key={truck.id}>
+                          <TR
+                            key={truck.id}
+                            className={editingTruck?.id === truck.id ? "bg-[var(--brand-soft)]/40" : ""}
+                          >
                             <TD className="font-medium">{truck.registration_number}</TD>
                             <TD className="text-xs">
                               {[truck.make, truck.model].filter(Boolean).join(" ") || "—"}
@@ -318,6 +405,27 @@ export default async function FleetPage({
                             <TD>
                               <StatusBadge status={truck.status} />
                             </TD>
+                            {canManage ? (
+                              <TD>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <ButtonLink
+                                    href={`/workspace/fleet?tab=trucks&edit=${truck.id}`}
+                                    size="sm"
+                                    variant="ghost"
+                                  >
+                                    Edit
+                                  </ButtonLink>
+                                  {truck.status === "active" || truck.status === "inactive" ? (
+                                    <StatusToggle
+                                      action={setTruckStatus}
+                                      id={truck.id}
+                                      name={truck.registration_number}
+                                      active={truck.status === "active"}
+                                    />
+                                  ) : null}
+                                </div>
+                              </TD>
+                            ) : null}
                           </TR>
                         );
                       })}
@@ -331,11 +439,26 @@ export default async function FleetPage({
           {canManage ? (
             <Card>
               <CardHeader
-                title="Add truck"
-                description="Capacity is the whole-truck volume; compartments are added on the compartments tab."
+                title={editingTruck ? "Edit truck" : "Add truck"}
+                description={
+                  editingTruck
+                    ? "Capacity is the whole-truck volume. Maintenance and retired status are set here, not by the quick toggle."
+                    : "Capacity is the whole-truck volume; compartments are added on the compartments tab."
+                }
               />
               <CardBody>
-                <TruckForm transporters={transporterOptions} />
+                <TruckForm
+                  key={editingTruck?.id ?? "new"}
+                  transporters={editingTruck ? transporterOptions : activeTransporterOptions}
+                  truck={editingTruck ?? undefined}
+                />
+                {editingTruck ? (
+                  <div className="mt-3">
+                    <ButtonLink href="/workspace/fleet?tab=trucks" size="sm">
+                      Cancel edit
+                    </ButtonLink>
+                  </div>
+                ) : null}
               </CardBody>
             </Card>
           ) : null}
@@ -385,8 +508,11 @@ export default async function FleetPage({
             <Card>
               <CardHeader title="Add compartment" description="Number and capacity are per truck." />
               <CardBody>
-                {trucks.length === 0 ? (
-                  <EmptyState title="No truck to attach to" description="Add a truck before a compartment." />
+                {truckOptions.length === 0 ? (
+                  <EmptyState
+                    title="No active truck to attach to"
+                    description="Add or reactivate a truck before a compartment."
+                  />
                 ) : (
                   <CompartmentForm trucks={truckOptions} />
                 )}
@@ -398,17 +524,23 @@ export default async function FleetPage({
 
       {tab === "drivers" ? (
         <div className="space-y-6">
+          {editMissing ? (
+            <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              That record could not be found. It may have been removed.
+            </p>
+          ) : null}
+
           <Card>
             <CardHeader
               title="Drivers"
-              description="Employee and third-party drivers. A driver holds one active assignment at a time."
+              description="Employee and third-party drivers. Deactivating keeps history but hides the driver from new dispatch assignments."
             />
             <CardBody>
               {drivers.length === 0 ? (
                 <EmptyState title="No drivers yet" description="Add the first driver below." />
               ) : (
                 <TableScroll>
-                  <Table minWidth={940}>
+                  <Table minWidth={1000}>
                     <THead>
                       <TR>
                         <TH>Name</TH>
@@ -418,6 +550,7 @@ export default async function FleetPage({
                         <TH>Licence</TH>
                         <TH>Expiry</TH>
                         <TH>Status</TH>
+                        {canManage ? <TH>Actions</TH> : null}
                       </TR>
                     </THead>
                     <TBody>
@@ -425,7 +558,10 @@ export default async function FleetPage({
                         const licence = licenceState(driver.licence_expiry);
 
                         return (
-                          <TR key={driver.id}>
+                          <TR
+                            key={driver.id}
+                            className={editingDriver?.id === driver.id ? "bg-[var(--brand-soft)]/40" : ""}
+                          >
                             <TD className="font-medium">{driver.full_name}</TD>
                             <TD className="text-xs text-[var(--muted)]">{driver.driver_code}</TD>
                             <TD>
@@ -453,6 +589,25 @@ export default async function FleetPage({
                             <TD>
                               <StatusBadge status={driver.status} />
                             </TD>
+                            {canManage ? (
+                              <TD>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <ButtonLink
+                                    href={`/workspace/fleet?tab=drivers&edit=${driver.id}`}
+                                    size="sm"
+                                    variant="ghost"
+                                  >
+                                    Edit
+                                  </ButtonLink>
+                                  <StatusToggle
+                                    action={setDriverStatus}
+                                    id={driver.id}
+                                    name={driver.full_name}
+                                    active={driver.status === "active"}
+                                  />
+                                </div>
+                              </TD>
+                            ) : null}
                           </TR>
                         );
                       })}
@@ -466,11 +621,26 @@ export default async function FleetPage({
           {canManage ? (
             <Card>
               <CardHeader
-                title="Add driver"
-                description="Third-party drivers are operational records only and create no payroll obligation."
+                title={editingDriver ? "Edit driver" : "Add driver"}
+                description={
+                  editingDriver
+                    ? "Changes apply to future trips. Existing assignments and licences are kept as recorded."
+                    : "Third-party drivers are operational records only and create no payroll obligation."
+                }
               />
               <CardBody>
-                <DriverForm transporters={transporterOptions} />
+                <DriverForm
+                  key={editingDriver?.id ?? "new"}
+                  transporters={editingDriver ? transporterOptions : activeTransporterOptions}
+                  driver={editingDriver ?? undefined}
+                />
+                {editingDriver ? (
+                  <div className="mt-3">
+                    <ButtonLink href="/workspace/fleet?tab=drivers" size="sm">
+                      Cancel edit
+                    </ButtonLink>
+                  </div>
+                ) : null}
               </CardBody>
             </Card>
           ) : null}

@@ -5,8 +5,10 @@ import {
   deliverySchema,
   discrepancySchema,
   driverSchema,
+  driverUpdateSchema,
   evidenceFileExtension,
   evidenceSchema,
+  fleetStatusSchema,
   investigationSchema,
   liabilityConfirmationSchema,
   liabilityRejectionSchema,
@@ -17,8 +19,10 @@ import {
   releaseAssignmentSchema,
   toleranceRuleSchema,
   transporterSchema,
+  transporterUpdateSchema,
   tripSchema,
   truckSchema,
+  truckUpdateSchema,
   validateEvidenceFile,
 } from "./validation";
 
@@ -95,6 +99,65 @@ describe("driverSchema", () => {
     expect(
       driverSchema.safeParse({ ...base, driverType: "third_party", transporterId }).success,
     ).toBe(true);
+  });
+});
+
+describe("fleet lifecycle", () => {
+  it("accepts active and inactive status values", () => {
+    expect(fleetStatusSchema.safeParse({ id: transporterId, status: "active" }).success).toBe(true);
+    expect(fleetStatusSchema.safeParse({ id: transporterId, status: "inactive" }).success).toBe(true);
+  });
+
+  it("rejects an unknown status", () => {
+    expect(fleetStatusSchema.safeParse({ id: transporterId, status: "archived" }).success).toBe(false);
+  });
+
+  it("requires a record id when updating a fleet master", () => {
+    expect(transporterUpdateSchema.safeParse({ transporterCode: "TR-1", businessName: "Haulage" }).success).toBe(false);
+    expect(
+      truckUpdateSchema.safeParse({
+        registrationNumber: "LAG-1",
+        capacity: "1000",
+        ownershipType: "company",
+        status: "active",
+      }).success,
+    ).toBe(false);
+    expect(
+      driverUpdateSchema.safeParse({
+        driverCode: "DRV-1",
+        fullName: "Driver One",
+        licenceNumber: "LIC-1",
+        driverType: "employee",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("keeps third-party rules on truck and driver updates", () => {
+    expect(
+      truckUpdateSchema.safeParse({
+        id: truckId,
+        registrationNumber: "LAG-1",
+        capacity: "1000",
+        ownershipType: "third_party",
+        status: "active",
+      }).success,
+    ).toBe(false);
+
+    expect(
+      driverUpdateSchema.safeParse({
+        id: driverId,
+        driverCode: "DRV-1",
+        fullName: "Driver One",
+        licenceNumber: "LIC-1",
+        driverType: "third_party",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a valid update and trims the code", () => {
+    expect(
+      transporterUpdateSchema.parse({ id: transporterId, transporterCode: " TR-1 ", businessName: "Haulage" }),
+    ).toMatchObject({ id: transporterId, transporterCode: "TR-1" });
   });
 });
 

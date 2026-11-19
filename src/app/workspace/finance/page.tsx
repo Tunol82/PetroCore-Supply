@@ -40,7 +40,7 @@ type Profitability = {
 
 type Customer = { id: string; name: string };
 type Supplier = { id: string; name: string };
-type Transporter = { id: string; business_name: string };
+type Transporter = { id: string; business_name: string; status: string };
 type SalesOrder = { id: string; order_number: string };
 type PurchaseOrder = { id: string; po_number: string };
 type TransporterInvoice = { id: string; invoice_number: string };
@@ -122,7 +122,7 @@ export default async function FinancePage({
       .limit(50),
     supabase.from("customers").select("id, name").order("name"),
     supabase.from("suppliers").select("id, name").order("name"),
-    supabase.from("transporters").select("id, business_name").order("business_name"),
+    supabase.from("transporters").select("id, business_name, status").order("business_name"),
     supabase.from("sales_orders").select("id, order_number").order("order_date", { ascending: false }).limit(40),
     supabase.from("purchase_orders").select("id, po_number").order("order_date", { ascending: false }).limit(40),
     supabase
@@ -336,7 +336,9 @@ export default async function FinancePage({
                   directions={directions}
                   customers={customers.map((item) => ({ id: item.id, label: item.name }))}
                   suppliers={suppliers.map((item) => ({ id: item.id, label: item.name }))}
-                  transporters={transporters.map((item) => ({ id: item.id, label: item.business_name }))}
+                  transporters={transporters
+                    .filter((item) => item.status === "active")
+                    .map((item) => ({ id: item.id, label: item.business_name }))}
                   salesOrders={salesOrders.map((item) => ({ id: item.id, label: item.order_number }))}
                   purchaseOrders={purchaseOrders.map((item) => ({ id: item.id, label: item.po_number }))}
                   transporterInvoices={transporterInvoices.map((item) => ({
