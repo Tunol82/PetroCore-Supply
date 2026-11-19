@@ -1,13 +1,18 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getPlatformContext } from "@/modules/platform/authorization";
 import { getPlatformSession } from "@/modules/platform/sessions";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
-import { exitTenant } from "../actions";
+import { exitTenant, startImpersonation } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function PlatformTenantPage() {
+export default async function PlatformTenantPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const params = await searchParams;
   if (!getSupabaseConfig()) {
     redirect("/login");
   }
@@ -38,7 +43,7 @@ export default async function PlatformTenantPage() {
         .select("id, full_name, email, status")
         .eq("organisation_id", organisationId)
         .order("full_name")
-        .limit(10),
+        .limit(50),
       context.service
         .from("business_locations")
         .select("id, location_name, location_code, status")
@@ -112,11 +117,20 @@ export default async function PlatformTenantPage() {
         </header>
 
         <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-800">Read-only support session</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-800">Support session</p>
           <p className="mt-1 text-sm text-amber-900/80">
             Expires {new Date(session.expiresAt).toLocaleString("en-GB", { timeZone: "Africa/Lagos" })}.
             {session.reason ? ` Reason: ${session.reason}` : ""}
           </p>
+          <p className="mt-2 text-sm text-amber-900/80">
+            Viewing this summary is read-only. Impersonating a member opens their workspace with their permissions, and
+            actions are performed as that member. Start and end are recorded in the platform audit trail.
+          </p>
+          {params.error ? (
+            <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {params.error}
+            </p>
+          ) : null}
         </section>
 
         <section className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
@@ -124,7 +138,7 @@ export default async function PlatformTenantPage() {
             {organisation?.display_name ?? "Tenant"}
           </h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            {organisation?.organisation_code ?? "unknown"} · {organisation?.status ?? "unknown"}
+            {organisation?.organisation_code ?? "unknown"} Â· {organisation?.status ?? "unknown"}
           </p>
 
           <dl className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -152,7 +166,20 @@ export default async function PlatformTenantPage() {
                   <p className="text-sm font-medium">{member.full_name ?? member.email}</p>
                   <p className="text-xs text-[var(--muted)]">{member.email}</p>
                 </div>
-                <span className="text-xs font-medium text-[var(--muted)]">{member.status}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-[var(--muted)]">{member.status}</span>
+                  {member.status === "active" && member.email ? (
+                    <form action={startImpersonation}>
+                      <input type="hidden" name="profileId" value={member.id} />
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+                      >
+                        Impersonate
+                      </button>
+                    </form>
+                  ) : null}
+                </div>
               </div>
             ))}
             {members.length === 0 ? <p className="py-3 text-sm text-[var(--muted)]">No members.</p> : null}

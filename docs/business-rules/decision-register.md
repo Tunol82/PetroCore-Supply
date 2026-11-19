@@ -125,6 +125,18 @@ Already approved: D-001 tenancy and switching, D-002 tenant master, D-003 Super 
 | Conditions | Threshold values are supplied by the owner as configuration, not code. No historic quantity is corrected or restated. Trip closure stays flexible: there is no automatic closure and no block on closing with an open variance. DR-14 remains open. |
 | Recorded in | Migrations `20261115002900_tolerance_rules` and `20261115003000_measurement_chain`; `/workspace/reconciliation`; paper `decision-paper-dr-01-03-measurement-tolerances.md`. |
 
+### DR-27 — Support impersonation
+
+| Field | Detail |
+|---|---|
+| Status | **Approved** — 2026-11-19 |
+| Question | May a platform administrator sign in as a tenant member, and with what capability? |
+| Decision | Platform administrators may start a **full impersonation** session for an active member of the tenant they are currently supporting. Inside that session every query, RPC and server action runs with the member's identity and permissions under RLS, **including writes**. |
+| Controls | Platform admin identity with MFA; active 30-minute tenant support session with a recorded reason; 30-minute impersonation cap; persistent banner naming the target with an exit action; invitation-style session creation (no password change, no email to the target); httpOnly cookies; session start and end appended to `platform_audit_logs`. |
+| Attribution | Actions performed during the session are attributed to the **target member** by `auth.uid()` and RLS, and appear in tenant audit as that member. The platform audit records the impersonation window (actor, target, tenant, start/end). Per-action dual attribution would need JWT claims and is not implemented. |
+| Exclusions | No access to another tenant; no impersonation of inactive members; no impersonation without an active platform tenant session; the target's password and MFA factors are never touched. |
+| Recorded in | `src/modules/platform/impersonation.ts`; `src/app/platform/actions.ts`; `/platform/tenant`; workspace banner and `stopImpersonation`. |
+
 ## 3. Remaining blockers
 
 No Milestone 1 decision remains open. What remains is environmental and documentary:

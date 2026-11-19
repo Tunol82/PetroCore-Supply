@@ -1,5 +1,7 @@
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getWorkspaceContext } from "@/modules/tenant/workspace-context";
+import { readImpersonation } from "@/modules/platform/impersonation";
+import { stopImpersonation } from "@/app/platform/actions";
 import { AppShell, type NavGroup } from "@/components/shell/app-shell";
 import type { ReactNode } from "react";
 
@@ -82,12 +84,39 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
 
   groups.push({ label: "Administration", items: administration });
 
+  const impersonation = await readImpersonation();
+
   return (
     <AppShell
       organisationName={tenant.organisationName}
       organisationCode={tenant.organisationCode}
       userEmail={user.email ?? ""}
       groups={groups}
+      banner={
+        impersonation ? (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius)] border border-amber-300 bg-amber-50 px-4 py-2.5">
+            <p className="text-sm text-amber-900">
+              <span className="font-semibold">Support session</span> · viewing as{" "}
+              <span className="font-semibold">{impersonation.targetName}</span> ({impersonation.targetEmail}). Actions
+              are performed and audited as this member. Expires{" "}
+              {new Date(impersonation.expiresAt).toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+                timeZone: "Africa/Lagos",
+              })}
+              .
+            </p>
+            <form action={stopImpersonation}>
+              <button
+                type="submit"
+                className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+              >
+                Exit impersonation
+              </button>
+            </form>
+          </div>
+        ) : null
+      }
     >
       {children}
     </AppShell>

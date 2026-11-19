@@ -1,12 +1,27 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getSupabaseConfig } from "./config";
+import {
+  createImpersonationClient,
+  readImpersonation,
+} from "@/modules/platform/impersonation";
 
 export async function createClient() {
   const config = getSupabaseConfig();
 
   if (!config) {
     throw new Error("Supabase is not configured. Add the public URL and anon key to your environment.");
+  }
+
+  // A support session acts as the target user for every query and action.
+  const impersonation = await readImpersonation();
+
+  if (impersonation) {
+    const impersonating = await createImpersonationClient(impersonation);
+
+    if (impersonating) {
+      return impersonating;
+    }
   }
 
   const cookieStore = await cookies();

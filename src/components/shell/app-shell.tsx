@@ -26,12 +26,14 @@ export function AppShell({
   organisationCode,
   userEmail,
   groups,
+  banner,
   children,
 }: {
   organisationName: string;
   organisationCode: string;
   userEmail: string;
   groups: NavGroup[];
+  banner?: ReactNode;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -170,7 +172,10 @@ export function AppShell({
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="mx-auto max-w-[1240px]">{children}</div>
+          <div className="mx-auto max-w-[1240px]">
+            {banner}
+            {children}
+          </div>
         </main>
       </div>
     </div>

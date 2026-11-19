@@ -34,5 +34,24 @@ export async function updateSession(request: NextRequest) {
   // on the server in each protected route/action.
   await supabase.auth.getUser();
 
+  // An expired support session falls back to the administrator's own session.
+  const impersonation = request.cookies.get("pc_impersonation_meta")?.value;
+
+  if (impersonation) {
+    let expired = true;
+
+    try {
+      const parsed = JSON.parse(impersonation) as { expiresAt?: string };
+      expired = !parsed.expiresAt || new Date(parsed.expiresAt).getTime() <= Date.now();
+    } catch {
+      expired = true;
+    }
+
+    if (expired) {
+      response.cookies.delete("pc_impersonation_meta");
+      response.cookies.delete("pc_impersonation_tokens");
+    }
+  }
+
   return response;
 }
