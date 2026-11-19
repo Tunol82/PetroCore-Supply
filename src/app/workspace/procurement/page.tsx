@@ -19,6 +19,7 @@ import {
   SupplierProductForm,
 } from "./procurement-forms";
 import { setDepotStatus, setProductStatus, setSupplierStatus } from "./actions";
+import { buildMatchLines, unlinkedBatches, type MatchBatchInput } from "@/modules/procurement/matching";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +99,13 @@ type SupplierProduct = {
   status: string;
 };
 
-const TABS = ["orders", "batches", "suppliers", "catalogue"] as const;
+type MatchingBatch = MatchBatchInput & {
+  supplier_id: string;
+  product_id: string;
+  created_at: string;
+};
+
+const TABS = ["orders", "batches", "matching", "suppliers", "catalogue"] as const;
 
 function formatQuantity(value: number) {
   return new Intl.NumberFormat("en-NG", { maximumFractionDigits: 3 }).format(value);
@@ -106,6 +113,18 @@ function formatQuantity(value: number) {
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+}
+
+function formatRate(value: number) {
+  return new Intl.NumberFormat("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(value);
+}
+
+function formatSigned(value: number) {
+  if (Math.abs(value) <= 0.0005) {
+    return "0";
+  }
+
+  return `${value > 0 ? "+" : "-"}${formatQuantity(Math.abs(value))}`;
 }
 
 export default async function ProcurementPage({
@@ -151,6 +170,7 @@ export default async function ProcurementPage({
     ordersResult,
     orderItemsResult,
     supplierProductsResult,
+    matchingBatchesResult,
   ] = await Promise.all([
     supabase
       .from("suppliers")
@@ -190,6 +210,13 @@ export default async function ProcurementPage({
       .select("id, supplier_id, product_id, supplier_product_code, status")
       .order("created_at", { ascending: false })
       .limit(100),
+    supabase
+      .from("procurement_batches")
+      .select(
+        "id, batch_number, supplier_id, product_id, purchase_order_item_id, supplier_quantity, received_quantity, supplier_invoice_number, created_at",
+      )
+      .order("created_at", { ascending: false })
+      .limit(500),
   ]);
 
   const queryError =
@@ -200,7 +227,8 @@ export default async function ProcurementPage({
     batchesResult.error ??
     ordersResult.error ??
     orderItemsResult.error ??
-    supplierProductsResult.error;
+    supplierProductsResult.error ??
+    matchingBatchesResult.error;
 
   if (queryError) {
     return (
@@ -282,12 +310,36 @@ export default async function ProcurementPage({
   const editingProduct = editId ? products.find((product) => product.id === editId) ?? null : null;
   const editMissing = Boolean(editId) && !editingSupplier && !editingDepot && !editingProduct;
 
+  const matchingBatches = (matchingBatchesResult.data ?? []) as MatchingBatch[];
+  const matchingLines = buildMatchLines(orderItems, matchingBatches)
+    .filter((line) => orderById.has(line.purchase_order_id))
+    .sort((a, b) => {
+      const orderA = orderById.get(a.purchase_order_id);
+      const orderB = orderById.get(b.purchase_order_id);
+      const byDate = (orderB?.order_date ?? "").localeCompare(orderA?.order_date ?? "");
+
+      if (byDate !== 0) {
+        return byDate;
+      }
+
+      return (productById.get(a.product_id)?.product_name ?? "").localeCompare(
+        productById.get(b.product_id)?.product_name ?? "",
+      );
+    });
+
+  const matchedLineCount = matchingLines.filter((line) => line.status === "matched").length;
+  const varianceLineCount = matchingLines.filter((line) => line.status === "variance").length;
+  const awaitingLineCount = matchingLines.length - matchedLineCount - varianceLineCount;
+  const missingInvoiceLineCount = matchingLines.filter((line) => line.missingInvoiceNumber).length;
+  const orphanBatches = unlinkedBatches(matchingBatches);
+
   const orderValue = orderItems.reduce((sum, item) => sum + Number(item.line_total), 0);
   const storageBatches = batches.filter((batch) => batch.fulfilment_type === "storage_receipt").length;
 
   const tabs = [
     { href: "/workspace/procurement?tab=orders", label: "Purchase orders", count: orders.length },
     { href: "/workspace/procurement?tab=batches", label: "Batches", count: batches.length },
+    { href: "/workspace/procurement?tab=matching", label: "Matching", count: matchingLines.length },
     { href: "/workspace/procurement?tab=suppliers", label: "Suppliers", count: suppliers.length },
     { href: "/workspace/procurement?tab=catalogue", label: "Catalogue", count: products.length },
   ];
@@ -298,7 +350,7 @@ export default async function ProcurementPage({
       <PageHeader
         eyebrow="Procurement"
         title={tenant.organisationName}
-        description="Suppliers, depots, products, purchase orders and procurement batches. Quantities are recorded as measured."
+        description="Suppliers, depots, products, purchase orders, procurement batches and the three-way match. Quantities are recorded as measured."
         actions={
           <>
             <ButtonLink href="/workspace/procurement/costs">Costs</ButtonLink>
@@ -524,6 +576,185 @@ export default async function ProcurementPage({
               </CardBody>
             </Card>
           ) : null}
+        </div>
+      ) : null}
+
+      {tab === "matching" ? (
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Matched"
+              value={matchedLineCount}
+              hint="Ordered, invoiced and received agree"
+              tone="brand"
+            />
+            <StatCard label="Quantity variance" value={varianceLineCount} hint="Review before approving a bill" />
+            <StatCard
+              label="Awaiting documents"
+              value={awaitingLineCount}
+              hint="Invoice or receipt still outstanding"
+            />
+            <StatCard
+              label="Missing invoice no."
+              value={missingInvoiceLineCount}
+              hint="Batches without a supplier invoice reference"
+            />
+          </div>
+
+          <Card>
+            <CardHeader
+              title="Three-way match"
+              description="Ordered quantity, supplier-invoiced quantity and received quantity per purchase-order line. Differences are exact; no tolerance is applied."
+            />
+            <CardBody>
+              <p className="mb-4 rounded-lg border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
+                “Invoiced” is the supplier quantity recorded on each linked procurement batch, with its invoice
+                reference. Invoice unit prices are not captured yet, so values use the PO effective rate (line total
+                divided by ordered quantity). Price variance needs a supplier invoice record and remains an open
+                decision.
+              </p>
+
+              {matchingLines.length === 0 ? (
+                <EmptyState
+                  title="No purchase-order lines"
+                  description="Create a purchase order and link a batch to see the match."
+                />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={1480}>
+                    <THead>
+                      <TR>
+                        <TH>PO</TH>
+                        <TH>Supplier</TH>
+                        <TH>Product</TH>
+                        <TH>Status</TH>
+                        <TH align="right">Ordered</TH>
+                        <TH align="right">Invoiced</TH>
+                        <TH align="right">Received</TH>
+                        <TH align="right">Invoice Δ</TH>
+                        <TH align="right">Receipt Δ</TH>
+                        <TH align="right">PO rate</TH>
+                        <TH align="right">Ordered value</TH>
+                        <TH align="right">Invoiced value</TH>
+                        <TH>Documents</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {matchingLines.map((line) => {
+                        const item = orderItemById.get(line.id);
+                        const order = item ? orderById.get(item.purchase_order_id) : undefined;
+                        const product = productById.get(line.product_id);
+                        const invoiceVariance = line.invoicedVariance;
+                        const receiptVariance = line.receivedVariance;
+
+                        return (
+                          <TR key={line.id} className={line.status === "variance" ? "bg-amber-50/50" : ""}>
+                            <TD className="font-medium">{order?.po_number ?? "—"}</TD>
+                            <TD className="text-xs">{order ? supplierById.get(order.supplier_id)?.name ?? "—" : "—"}</TD>
+                            <TD>
+                              {product?.product_name ?? "—"}
+                              <span className="block text-xs text-[var(--muted)]">{product?.product_code ?? ""}</span>
+                            </TD>
+                            <TD>
+                              <StatusBadge status={line.status} />
+                              {line.missingInvoiceNumber ? (
+                                <span className="mt-1 block text-[11px] font-medium text-[var(--warning)]">
+                                  No invoice no.
+                                </span>
+                              ) : null}
+                            </TD>
+                            <TD align="right">{formatQuantity(line.ordered)}</TD>
+                            <TD align="right">{formatQuantity(line.invoiced)}</TD>
+                            <TD align="right">{line.hasReceipts ? formatQuantity(line.received) : "—"}</TD>
+                            <TD
+                              align="right"
+                              className={
+                                invoiceVariance !== null && Math.abs(invoiceVariance) > 0.0005
+                                  ? "font-semibold text-[var(--danger)]"
+                                  : ""
+                              }
+                            >
+                              {invoiceVariance === null ? "—" : formatSigned(invoiceVariance)}
+                            </TD>
+                            <TD
+                              align="right"
+                              className={
+                                receiptVariance !== null && Math.abs(receiptVariance) > 0.0005
+                                  ? "font-semibold text-[var(--danger)]"
+                                  : ""
+                              }
+                            >
+                              {receiptVariance === null ? "—" : formatSigned(receiptVariance)}
+                            </TD>
+                            <TD align="right">{formatRate(line.effectiveUnitPrice)}</TD>
+                            <TD align="right">{formatMoney(line.orderedValue)}</TD>
+                            <TD align="right">{formatMoney(line.invoicedValue)}</TD>
+                            <TD className="text-xs">
+                              {line.invoiceNumbers.length > 0 ? (
+                                line.invoiceNumbers.join(", ")
+                              ) : line.missingInvoiceNumber ? (
+                                <span className="font-medium text-[var(--warning)]">No invoice number</span>
+                              ) : (
+                                "—"
+                              )}
+                              <span className="mt-0.5 block text-[var(--muted)]">
+                                {line.batchNumbers.join(", ") || "No linked batch"}
+                              </span>
+                            </TD>
+                          </TR>
+                        );
+                      })}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Batches without an order line"
+              description="Direct purchases or batches recorded without a purchase-order line. They cannot be three-way matched."
+            />
+            <CardBody>
+              {orphanBatches.length === 0 ? (
+                <EmptyState title="Every batch is linked to an order line" description="Nothing to review." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={860}>
+                    <THead>
+                      <TR>
+                        <TH>Batch</TH>
+                        <TH>Supplier</TH>
+                        <TH>Product</TH>
+                        <TH>Invoice</TH>
+                        <TH align="right">Supplier qty</TH>
+                        <TH align="right">Received</TH>
+                        <TH>Recorded</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {orphanBatches.map((batch) => (
+                        <TR key={batch.id}>
+                          <TD className="font-medium">{batch.batch_number}</TD>
+                          <TD className="text-xs">{supplierById.get(batch.supplier_id)?.name ?? "—"}</TD>
+                          <TD>{productById.get(batch.product_id)?.product_name ?? "—"}</TD>
+                          <TD className="text-xs">{batch.supplier_invoice_number ?? "—"}</TD>
+                          <TD align="right">{formatQuantity(Number(batch.supplier_quantity))}</TD>
+                          <TD align="right">
+                            {batch.received_quantity === null ? "—" : formatQuantity(Number(batch.received_quantity))}
+                          </TD>
+                          <TD className="text-xs text-[var(--muted)]">
+                            {new Date(batch.created_at).toLocaleDateString("en-GB")}
+                          </TD>
+                        </TR>
+                      ))}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
         </div>
       ) : null}
 
