@@ -94,6 +94,29 @@ describe("batchSchema", () => {
   it("rejects an invalid date", () => {
     expect(batchSchema.safeParse({ ...base, loadingDate: "15/11/2026" }).success).toBe(false);
   });
+
+  it("accepts invoice price and amount", () => {
+    const parsed = batchSchema.parse({
+      ...base,
+      supplierInvoiceNumber: "INV-1",
+      supplierInvoiceUnitPrice: "912.5",
+      supplierInvoiceAmount: "9125000.00",
+    });
+
+    expect(parsed.supplierInvoiceUnitPrice).toBe(912.5);
+    expect(parsed.supplierInvoiceAmount).toBe(9125000);
+  });
+
+  it("rejects a negative invoice price or amount", () => {
+    expect(batchSchema.safeParse({ ...base, supplierInvoiceUnitPrice: "-1" }).success).toBe(false);
+    expect(batchSchema.safeParse({ ...base, supplierInvoiceAmount: "-1" }).success).toBe(false);
+  });
+
+  it("allows invoice pricing to be omitted", () => {
+    const parsed = batchSchema.parse(base);
+    expect(parsed.supplierInvoiceUnitPrice).toBeUndefined();
+    expect(parsed.supplierInvoiceAmount).toBeUndefined();
+  });
 });
 
 describe("purchaseOrderSchema", () => {

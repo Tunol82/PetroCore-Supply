@@ -19,7 +19,7 @@ import {
   SupplierProductForm,
 } from "./procurement-forms";
 import { setDepotStatus, setProductStatus, setSupplierStatus } from "./actions";
-import { buildMatchLines, unlinkedBatches, type MatchBatchInput } from "@/modules/procurement/matching";
+import { buildMatchLines, unlinkedBatches, PRICE_EPSILON, type MatchBatchInput } from "@/modules/procurement/matching";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +68,9 @@ type Batch = {
   total_quantity_variance: number | null;
   fulfilment_type: string;
   variance_status: string;
+  supplier_invoice_number: string | null;
+  supplier_invoice_unit_price: number | null;
+  supplier_invoice_amount: number | null;
   created_at: string;
 };
 
@@ -125,6 +128,22 @@ function formatSigned(value: number) {
   }
 
   return `${value > 0 ? "+" : "-"}${formatQuantity(Math.abs(value))}`;
+}
+
+function formatSignedRate(value: number) {
+  if (Math.abs(value) <= PRICE_EPSILON) {
+    return "0";
+  }
+
+  return `${value > 0 ? "+" : "-"}${formatRate(Math.abs(value))}`;
+}
+
+function formatSignedMoney(value: number) {
+  if (Math.abs(value) <= 0.005) {
+    return "0.00";
+  }
+
+  return `${value > 0 ? "+" : "-"}${formatMoney(Math.abs(value))}`;
 }
 
 export default async function ProcurementPage({
@@ -192,7 +211,7 @@ export default async function ProcurementPage({
     supabase
       .from("procurement_batches")
       .select(
-        "id, batch_number, supplier_id, supplier_depot_id, product_id, purchase_order_item_id, supplier_quantity, loaded_quantity, received_quantity, total_quantity_variance, fulfilment_type, variance_status, created_at",
+        "id, batch_number, supplier_id, supplier_depot_id, product_id, purchase_order_item_id, supplier_quantity, loaded_quantity, received_quantity, total_quantity_variance, fulfilment_type, variance_status, supplier_invoice_number, supplier_invoice_unit_price, supplier_invoice_amount, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(50),
@@ -213,7 +232,7 @@ export default async function ProcurementPage({
     supabase
       .from("procurement_batches")
       .select(
-        "id, batch_number, supplier_id, product_id, purchase_order_item_id, supplier_quantity, received_quantity, supplier_invoice_number, created_at",
+        "id, batch_number, supplier_id, product_id, purchase_order_item_id, supplier_quantity, received_quantity, supplier_invoice_number, supplier_invoice_unit_price, supplier_invoice_amount, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(500),
@@ -328,9 +347,14 @@ export default async function ProcurementPage({
     });
 
   const matchedLineCount = matchingLines.filter((line) => line.status === "matched").length;
-  const varianceLineCount = matchingLines.filter((line) => line.status === "variance").length;
-  const awaitingLineCount = matchingLines.length - matchedLineCount - varianceLineCount;
-  const missingInvoiceLineCount = matchingLines.filter((line) => line.missingInvoiceNumber).length;
+  const quantityVarianceLineCount = matchingLines.filter((line) => line.status === "variance").length;
+  const priceVarianceLineCount = matchingLines.filter((line) => line.status === "price_variance").length;
+  const awaitingLineCount = matchingLines.filter((line) =>
+    ["awaiting_invoice", "awaiting_receipt", "part_received", "awaiting_price"].includes(line.status),
+  ).length;
+  const invoiceGapLineCount = matchingLines.filter(
+    (line) => line.missingInvoiceNumber || (line.batchCount > 0 && !line.fullyPriced),
+  ).length;
   const orphanBatches = unlinkedBatches(matchingBatches);
 
   const orderValue = orderItems.reduce((sum, item) => sum + Number(item.line_total), 0);
@@ -496,10 +520,11 @@ export default async function ProcurementPage({
                 <EmptyState title="No batches recorded" description="Record one below." />
               ) : (
                 <TableScroll>
-                  <Table minWidth={1040}>
+                  <Table minWidth={1160}>
                     <THead>
                       <TR>
                         <TH>Batch</TH>
+                        <TH>Invoice</TH>
                         <TH>Product</TH>
                         <TH>Order</TH>
                         <TH>Supplier / depot</TH>
@@ -514,6 +539,14 @@ export default async function ProcurementPage({
                       {batches.map((batch) => (
                         <TR key={batch.id}>
                           <TD className="font-medium">{batch.batch_number}</TD>
+                          <TD className="text-xs">
+                            {batch.supplier_invoice_number ?? "—"}
+                            {batch.supplier_invoice_unit_price !== null ? (
+                              <span className="block text-[var(--muted)]">
+                                @ {formatRate(Number(batch.supplier_invoice_unit_price))}
+                              </span>
+                            ) : null}
+                          </TD>
                           <TD>{productById.get(batch.product_id)?.product_name ?? "—"}</TD>
                           <TD className="text-xs">
                             {batch.purchase_order_item_id
@@ -581,37 +614,38 @@ export default async function ProcurementPage({
 
       {tab === "matching" ? (
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <StatCard
               label="Matched"
               value={matchedLineCount}
-              hint="Ordered, invoiced and received agree"
+              hint="Quantities and price agree"
               tone="brand"
             />
-            <StatCard label="Quantity variance" value={varianceLineCount} hint="Review before approving a bill" />
+            <StatCard label="Quantity variance" value={quantityVarianceLineCount} hint="Review before approving a bill" />
+            <StatCard label="Price variance" value={priceVarianceLineCount} hint="Invoice rate differs from the PO" />
             <StatCard
               label="Awaiting documents"
               value={awaitingLineCount}
-              hint="Invoice or receipt still outstanding"
+              hint="Invoice, receipt or price outstanding"
             />
             <StatCard
-              label="Missing invoice no."
-              value={missingInvoiceLineCount}
-              hint="Batches without a supplier invoice reference"
+              label="Invoice data gaps"
+              value={invoiceGapLineCount}
+              hint="Missing invoice number or price"
             />
           </div>
 
           <Card>
             <CardHeader
               title="Three-way match"
-              description="Ordered quantity, supplier-invoiced quantity and received quantity per purchase-order line. Differences are exact; no tolerance is applied."
+              description="Ordered quantity, supplier-invoiced quantity and received quantity per purchase-order line, with invoice pricing where captured. Differences are exact; no tolerance is applied."
             />
             <CardBody>
               <p className="mb-4 rounded-lg border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
-                “Invoiced” is the supplier quantity recorded on each linked procurement batch, with its invoice
-                reference. Invoice unit prices are not captured yet, so values use the PO effective rate (line total
-                divided by ordered quantity). Price variance needs a supplier invoice record and remains an open
-                decision.
+                “Invoiced” is the supplier quantity recorded on each linked procurement batch. Invoice value uses the
+                recorded amount, otherwise quantity × invoice unit price, and falls back to the PO effective rate when
+                no price was captured. Price variance compares the quantity-weighted invoice rate with the PO
+                effective rate (line total divided by ordered quantity), exactly.
               </p>
 
               {matchingLines.length === 0 ? (
@@ -621,7 +655,7 @@ export default async function ProcurementPage({
                 />
               ) : (
                 <TableScroll>
-                  <Table minWidth={1480}>
+                  <Table minWidth={1280}>
                     <THead>
                       <TR>
                         <TH>PO</TH>
@@ -633,9 +667,8 @@ export default async function ProcurementPage({
                         <TH align="right">Received</TH>
                         <TH align="right">Invoice Δ</TH>
                         <TH align="right">Receipt Δ</TH>
-                        <TH align="right">PO rate</TH>
-                        <TH align="right">Ordered value</TH>
-                        <TH align="right">Invoiced value</TH>
+                        <TH align="right">Price (PO → invoice)</TH>
+                        <TH align="right">Invoice value</TH>
                         <TH>Documents</TH>
                       </TR>
                     </THead>
@@ -648,7 +681,12 @@ export default async function ProcurementPage({
                         const receiptVariance = line.receivedVariance;
 
                         return (
-                          <TR key={line.id} className={line.status === "variance" ? "bg-amber-50/50" : ""}>
+                          <TR
+                            key={line.id}
+                            className={
+                              line.status === "variance" || line.status === "price_variance" ? "bg-amber-50/50" : ""
+                            }
+                          >
                             <TD className="font-medium">{order?.po_number ?? "—"}</TD>
                             <TD className="text-xs">{order ? supplierById.get(order.supplier_id)?.name ?? "—" : "—"}</TD>
                             <TD>
@@ -660,6 +698,16 @@ export default async function ProcurementPage({
                               {line.missingInvoiceNumber ? (
                                 <span className="mt-1 block text-[11px] font-medium text-[var(--warning)]">
                                   No invoice no.
+                                </span>
+                              ) : null}
+                              {line.batchCount > 0 && !line.hasInvoicePricing ? (
+                                <span className="mt-1 block text-[11px] font-medium text-[var(--warning)]">
+                                  No invoice price
+                                </span>
+                              ) : null}
+                              {line.hasInvoicePricing && !line.fullyPriced ? (
+                                <span className="mt-1 block text-[11px] font-medium text-[var(--warning)]">
+                                  Partial invoice price
                                 </span>
                               ) : null}
                             </TD>
@@ -686,9 +734,31 @@ export default async function ProcurementPage({
                             >
                               {receiptVariance === null ? "—" : formatSigned(receiptVariance)}
                             </TD>
-                            <TD align="right">{formatRate(line.effectiveUnitPrice)}</TD>
-                            <TD align="right">{formatMoney(line.orderedValue)}</TD>
-                            <TD align="right">{formatMoney(line.invoicedValue)}</TD>
+                            <TD align="right" className="text-xs">
+                              <span>{formatRate(line.effectiveUnitPrice)}</span>
+                              {line.invoicePrice !== null ? (
+                                <span className="block text-[var(--muted)]">
+                                  → {formatRate(line.invoicePrice)}
+                                </span>
+                              ) : (
+                                <span className="block text-[var(--muted)]">no invoice price</span>
+                              )}
+                              {line.invoicePriceVariance !== null &&
+                              Math.abs(line.invoicePriceVariance) > PRICE_EPSILON ? (
+                                <span className="block font-semibold text-[var(--danger)]">
+                                  {formatSignedRate(line.invoicePriceVariance)}
+                                </span>
+                              ) : null}
+                            </TD>
+                            <TD align="right">
+                              {formatMoney(line.invoicedValue)}
+                              {line.invoiceValueVariance !== null &&
+                              Math.abs(line.invoiceValueVariance) > 0.005 ? (
+                                <span className="block text-[11px] font-semibold text-[var(--danger)]">
+                                  {formatSignedMoney(line.invoiceValueVariance)}
+                                </span>
+                              ) : null}
+                            </TD>
                             <TD className="text-xs">
                               {line.invoiceNumbers.length > 0 ? (
                                 line.invoiceNumbers.join(", ")

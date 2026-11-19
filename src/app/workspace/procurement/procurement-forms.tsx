@@ -532,6 +532,28 @@ export function BatchForm({
           <input id="batch-invoice" name="supplierInvoiceNumber" className={fieldClass} />
         </div>
         <div>
+          <label htmlFor="batch-invoice-price" className={labelClass}>Invoice unit price (optional)</label>
+          <input
+            id="batch-invoice-price"
+            name="supplierInvoiceUnitPrice"
+            type="number"
+            step="0.0001"
+            min="0"
+            className={fieldClass}
+          />
+        </div>
+        <div>
+          <label htmlFor="batch-invoice-amount" className={labelClass}>Invoice amount (optional)</label>
+          <input
+            id="batch-invoice-amount"
+            name="supplierInvoiceAmount"
+            type="number"
+            step="0.01"
+            min="0"
+            className={fieldClass}
+          />
+        </div>
+        <div>
           <label htmlFor="batch-ticket" className={labelClass}>Loading ticket</label>
           <input id="batch-ticket" name="supplierLoadingTicket" className={fieldClass} />
         </div>
@@ -545,8 +567,8 @@ export function BatchForm({
         </div>
       </div>
       <p className="text-xs text-[var(--muted)]">
-        Record quantities exactly as measured. Tolerances, temperature correction and variance assessment are not
-        applied yet.
+        Record quantities exactly as measured. Invoice price and amount are recorded as supplied and feed the
+        three-way match. Tolerances, temperature correction and variance assessment are not applied yet.
       </p>
       <Feedback state={state} />
       <ToastOnState state={state} />

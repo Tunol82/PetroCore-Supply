@@ -19,13 +19,15 @@ function batch(overrides: Partial<MatchBatchInput>): MatchBatchInput {
     supplier_quantity: "10000.000",
     received_quantity: "10000.000",
     supplier_invoice_number: "INV-1",
+    supplier_invoice_unit_price: null,
+    supplier_invoice_amount: null,
     ...overrides,
   };
 }
 
 describe("buildMatchLines", () => {
-  it("matches when ordered, invoiced and received agree", () => {
-    const [match] = buildMatchLines([line], [batch({})]);
+  it("matches when quantities and price agree", () => {
+    const [match] = buildMatchLines([line], [batch({ supplier_invoice_unit_price: "900.0000" })]);
 
     expect(match.status).toBe("matched");
     expect(match.ordered).toBe(10000);
@@ -36,6 +38,9 @@ describe("buildMatchLines", () => {
     expect(match.orderedValue).toBe(9000000);
     expect(match.invoicedValue).toBe(9000000);
     expect(match.effectiveUnitPrice).toBe(900);
+    expect(match.invoicePrice).toBe(900);
+    expect(match.invoicePriceVariance).toBe(0);
+    expect(match.fullyPriced).toBe(true);
   });
 
   it("awaits an invoice when no batch is linked", () => {
@@ -46,6 +51,7 @@ describe("buildMatchLines", () => {
     expect(match.invoicedVariance).toBeNull();
     expect(match.receivedVariance).toBeNull();
     expect(match.missingInvoiceNumber).toBe(false);
+    expect(match.invoicePrice).toBeNull();
   });
 
   it("flags an invoiced quantity that differs from the order", () => {
@@ -88,8 +94,18 @@ describe("buildMatchLines", () => {
     const [match] = buildMatchLines(
       [line],
       [
-        batch({ batch_number: "BAT-1", supplier_quantity: "4000.000", received_quantity: "4000.000" }),
-        batch({ batch_number: "BAT-2", supplier_quantity: "6000.000", received_quantity: "6000.000" }),
+        batch({
+          batch_number: "BAT-1",
+          supplier_quantity: "4000.000",
+          received_quantity: "4000.000",
+          supplier_invoice_unit_price: "900.0000",
+        }),
+        batch({
+          batch_number: "BAT-2",
+          supplier_quantity: "6000.000",
+          received_quantity: "6000.000",
+          supplier_invoice_unit_price: "900.0000",
+        }),
       ],
     );
 
@@ -123,12 +139,86 @@ describe("buildMatchLines", () => {
 
     expect(match.effectiveUnitPrice).toBe(95);
     expect(match.invoicedValue).toBe(9500);
+    expect(match.status).toBe("awaiting_price");
   });
 
-  it("treats differences below the stored precision as equal", () => {
-    const [match] = buildMatchLines([line], [batch({ supplier_quantity: "10000.0004" })]);
+  it("treats quantity differences below the stored precision as equal", () => {
+    const [match] = buildMatchLines(
+      [line],
+      [batch({ supplier_quantity: "10000.0004", supplier_invoice_unit_price: "900.0000" })],
+    );
 
     expect(match.status).toBe("matched");
+  });
+
+  it("awaits an invoice price when quantities match but no price was captured", () => {
+    const [match] = buildMatchLines([line], [batch({})]);
+
+    expect(match.status).toBe("awaiting_price");
+    expect(match.hasInvoicePricing).toBe(false);
+    expect(match.invoicePrice).toBeNull();
+    expect(match.invoicePriceVariance).toBeNull();
+    expect(match.invoicedValue).toBe(9000000);
+  });
+
+  it("flags a price above the agreed rate", () => {
+    const [match] = buildMatchLines([line], [batch({ supplier_invoice_unit_price: "950.0000" })]);
+
+    expect(match.status).toBe("price_variance");
+    expect(match.invoicePrice).toBe(950);
+    expect(match.invoicePriceVariance).toBe(50);
+    expect(match.invoicedValue).toBe(9500000);
+    expect(match.invoiceValueVariance).toBe(500000);
+  });
+
+  it("flags a price below the agreed rate", () => {
+    const [match] = buildMatchLines([line], [batch({ supplier_invoice_unit_price: "880.0000" })]);
+
+    expect(match.status).toBe("price_variance");
+    expect(match.invoicePriceVariance).toBe(-20);
+    expect(match.invoiceValueVariance).toBe(-200000);
+  });
+
+  it("derives the unit price from an invoice amount", () => {
+    const [match] = buildMatchLines(
+      [line],
+      [batch({ supplier_invoice_amount: "9400000.00" })],
+    );
+
+    expect(match.status).toBe("price_variance");
+    expect(match.invoicePrice).toBe(940);
+    expect(match.invoicedValue).toBe(9400000);
+  });
+
+  it("prefers the stated unit price over the amount when weighting the rate", () => {
+    const [match] = buildMatchLines(
+      [line],
+      [batch({ supplier_invoice_unit_price: "900.0000", supplier_invoice_amount: "9000000.00" })],
+    );
+
+    expect(match.invoicePrice).toBe(900);
+    expect(match.status).toBe("matched");
+  });
+
+  it("marks an incompletely priced line as awaiting price", () => {
+    const [match] = buildMatchLines(
+      [line],
+      [
+        batch({
+          batch_number: "BAT-1",
+          supplier_quantity: "5000.000",
+          received_quantity: "5000.000",
+          supplier_invoice_unit_price: "900.0000",
+        }),
+        batch({ batch_number: "BAT-2", supplier_quantity: "5000.000", received_quantity: "5000.000" }),
+      ],
+    );
+
+    expect(match.status).toBe("awaiting_price");
+    expect(match.hasInvoicePricing).toBe(true);
+    expect(match.fullyPriced).toBe(false);
+    expect(match.invoicePrice).toBe(900);
+    expect(match.invoicedValue).toBe(9000000);
   });
 });
 

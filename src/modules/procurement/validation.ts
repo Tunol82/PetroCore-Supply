@@ -16,6 +16,10 @@ const optionalDate = z.preprocess(
   (value) => (value === "" || value === null || value === undefined ? undefined : value),
   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date.").optional(),
 );
+const optionalNonNegative = z.preprocess(
+  (value) => (value === "" || value === null || value === undefined ? undefined : value),
+  z.coerce.number().min(0, "Enter zero or more.").optional(),
+);
 
 export const supplierSchema = z.object({
   supplierCode: z.string().trim().min(2, "Enter a supplier code.").max(40),
@@ -79,6 +83,8 @@ export const batchSchema = z
     receivedQuantity: optionalQuantity,
     fulfilmentType: z.enum(["storage_receipt", "direct_customer_delivery"]),
     supplierInvoiceNumber: optionalText(80),
+    supplierInvoiceUnitPrice: optionalNonNegative,
+    supplierInvoiceAmount: optionalNonNegative,
     supplierLoadingTicket: optionalText(100),
     loadingDate: optionalDate,
     receiptDate: optionalDate,
