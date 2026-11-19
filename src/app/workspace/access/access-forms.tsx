@@ -2,12 +2,14 @@
 
 import { ToastOnState } from "@/components/ui/toast";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   assignRole,
   grantAccess,
+  inviteMember,
   revokeAccess,
   revokeRole,
+  setMemberStatus,
   type AccessActionState,
 } from "./actions";
 import { ACCESS_LEVELS } from "@/modules/tenant/access-validation";
@@ -144,6 +146,102 @@ export function RevokeForm({ kind, id }: { kind: "role" | "access"; id: string }
         {pending ? "Revoking…" : "Revoke"}
       </button>
       <Feedback state={state} />
+      <ToastOnState state={state} />
+    </form>
+  );
+}
+
+export function InviteMemberForm({ roles, locations }: { roles: Option[]; locations: Option[] }) {
+  const [state, formAction, pending] = useActionState(inviteMember, initialState);
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label htmlFor="invite-email" className={labelClass}>Email</label>
+          <input id="invite-email" name="email" type="email" required className={fieldClass} placeholder="name@company.com" />
+        </div>
+        <div>
+          <label htmlFor="invite-name" className={labelClass}>Full name</label>
+          <input id="invite-name" name="fullName" required className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="invite-role" className={labelClass}>Role (optional)</label>
+          <select id="invite-role" name="roleId" className={fieldClass} defaultValue="">
+            <option value="">Assign later</option>
+            {roles.map((role) => (
+              <option key={role.id} value={role.id}>{role.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="invite-location" className={labelClass}>Location, view access (optional)</label>
+          <select id="invite-location" name="locationId" className={fieldClass} defaultValue="">
+            <option value="">No location grant</option>
+            {locations.map((location) => (
+              <option key={location.id} value={location.id}>{location.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <p className="text-xs text-[var(--muted)]">
+        Creates the sign-in account and member profile. No email is sent by Supply: copy the single-use invitation link
+        after saving and send it to the member.
+      </p>
+      <Feedback state={state} />
+      <ToastOnState state={state} />
+      {state.inviteLink ? (
+        <div>
+          <label htmlFor="invite-link" className={labelClass}>Invitation link</label>
+          <div className="flex flex-wrap gap-2">
+            <input
+              id="invite-link"
+              readOnly
+              value={state.inviteLink}
+              onFocus={(event) => event.currentTarget.select()}
+              className={`${fieldClass} flex-1`}
+            />
+            <button
+              type="button"
+              className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold hover:bg-[var(--surface-2)]"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(state.inviteLink ?? "");
+                  setCopied(true);
+                  window.setTimeout(() => setCopied(false), 2000);
+                } catch {
+                  setCopied(false);
+                }
+              }}
+            >
+              {copied ? "Copied" : "Copy link"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+      <button type="submit" className={buttonClass} disabled={pending}>
+        {pending ? "Inviting…" : "Invite member"}
+      </button>
+    </form>
+  );
+}
+
+export function MemberStatusForm({ userId, active }: { userId: string; active: boolean }) {
+  const [state, formAction, pending] = useActionState(setMemberStatus, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="userId" value={userId} />
+      <input type="hidden" name="status" value={active ? "inactive" : "active"} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md border border-[var(--line)] px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+      >
+        {pending ? "Saving…" : active ? "Deactivate" : "Reactivate"}
+      </button>
+      {state.error ? <span role="alert" className="text-xs text-[var(--danger)]">{state.error}</span> : null}
       <ToastOnState state={state} />
     </form>
   );

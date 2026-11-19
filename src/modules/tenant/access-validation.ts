@@ -28,5 +28,22 @@ export const idSchema = z.object({
   id: uuid("Invalid record."),
 });
 
+const optionalUuid = z.preprocess(
+  (value) => (value === "" || value === null || value === undefined ? undefined : value),
+  uuid("Select a valid record.").optional(),
+);
+
+export const inviteMemberSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(254),
+  fullName: z.string().trim().min(2, "Enter the member's full name.").max(120),
+  roleId: optionalUuid,
+  locationId: optionalUuid,
+});
+
+export const memberStatusSchema = z.object({
+  userId: uuid("Select a member."),
+  status: z.enum(["active", "inactive"]),
+});
+
 export type AssignRoleInput = z.infer<typeof assignRoleSchema>;
 export type GrantAccessInput = z.infer<typeof grantAccessSchema>;

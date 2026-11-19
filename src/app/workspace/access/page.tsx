@@ -9,7 +9,13 @@ import { Badge, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
 import { Table, TBody, TD, TH, THead, TR, TableScroll } from "@/components/ui/table";
-import { AssignRoleForm, GrantAccessForm, RevokeForm } from "./access-forms";
+import {
+  AssignRoleForm,
+  GrantAccessForm,
+  InviteMemberForm,
+  MemberStatusForm,
+  RevokeForm,
+} from "./access-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -217,12 +223,13 @@ export default async function AccessPage({
                 <EmptyState title="No members yet" description="Invite a member to the workspace first." />
               ) : (
                 <TableScroll>
-                  <Table minWidth={860}>
+                  <Table minWidth={980}>
                     <THead>
                       <TR>
                         <TH>Member</TH>
                         <TH>Status</TH>
                         <TH>Roles</TH>
+                        <TH>Membership</TH>
                       </TR>
                     </THead>
                     <TBody>
@@ -256,6 +263,13 @@ export default async function AccessPage({
                                 </div>
                               )}
                             </TD>
+                            <TD>
+                              {member.id === tenant.profileId ? (
+                                <span className="text-xs text-[var(--muted)]">You</span>
+                              ) : (
+                                <MemberStatusForm userId={member.id} active={member.status === "active"} />
+                              )}
+                            </TD>
                           </TR>
                         );
                       })}
@@ -263,6 +277,16 @@ export default async function AccessPage({
                   </Table>
                 </TableScroll>
               )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Invite member"
+              description="Creates the sign-in account and member profile. Supply does not send email; copy the invitation link and share it."
+            />
+            <CardBody>
+              <InviteMemberForm roles={roleOptions} locations={locationOptions} />
             </CardBody>
           </Card>
 
