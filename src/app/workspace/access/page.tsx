@@ -291,6 +291,44 @@ export default async function AccessPage({
           </Card>
 
           <Card>
+            <CardHeader
+              title="View as role"
+              description="Read-only preview of the sidebar and permissions a role would see. Nobody is impersonated."
+            />
+            <CardBody>
+              {roles.length === 0 ? (
+                <EmptyState title="No roles in this tenant" description="Roles are provisioned with the tenant." />
+              ) : (
+                <form method="get" action="/workspace/access/preview" className="flex flex-wrap items-end gap-3">
+                  <div className="min-w-[220px] flex-1">
+                    <label htmlFor="preview-role" className="mb-1 block text-xs font-medium text-[var(--muted)]">
+                      Role
+                    </label>
+                    <select
+                      id="preview-role"
+                      name="roleId"
+                      defaultValue={roles[0].id}
+                      className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10"
+                    >
+                      {roles.map((role) => (
+                        <option key={role.id} value={role.id}>
+                          {role.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-hover)]"
+                  >
+                    Open preview
+                  </button>
+                </form>
+              )}
+            </CardBody>
+          </Card>
+
+          <Card>
             <CardHeader title="Assign a role" description="A member can hold more than one role." />
             <CardBody>
               {roleOptions.length === 0 ? (
