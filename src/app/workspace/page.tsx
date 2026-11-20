@@ -98,6 +98,8 @@ export default async function WorkspacePage() {
     .from("business_locations")
     .select("id", { count: "exact", head: true });
 
+  const canViewAllLocations = can("locations.view_all");
+
   const showProcurement = can("procurement.view") || can("procurement.manage");
   const showSales = can("sales.view") || can("sales.manage");
   const showTransport = can("transport.view") || can("transport.manage");
@@ -352,7 +354,11 @@ export default async function WorkspacePage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Signed in as" value={tenant.fullName} hint={tenant.email} />
-        <StatCard label="Locations visible" value={locationCount ?? 0} hint="Explicit grants apply" />
+        <StatCard
+          label="Locations visible"
+          value={locationCount ?? 0}
+          hint={canViewAllLocations ? "Tenant-wide visibility" : "Only granted locations"}
+        />
         <StatCard
           label="Modules available"
           value={modules.length}

@@ -96,3 +96,15 @@ Uniqueness is guaranteed by the existing per-tenant unique constraints; a collis
 - Customer `DB-CUS-1`: detail shows `DB Station`, the order, order value; New order pre-selects the same customer.
 - Temporary trip, assignment and expenses removed afterwards; roles remain.
 - `lint`, `typecheck` and 186 unit tests pass. Default and authenticated e2e behaviour is unchanged.
+
+## 8. Role test accounts
+
+Three non-production accounts exist in ORG-A so each role can be reviewed by signing in:
+
+| Role | Email |
+|---|---|
+| Director | `director@petrocore.test` |
+| Operations staff | `operations@petrocore.test` |
+| Fleet manager | `fleet@petrocore.test` |
+
+The visibility matrix, reset steps and security notes are in `docs/testing/role-test-users.md`. Passwords are not committed; they were shared with the owner separately. Each account was verified through the real `/login` form, and the sidebar plus the `/workspace/access` gate matched its role.
