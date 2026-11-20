@@ -8,10 +8,6 @@ name: Authenticated E2E
 
 on:
   workflow_dispatch:
-  # Temporary: lets the authenticated suite run on this feature branch before
-  # the workflow exists on the default branch. Remove before merging.
-  push:
-    branches: ["chore/**"]
   schedule:
     - cron: "0 3 * * *"
 
