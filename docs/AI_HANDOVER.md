@@ -208,6 +208,7 @@ The design review pack was merged from `docs/database-v1.2-review-proposal` (PR 
 - `docs/business-rules/decision-paper-dr-01-03-measurement-tolerances.md` - options and consequences for measurement points, precision, temperature correction and tolerance bands.
 - `docs/business-rules/proposed-defaults-2026-11-18.md` - proposed numbers for the open decisions (approval tiers, tolerance values, trip closure, correction method) and an owner sign-off table. Proposed, not approved.
 - `docs/product/requirements-audit-2026-11-20.md` - availability audit for loading costs, truck spend, customer locations, roles and code autogeneration, with the Standard role permission matrix and the open code-generation proposal.
+- `docs/architecture/configuration-and-capacity-2026-11-20.md` - proposal to derive truck capacity from compartments and move one-time configuration into a Setup area, with the full configuration inventory, permission split, archive-vs-delete rules and phased plan.
 - `docs/testing/role-test-users.md` - non-production Director, Operations staff and Fleet manager accounts, their visibility matrix and reset steps. Passwords are not stored in the repository.
 - `docs/database/security-audit-2026-11-16.md` - schema-wide privilege audit, fixes and deliberate exceptions.
 
