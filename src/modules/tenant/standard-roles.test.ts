@@ -21,10 +21,34 @@ describe("standard roles", () => {
     }
   });
 
-  it("gives the Director every permission", () => {
+  it("keeps configuration away from the Director", () => {
     const director = STANDARD_ROLES.find((role) => role.name === "Director");
 
-    expect(director?.permissions).toHaveLength(Object.keys(PERMISSION_LABELS).length);
+    expect(director?.permissions).not.toContain("users.manage");
+    expect(director?.permissions).not.toContain("organisation.manage");
+    expect(director?.permissions).not.toContain("locations.manage");
+    expect(director?.permissions).toContain("audit.view");
+    expect(director?.permissions).toContain("transport.manage");
+    expect(director?.permissions).toHaveLength(10);
+  });
+
+  it("gives the Director every operational permission", () => {
+    const director = STANDARD_ROLES.find((role) => role.name === "Director");
+
+    for (const permission of [
+      "procurement.view",
+      "procurement.manage",
+      "inventory.view",
+      "inventory.manage",
+      "sales.view",
+      "sales.manage",
+      "transport.view",
+      "transport.manage",
+      "locations.view_all",
+      "audit.view",
+    ]) {
+      expect(director?.permissions).toContain(permission);
+    }
   });
 
   it("keeps people and settings away from Operations and Fleet", () => {

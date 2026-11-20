@@ -35,20 +35,20 @@
 
 | Permission | Director | Operations staff | Fleet manager |
 |---|---|---|---|
-| `audit.view` | âœ“ | — | — |
-| `inventory.manage` | âœ“ | âœ“ | — |
-| `inventory.view` | âœ“ | âœ“ | âœ“ |
-| `locations.manage` | âœ“ | — | — |
-| `locations.view_all` | âœ“ | âœ“ | âœ“ |
-| `organisation.manage` | âœ“ | — | — |
-| `procurement.manage` | âœ“ | âœ“ | — |
-| `procurement.view` | âœ“ | âœ“ | âœ“ |
-| `sales.manage` | âœ“ | âœ“ | — |
-| `sales.view` | âœ“ | âœ“ | âœ“ |
-| `transport.manage` | âœ“ | âœ“ | âœ“ |
-| `transport.view` | âœ“ | âœ“ | âœ“ |
-| `users.manage` | âœ“ | — | — |
-| **Total** | **13** | **9** | **6** |
+| `audit.view` | ✓ | — | — |
+| `inventory.manage` | ✓ | ✓ | — |
+| `inventory.view` | ✓ | ✓ | ✓ |
+| `locations.manage` | — | — | — |
+| `locations.view_all` | ✓ | ✓ | ✓ |
+| `organisation.manage` | — | — | — |
+| `procurement.manage` | ✓ | ✓ | — |
+| `procurement.view` | ✓ | ✓ | ✓ |
+| `sales.manage` | ✓ | ✓ | — |
+| `sales.view` | ✓ | ✓ | ✓ |
+| `transport.manage` | ✓ | ✓ | ✓ |
+| `transport.view` | ✓ | ✓ | ✓ |
+| `users.manage` | — | — | — |
+| **Total** | **10** | **9** | **6** |
 
 Previews are available from the Roles tab and show the sidebar each role would see. Role changes take effect on the next request; RLS enforces them.
 
@@ -58,7 +58,7 @@ Previews are available from the Roles tab and show the sidebar each role would s
 2. **Loading cycle** = a trip. Spend is attributed to the truck on the primary assignment, falling back to any assignment for historical trips.
 3. **Daily spend** uses `trip_expenses.incurred_on` and `transporter_invoices.invoice_date`. An expense with no date uses the trip departure date, then the trip creation date.
 4. **Loading costs** shows Loading and Other separately; every other type is included in the trip statement only. This keeps the loading view short while the detailed breakdown remains available.
-5. **Role scope** follows the table above. If the Director should not manage people or settings, those two permissions can be removed.
+5. **Role scope** follows the table above. Director is intentionally configuration-free: organisation, people, locations and settings belong to the tenant Super Admin (the Administrator role). Director keeps operational control and a read-only Audit page.
 
 ## 5. Naming codes — proposal, not implemented
 
@@ -88,14 +88,14 @@ Uniqueness is guaranteed by the existing per-tenant unique constraints; a collis
 
 ## 7. Verification
 
-- Standard roles created in ORG-A: Director 13 permissions, Operations staff 9, Fleet manager 6; Roles tab shows them with the matrix and previews.
+- Standard roles created in ORG-A: Director 10 permissions, Operations staff 9, Fleet manager 6; Roles tab shows them with the matrix and previews. Director can open the read-only Audit page but not Access or Settings.
 - Temporary trip `QA-SPEND-1` assigned to `DB-TRK-2` with two expenses (`5,000.00` loading, `12,345.00` other):
   - Loading costs row: Loading `5,000.00`, Other `12,345.00`, Total `17,345.00`.
   - Fleet Spend row: truck `DB-TRK-2`, expenses `17,345.00`, haulage `0.00`, total `17,345.00`.
   - Daily row: `20/11/2026`, `17,345.00`.
 - Customer `DB-CUS-1`: detail shows `DB Station`, the order, order value; New order pre-selects the same customer.
 - Temporary trip, assignment and expenses removed afterwards; roles remain.
-- `lint`, `typecheck` and 186 unit tests pass. Default and authenticated e2e behaviour is unchanged.
+- `lint`, `typecheck` and 187 unit tests pass. Default and authenticated e2e behaviour is unchanged.
 
 ## 8. Role test accounts
 

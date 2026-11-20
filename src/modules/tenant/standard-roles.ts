@@ -20,13 +20,24 @@ export type StandardRole = {
   permissions: string[];
 };
 
-const ALL = Object.keys(PERMISSION_LABELS);
-
 const OPERATIONS = [
   "procurement.view",
   "procurement.manage",
   "inventory.view",
   "inventory.manage",
+  "sales.view",
+  "sales.manage",
+  "transport.view",
+  "transport.manage",
+  "locations.view_all",
+];
+
+const DIRECTOR = [
+  "audit.view",
+  "inventory.view",
+  "inventory.manage",
+  "procurement.view",
+  "procurement.manage",
   "sales.view",
   "sales.manage",
   "transport.view",
@@ -51,8 +62,8 @@ const FLEET = [
 export const STANDARD_ROLES: StandardRole[] = [
   {
     name: "Director",
-    description: "Full operational visibility and control, including people, settings and audit.",
-    permissions: ALL,
+    description: "Oversight, approvals and operational control without configuration, people or settings administration.",
+    permissions: DIRECTOR,
   },
   {
     name: "Operations staff",

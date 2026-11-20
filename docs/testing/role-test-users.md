@@ -23,12 +23,12 @@ Passwords were set when the accounts were created and shared with the owner outs
 | Deliveries | Full | Full | Full |
 | Trip checks / Haulage bills | Full | Full | Full |
 | Money | Full | Full | Full |
-| Access | Visible | Hidden / blocked | Hidden / blocked |
-| Settings | Visible | Hidden / blocked | Hidden / blocked |
-| Activity audit | Visible | Hidden | Hidden |
+| Access | Hidden / blocked | Hidden / blocked | Hidden / blocked |
+| Settings | Hidden / blocked | Hidden / blocked | Hidden / blocked |
+| Audit trail | **Visible** | Hidden | Hidden |
 | Locations | Tenant-wide | Tenant-wide | Tenant-wide |
 
-`Access` and `Settings` are both hidden from the sidebar and rejected by the page for the two non-administrator roles. The permission matrix on Access → Roles is the authoritative view.
+`Access` and `Settings` are hidden from the sidebar and rejected by the page for all three test roles. The Director gets a read-only **Audit** page instead. Configuration belongs to the tenant Super Admin (the Administrator role), not the Director. The permission matrix on Access → Roles is the authoritative view.
 
 ## Verify or reset
 

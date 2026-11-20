@@ -72,6 +72,10 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
 
   const administration = [];
 
+  if (can("audit.view")) {
+    administration.push({ href: "/workspace/audit", label: "Audit" });
+  }
+
   if (can("users.manage")) {
     administration.push({ href: "/workspace/access", label: "Access" });
   }

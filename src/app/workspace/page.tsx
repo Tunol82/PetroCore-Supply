@@ -362,7 +362,7 @@ export default async function WorkspacePage() {
         <StatCard
           label="Modules available"
           value={modules.length}
-          hint={`${can("users.manage") ? "Administrator" : "Operational"} access`}
+          hint={`${can("users.manage") ? "Super Admin access" : "Operational access"}`}
           tone="brand"
         />
       </div>
