@@ -2,7 +2,7 @@
 
 | Field | Detail |
 |---|---|
-| Status | **Implemented — interim ORG-E2E tenant** |
+| Status | **Implemented — dedicated project `vebqfgiqxfwfahwzsjkh`** |
 | Date | 2026-11-19 |
 | Owner question | Which Supabase backend should the authenticated suite run against? |
 | Related | `docs/AI_HANDOVER.md` section 6; `playwright.config.ts`; `supabase/seed/demo-tenant.sql` |
@@ -122,7 +122,7 @@ Do not put the service-role key in a client-visible environment variable, and do
 
 ## 10. Open decisions for the owner
 
-1. **Backend:** dedicated project (A) or the existing project with an E2E tenant (B)?
+1. ~~**Backend:** dedicated project (A) or the existing project with an E2E tenant (B)?~~ Resolved 2026-11-19: dedicated project `vebqfgiqxfwfahwzsjkh`.
 2. **Ownership:** who creates and owns the test project and its secrets?
 3. **Impersonation in CI:** keep the platform-admin/MFA flow in the suite, or test it only locally?
 4. **Retention:** how long should E2E artifacts and audit rows be kept?
@@ -150,7 +150,9 @@ Nothing in this scope changes application behaviour. The only production code to
 
 ## 13. Implementation note — 2026-11-19
 
-**Backend:** a dedicated project was attempted in the PetroCore-Supply organisation but Supabase refused it: the owner has reached the free-plan limit of two active projects. The interim option is live instead: an isolated **`ORG-E2E`** tenant in the existing non-production project, guarded by RLS and a run prefix. Creating a dedicated project later only requires pointing the same environment variables at it and applying the seed; no test code changes.
+**Backend:** the dedicated project is live: **PetroCore Supply E2E**, ref `vebqfgiqxfwfahwzsjkh`, region `eu-west-1`, in the PetroCore-Supply organisation. It was created after pausing `Resturant and Bar` freed a free-plan slot. All migrations through `20261119000200` are applied, `supabase/seed/e2e-tenant.sql` is seeded, and the three P0 specs pass against it.
+
+The earlier interim **`ORG-E2E`** tenant in `pmsjntbwtswjygerozns` still exists but is unused. It can be removed later; it is not referenced by the suite or the CI workflow.
 
 **Files:**
 
@@ -186,4 +188,4 @@ Global setup creates `e2e.owner@…` with Administrator and `e2e.viewer@…` wit
 
 **CI:** the workflow reads `E2E_SUPABASE_URL`, `E2E_SUPABASE_ANON_KEY`, `E2E_SUPABASE_SERVICE_ROLE_KEY` and `E2E_ALLOWED_PROJECT_REF` from repository secrets and skips when they are absent. The E2E seed must be applied once to the target project. It deliberately does not set `E2E_ALLOW_DEMO_PROJECT`, so a shared project cannot be used by CI accidentally.
 
-**Known limitation:** during the first implementation run, Supabase connectivity from the development machine was intermittent (10-second connect timeouts), which redirected some authenticated requests to `/login`. The suite now mints both sessions once in global setup, caches them under the gitignored `tests/e2e-auth/.auth/`, and tests reuse the cookies. With connectivity restored, the full suite passed **3/3** on 2026-11-19 in 1.0 minute, and the database held no `E2E-RUN-` records afterwards. A stable network is still required; the CI job is nightly/manual for that reason.
+**Known limitation:** during the first implementation run, Supabase connectivity from the development machine was intermittent (10-second connect timeouts), which redirected some authenticated requests to `/login`. The suite now mints both sessions once in global setup, caches them under the gitignored `tests/e2e-auth/.auth/`, and tests reuse the cookies. With connectivity restored, the full suite passed **3/3** against the dedicated project on 2026-11-19 in 1.3 minutes, and the database held no `E2E-RUN-` records afterwards. A stable network is still required; the CI job is nightly/manual for that reason.
