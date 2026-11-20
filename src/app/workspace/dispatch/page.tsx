@@ -13,6 +13,7 @@ import {
   AssignmentForm,
   CloseTripForm,
   LoadingAllocationForm,
+  LoadingExpenseForm,
   LoadingRecordForm,
   ReleaseAssignmentForm,
   TripForm,
@@ -47,6 +48,12 @@ type Location = { id: string; location_name: string; location_code: string };
 type Truck = { id: string; registration_number: string; status: string };
 type Driver = { id: string; full_name: string; driver_code: string; status: string };
 type Transporter = { id: string; business_name: string; status: string };
+type TripExpense = {
+  trip_id: string;
+  expense_type: string;
+  amount: number;
+  incurred_on: string | null;
+};
 type Product = { id: string; product_code: string; product_name: string };
 type Compartment = { id: string; truck_id: string; compartment_number: string; capacity: number; status: string };
 type ProcurementBatch = { id: string; batch_number: string; product_id: string };
@@ -75,6 +82,10 @@ const TABS = ["trips", "assignments", "loading", "allocations"] as const;
 
 function formatQuantity(value: number) {
   return new Intl.NumberFormat("en-NG", { maximumFractionDigits: 3 }).format(value);
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
 
 function ageInDays(value: string) {
@@ -119,7 +130,7 @@ export default async function DispatchPage({
   const params = await searchParams;
   const tab = TABS.includes((params.tab ?? "") as (typeof TABS)[number]) ? (params.tab as string) : "trips";
 
-  const [tripsResult, assignmentsResult, depotsResult, locationsResult, trucksResult, driversResult, transportersResult] =
+  const [tripsResult, assignmentsResult, depotsResult, locationsResult, trucksResult, driversResult, transportersResult, tripExpensesResult] =
     await Promise.all([
       supabase
         .from("trips")
@@ -142,6 +153,11 @@ export default async function DispatchPage({
       supabase.from("trucks").select("id, registration_number, status").order("registration_number"),
       supabase.from("drivers").select("id, full_name, driver_code, status").order("full_name"),
       supabase.from("transporters").select("id, business_name, status").order("business_name"),
+      supabase
+        .from("trip_expenses")
+        .select("trip_id, expense_type, amount, incurred_on")
+        .order("incurred_on", { ascending: false })
+        .limit(500),
     ]);
 
   const [
@@ -211,6 +227,7 @@ export default async function DispatchPage({
     trucksResult.error ??
     driversResult.error ??
     transportersResult.error ??
+    tripExpensesResult.error ??
     loadingRecordsResult.error ??
     allocationsResult.error ??
     compartmentsResult.error ??
@@ -237,6 +254,7 @@ export default async function DispatchPage({
   const trucks = (trucksResult.data ?? []) as Truck[];
   const drivers = (driversResult.data ?? []) as Driver[];
   const transporters = (transportersResult.data ?? []) as Transporter[];
+  const tripExpenses = (tripExpensesResult.data ?? []) as TripExpense[];
   const loadingRecords = (loadingRecordsResult.data ?? []) as LoadingRecord[];
   const allocations = (allocationsResult.data ?? []) as LoadingAllocation[];
   const compartments = (compartmentsResult.data ?? []) as Compartment[];
@@ -261,6 +279,44 @@ export default async function DispatchPage({
   const batchById = new Map(batches.map((batch) => [batch.id, batch]));
   const salesOrderById = new Map(salesOrders.map((order) => [order.id, order]));
   const loadingRecordById = new Map(loadingRecords.map((record) => [record.id, record]));
+
+  const expensesByTrip = new Map<string, { total: number; loading: number; other: number; lastDate: string | null }>();
+
+  for (const expense of tripExpenses) {
+    const amount = Number(expense.amount);
+    const current = expensesByTrip.get(expense.trip_id) ?? {
+      total: 0,
+      loading: 0,
+      other: 0,
+      lastDate: null,
+    };
+
+    current.total += amount;
+
+    if (expense.expense_type === "loading") {
+      current.loading += amount;
+    }
+
+    if (expense.expense_type === "other") {
+      current.other += amount;
+    }
+
+    if (expense.incurred_on && (!current.lastDate || expense.incurred_on > current.lastDate)) {
+      current.lastDate = expense.incurred_on;
+    }
+
+    expensesByTrip.set(expense.trip_id, current);
+  }
+
+  const loadingTripIds = new Set(loadingRecords.map((record) => record.trip_id));
+  const costTrips = trips.filter((trip) => loadingTripIds.has(trip.id) || expensesByTrip.has(trip.id));
+  const totalLoadingExpense = tripExpenses
+    .filter((expense) => expense.expense_type === "loading")
+    .reduce((sum, expense) => sum + Number(expense.amount), 0);
+  const totalOtherExpense = tripExpenses
+    .filter((expense) => expense.expense_type === "other")
+    .reduce((sum, expense) => sum + Number(expense.amount), 0);
+  const totalTripExpense = tripExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
 
   const reconciliationById = new Map(reconciliations.map((item) => [item.id, item]));
   const unresolvedStatuses = new Set(["open", "flagged", "under_investigation"]);
@@ -646,6 +702,84 @@ export default async function DispatchPage({
                   </Table>
                 </TableScroll>
               )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Loading costs"
+              description="What each loading cycle has cost so far. Loading and other are shown separately; open the trip statement for the full breakdown."
+            />
+            <CardBody>
+              <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">Loading</p>
+                  <p className="mt-1 text-sm font-semibold tabular">{formatMoney(totalLoadingExpense)}</p>
+                </div>
+                <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">Other</p>
+                  <p className="mt-1 text-sm font-semibold tabular">{formatMoney(totalOtherExpense)}</p>
+                </div>
+                <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">All trip expenses</p>
+                  <p className="mt-1 text-sm font-semibold tabular">{formatMoney(totalTripExpense)}</p>
+                </div>
+              </div>
+
+              {costTrips.length === 0 ? (
+                <EmptyState
+                  title="No loading costs yet"
+                  description="Record a loading or other expense below; it appears here and on the trip statement."
+                />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={780}>
+                    <THead>
+                      <TR>
+                        <TH>Trip</TH>
+                        <TH align="right">Loading</TH>
+                        <TH align="right">Other</TH>
+                        <TH align="right">Total</TH>
+                        <TH>Last cost</TH>
+                        <TH>Statement</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {costTrips.map((trip) => {
+                        const cost = expensesByTrip.get(trip.id);
+
+                        return (
+                          <TR key={trip.id}>
+                            <TD className="font-medium">{trip.trip_number}</TD>
+                            <TD align="right">{formatMoney(cost?.loading ?? 0)}</TD>
+                            <TD align="right">{formatMoney(cost?.other ?? 0)}</TD>
+                            <TD align="right" className="font-semibold">{formatMoney(cost?.total ?? 0)}</TD>
+                            <TD className="text-xs text-[var(--muted)]">{cost?.lastDate ?? "—"}</TD>
+                            <TD>
+                              <Link
+                                href={`/workspace/dispatch/trips/${trip.id}`}
+                                className="text-xs font-semibold text-[var(--brand)] hover:underline"
+                              >
+                                Open
+                              </Link>
+                            </TD>
+                          </TR>
+                        );
+                      })}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+
+              {canManage && trips.length > 0 ? (
+                <div className="mt-5 border-t border-[var(--line)] pt-5">
+                  <h3 className="text-sm font-semibold">Record a loading or other cost</h3>
+                  <p className="mb-3 mt-0.5 text-xs text-[var(--muted)]">
+                    Other expenses require a reason. The amount feeds the trip statement immediately.
+                  </p>
+                  <LoadingExpenseForm trips={tripOptions} />
+                </div>
+              ) : null}
             </CardBody>
           </Card>
 

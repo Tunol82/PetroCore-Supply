@@ -11,6 +11,7 @@ import {
   inviteMemberSchema,
   memberStatusSchema,
 } from "@/modules/tenant/access-validation";
+import { STANDARD_ROLES } from "@/modules/tenant/standard-roles";
 
 export type AccessActionState = {
   error: string | null;
@@ -396,5 +397,109 @@ export async function setMemberStatus(
   return {
     error: null,
     success: active ? "Member reactivated." : "Member deactivated. Their roles are kept for reactivation.",
+  };
+}
+
+export async function createStandardRoles(
+  _previous: AccessActionState,
+  _formData: FormData,
+): Promise<AccessActionState> {
+  // Required by useActionState; this action has no form fields.
+  void _previous;
+  void _formData;
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const organisationId = context.tenant.organisationId;
+
+  const { data: permissions, error: permissionError } = await context.supabase
+    .from("permissions")
+    .select("id, permission_key");
+
+  if (permissionError) {
+    return { error: "Permissions could not be loaded.", success: null };
+  }
+
+  const permissionIdByKey = new Map(
+    ((permissions ?? []) as { id: string; permission_key: string }[]).map((permission) => [
+      permission.permission_key,
+      permission.id,
+    ]),
+  );
+
+  const created: string[] = [];
+
+  for (const template of STANDARD_ROLES) {
+    const { data: existing } = await context.supabase
+      .from("roles")
+      .select("id")
+      .eq("organisation_id", organisationId)
+      .eq("name", template.name)
+      .maybeSingle();
+
+    let roleId = existing?.id as string | undefined;
+
+    if (!roleId) {
+      const { data: inserted, error: insertError } = await context.supabase
+        .from("roles")
+        .insert({
+          organisation_id: organisationId,
+          name: template.name,
+          description: template.description,
+          is_system_role: false,
+        })
+        .select("id")
+        .single();
+
+      if (insertError || !inserted) {
+        return { error: `The ${template.name} role could not be created.`, success: null };
+      }
+
+      roleId = inserted.id;
+      created.push(template.name);
+    }
+
+    const desired = template.permissions
+      .map((key) => permissionIdByKey.get(key))
+      .filter((id): id is string => Boolean(id));
+
+    const { data: assigned, error: assignedError } = await context.supabase
+      .from("role_permissions")
+      .select("permission_id")
+      .eq("role_id", roleId);
+
+    if (assignedError) {
+      return { error: `Existing permissions for ${template.name} could not be read.`, success: null };
+    }
+
+    const assignedIds = new Set(
+      ((assigned ?? []) as { permission_id: string }[]).map((row) => row.permission_id),
+    );
+    const missing = desired.filter((permissionId) => !assignedIds.has(permissionId));
+
+    if (missing.length > 0) {
+      const { error: mapError } = await context.supabase.from("role_permissions").insert(
+        missing.map((permissionId) => ({
+          organisation_id: organisationId,
+          role_id: roleId,
+          permission_id: permissionId,
+        })),
+      );
+
+      if (mapError) {
+        return { error: `Permissions for ${template.name} could not be saved.`, success: null };
+      }
+    }
+  }
+
+  revalidatePath("/workspace/access");
+
+  return {
+    error: null,
+    success:
+      created.length > 0
+        ? `Standard roles created: ${created.join(", ")}.`
+        : "Standard roles already exist. Any missing permissions were added.",
   };
 }

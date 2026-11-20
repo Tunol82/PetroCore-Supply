@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getWorkspaceContext } from "@/modules/tenant/workspace-context";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
@@ -59,12 +60,51 @@ type Driver = {
   status: string;
 };
 
-const TABS = ["transporters", "trucks", "compartments", "drivers"] as const;
+type SpendTrip = {
+  id: string;
+  trip_number: string;
+  departure_time: string | null;
+  created_at: string;
+};
+
+type SpendAssignment = {
+  trip_id: string;
+  truck_id: string;
+  assignment_role: string;
+  assigned_at: string;
+};
+
+type SpendExpense = {
+  trip_id: string;
+  amount: number;
+  expense_type: string;
+  incurred_on: string | null;
+};
+
+type SpendInvoice = {
+  trip_id: string | null;
+  total_amount: number;
+  invoice_date: string;
+};
+
+const TABS = ["transporters", "trucks", "compartments", "drivers", "spend"] as const;
 
 const LICENCE_WARNING_DAYS = 30;
 
 function formatQuantity(value: number) {
   return new Intl.NumberFormat("en-NG", { maximumFractionDigits: 3 }).format(value);
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+}
+
+function formatDay(value: string | null) {
+  if (!value) {
+    return "—";
+  }
+
+  return new Date(value).toLocaleDateString("en-GB");
 }
 
 function formatDate(value: string) {
@@ -124,7 +164,16 @@ export default async function FleetPage({
   const params = await searchParams;
   const tab = TABS.includes((params.tab ?? "") as (typeof TABS)[number]) ? (params.tab as string) : "transporters";
 
-  const [transportersResult, trucksResult, compartmentsResult, driversResult] = await Promise.all([
+  const [
+    transportersResult,
+    trucksResult,
+    compartmentsResult,
+    driversResult,
+    spendTripsResult,
+    spendAssignmentsResult,
+    spendExpensesResult,
+    spendInvoicesResult,
+  ] = await Promise.all([
     supabase
       .from("transporters")
       .select(
@@ -145,10 +194,37 @@ export default async function FleetPage({
         "id, driver_code, full_name, phone, licence_number, licence_expiry, driver_type, transporter_id, status",
       )
       .order("full_name"),
+    supabase
+      .from("trips")
+      .select("id, trip_number, departure_time, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabase
+      .from("trip_assignments")
+      .select("trip_id, truck_id, assignment_role, assigned_at")
+      .order("assigned_at", { ascending: false })
+      .limit(300),
+    supabase
+      .from("trip_expenses")
+      .select("trip_id, amount, expense_type, incurred_on")
+      .order("incurred_on", { ascending: false })
+      .limit(500),
+    supabase
+      .from("transporter_invoices")
+      .select("trip_id, total_amount, invoice_date")
+      .order("invoice_date", { ascending: false })
+      .limit(500),
   ]);
 
   const queryError =
-    transportersResult.error ?? trucksResult.error ?? compartmentsResult.error ?? driversResult.error;
+    transportersResult.error ??
+    trucksResult.error ??
+    compartmentsResult.error ??
+    driversResult.error ??
+    spendTripsResult.error ??
+    spendAssignmentsResult.error ??
+    spendExpensesResult.error ??
+    spendInvoicesResult.error;
 
   if (queryError) {
     return (
@@ -165,6 +241,132 @@ export default async function FleetPage({
 
   const transporterById = new Map(transporters.map((transporter) => [transporter.id, transporter]));
   const truckById = new Map(trucks.map((truck) => [truck.id, truck]));
+
+  const spendTrips = (spendTripsResult.data ?? []) as SpendTrip[];
+  const spendAssignments = (spendAssignmentsResult.data ?? []) as SpendAssignment[];
+  const spendExpenses = (spendExpensesResult.data ?? []) as SpendExpense[];
+  const spendInvoices = (spendInvoicesResult.data ?? []) as SpendInvoice[];
+  const spendTripById = new Map(spendTrips.map((trip) => [trip.id, trip]));
+
+  const truckByTrip = new Map<string, string>();
+
+  for (const assignment of spendAssignments) {
+    if (assignment.assignment_role === "primary" && !truckByTrip.has(assignment.trip_id)) {
+      truckByTrip.set(assignment.trip_id, assignment.truck_id);
+    }
+  }
+
+  for (const assignment of spendAssignments) {
+    if (!truckByTrip.has(assignment.trip_id)) {
+      truckByTrip.set(assignment.trip_id, assignment.truck_id);
+    }
+  }
+
+  const expenseByTrip = new Map<string, { total: number; byDate: Map<string, number> }>();
+
+  for (const expense of spendExpenses) {
+    const trip = spendTripById.get(expense.trip_id);
+    const date =
+      expense.incurred_on ??
+      trip?.departure_time?.slice(0, 10) ??
+      trip?.created_at.slice(0, 10) ??
+      "unknown";
+    const amount = Number(expense.amount);
+    const current = expenseByTrip.get(expense.trip_id) ?? { total: 0, byDate: new Map<string, number>() };
+    current.total += amount;
+    current.byDate.set(date, (current.byDate.get(date) ?? 0) + amount);
+    expenseByTrip.set(expense.trip_id, current);
+  }
+
+  const invoiceByTrip = new Map<string, { total: number; byDate: Map<string, number> }>();
+
+  for (const invoice of spendInvoices) {
+    if (!invoice.trip_id) {
+      continue;
+    }
+
+    const amount = Number(invoice.total_amount);
+    const current = invoiceByTrip.get(invoice.trip_id) ?? { total: 0, byDate: new Map<string, number>() };
+    current.total += amount;
+    current.byDate.set(invoice.invoice_date, (current.byDate.get(invoice.invoice_date) ?? 0) + amount);
+    invoiceByTrip.set(invoice.trip_id, current);
+  }
+
+  type TripSpendRow = {
+    trip: SpendTrip;
+    truckId: string;
+    expenses: number;
+    haulage: number;
+    total: number;
+  };
+
+  const tripSpendRows: TripSpendRow[] = [];
+
+  for (const trip of spendTrips) {
+    const truckId = truckByTrip.get(trip.id);
+
+    if (!truckId) {
+      continue;
+    }
+
+    const expenses = expenseByTrip.get(trip.id)?.total ?? 0;
+    const haulage = invoiceByTrip.get(trip.id)?.total ?? 0;
+
+    if (expenses === 0 && haulage === 0) {
+      continue;
+    }
+
+    tripSpendRows.push({ trip, truckId, expenses, haulage, total: expenses + haulage });
+  }
+
+  type DailySpendRow = { truckId: string; date: string; expenses: number; haulage: number; total: number };
+
+  const dailySpend = new Map<string, DailySpendRow>();
+
+  function addDaily(truckId: string, date: string, expenses: number, haulage: number) {
+    const key = `${truckId}|${date}`;
+    const current = dailySpend.get(key) ?? { truckId, date, expenses: 0, haulage: 0, total: 0 };
+    current.expenses += expenses;
+    current.haulage += haulage;
+    current.total += expenses + haulage;
+    dailySpend.set(key, current);
+  }
+
+  for (const row of tripSpendRows) {
+    const expenses = expenseByTrip.get(row.trip.id);
+    const invoices = invoiceByTrip.get(row.trip.id);
+
+    if (expenses) {
+      for (const [date, amount] of expenses.byDate) {
+        addDaily(row.truckId, date, amount, 0);
+      }
+    }
+
+    if (invoices) {
+      for (const [date, amount] of invoices.byDate) {
+        addDaily(row.truckId, date, 0, amount);
+      }
+    }
+  }
+
+  const dailySpendRows = Array.from(dailySpend.values()).sort((a, b) => {
+    const byDate = b.date.localeCompare(a.date);
+
+    if (byDate !== 0) {
+      return byDate;
+    }
+
+    return (truckById.get(a.truckId)?.registration_number ?? "").localeCompare(
+      truckById.get(b.truckId)?.registration_number ?? "",
+    );
+  });
+
+  const totalTruckSpend = tripSpendRows.reduce((sum, row) => sum + row.total, 0);
+  const today = new Date().toISOString().slice(0, 10);
+  const todayTruckSpend = dailySpendRows
+    .filter((row) => row.date === today)
+    .reduce((sum, row) => sum + row.total, 0);
+  const trucksWithSpend = new Set(tripSpendRows.map((row) => row.truckId)).size;
 
   const activeTransporters = transporters.filter((transporter) => transporter.status === "active");
   const activeTrucks = trucks.filter((truck) => truck.status === "active");
@@ -208,6 +410,7 @@ export default async function FleetPage({
     { href: "/workspace/fleet?tab=trucks", label: "Trucks", count: trucks.length },
     { href: "/workspace/fleet?tab=compartments", label: "Compartments", count: compartments.length },
     { href: "/workspace/fleet?tab=drivers", label: "Drivers", count: drivers.length },
+    { href: "/workspace/fleet?tab=spend", label: "Spend", count: tripSpendRows.length },
   ];
   const activeHref = `/workspace/fleet?tab=${tab}`;
 
@@ -703,6 +906,131 @@ export default async function FleetPage({
               </CardBody>
             </Card>
           ) : null}
+        </div>
+      ) : null}
+
+      {tab === "spend" ? (
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Tracked spend"
+              value={formatMoney(totalTruckSpend)}
+              hint={`${tripSpendRows.length} loading cycle${tripSpendRows.length === 1 ? "" : "s"}`}
+              tone="brand"
+            />
+            <StatCard label="Spend today" value={formatMoney(todayTruckSpend)} hint={formatDay(today)} />
+            <StatCard
+              label="Trucks with spend"
+              value={trucksWithSpend}
+              hint={`${trucks.length} truck${trucks.length === 1 ? "" : "s"} in the fleet`}
+            />
+            <StatCard
+              label="Average per cycle"
+              value={
+                tripSpendRows.length > 0
+                  ? formatMoney(totalTruckSpend / tripSpendRows.length)
+                  : formatMoney(0)
+              }
+              hint="Trip expenses plus haulier invoices"
+            />
+          </div>
+
+          <Card>
+            <CardHeader
+              title="Spend by loading cycle"
+              description="Trip expenses and haulier invoices for the truck assigned to each trip. Purchase cost is excluded."
+            />
+            <CardBody>
+              {tripSpendRows.length === 0 ? (
+                <EmptyState
+                  title="No truck spend recorded"
+                  description="Assign a truck to a trip and record an expense or haulier invoice."
+                />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={860}>
+                    <THead>
+                      <TR>
+                        <TH>Truck</TH>
+                        <TH>Trip</TH>
+                        <TH>Departure</TH>
+                        <TH align="right">Expenses</TH>
+                        <TH align="right">Haulage</TH>
+                        <TH align="right">Total</TH>
+                        <TH>Statement</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {tripSpendRows.map((row) => (
+                        <TR key={row.trip.id}>
+                          <TD className="font-medium">
+                            {truckById.get(row.truckId)?.registration_number ?? "Truck"}
+                          </TD>
+                          <TD>{row.trip.trip_number}</TD>
+                          <TD className="text-xs text-[var(--muted)]">{formatDay(row.trip.departure_time)}</TD>
+                          <TD align="right">{formatMoney(row.expenses)}</TD>
+                          <TD align="right">{formatMoney(row.haulage)}</TD>
+                          <TD align="right" className="font-semibold">{formatMoney(row.total)}</TD>
+                          <TD>
+                            <Link
+                              href={`/workspace/dispatch/trips/${row.trip.id}`}
+                              className="text-xs font-semibold text-[var(--brand)] hover:underline"
+                            >
+                              Open
+                            </Link>
+                          </TD>
+                        </TR>
+                      ))}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Spend by day"
+              description="Expenses use the date they were incurred; haulage uses the invoice date. Undated expenses use the trip departure date."
+            />
+            <CardBody>
+              {dailySpendRows.length === 0 ? (
+                <EmptyState title="No daily spend yet" description="Record a dated expense or invoice." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={720}>
+                    <THead>
+                      <TR>
+                        <TH>Truck</TH>
+                        <TH>Date</TH>
+                        <TH align="right">Expenses</TH>
+                        <TH align="right">Haulage</TH>
+                        <TH align="right">Total</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {dailySpendRows.map((row) => (
+                        <TR key={`${row.truckId}-${row.date}`}>
+                          <TD className="font-medium">
+                            {truckById.get(row.truckId)?.registration_number ?? "Truck"}
+                          </TD>
+                          <TD className="text-xs text-[var(--muted)]">{row.date === "unknown" ? "—" : formatDay(row.date)}</TD>
+                          <TD align="right">{formatMoney(row.expenses)}</TD>
+                          <TD align="right">{formatMoney(row.haulage)}</TD>
+                          <TD align="right" className="font-semibold">{formatMoney(row.total)}</TD>
+                        </TR>
+                      ))}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
+
+          <p className="text-xs leading-6 text-[var(--muted)]">
+            Spend is trip expenses plus transporter invoices linked to the trip. Purchase cost is excluded because it
+            belongs to procurement, and quoted compartment haulage is not counted until it becomes an invoice.
+          </p>
         </div>
       ) : null}
 

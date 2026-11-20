@@ -5,6 +5,7 @@ import { ToastOnState } from "@/components/ui/toast";
 import { useActionState, useState } from "react";
 import {
   assignRole,
+  createStandardRoles,
   grantAccess,
   inviteMember,
   revokeAccess,
@@ -243,6 +244,25 @@ export function MemberStatusForm({ userId, active }: { userId: string; active: b
       </button>
       {state.error ? <span role="alert" className="text-xs text-[var(--danger)]">{state.error}</span> : null}
       <ToastOnState state={state} />
+    </form>
+  );
+}
+
+export function StandardRolesForm({ missing }: { missing: boolean }) {
+  const [state, formAction, pending] = useActionState(createStandardRoles, initialState);
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <p className="text-sm text-[var(--ink-2)]">
+        {missing
+          ? "Creates Director, Operations staff and Fleet manager with the permissions shown below. Existing roles with the same name are kept; only missing permissions are added."
+          : "All three standard roles exist. Running this again only adds permissions that are missing from them."}
+      </p>
+      <Feedback state={state} />
+      <ToastOnState state={state} />
+      <button type="submit" className={buttonClass} disabled={pending}>
+        {pending ? "Preparing roles…" : missing ? "Create standard roles" : "Add any missing permissions"}
+      </button>
     </form>
   );
 }

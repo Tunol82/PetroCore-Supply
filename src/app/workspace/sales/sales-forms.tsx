@@ -159,7 +159,13 @@ export function CustomerForm({ customer }: { customer?: CustomerRecord }) {
   );
 }
 
-export function CustomerLocationForm({ customers }: { customers: Option[] }) {
+export function CustomerLocationForm({
+  customers,
+  defaultCustomerId = "",
+}: {
+  customers: Option[];
+  defaultCustomerId?: string;
+}) {
   const [state, formAction, pending] = useActionState(createCustomerLocation, initialState);
 
   return (
@@ -167,7 +173,13 @@ export function CustomerLocationForm({ customers }: { customers: Option[] }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="cl-customer" className={labelClass}>Customer</label>
-          <select id="cl-customer" name="customerId" required className={fieldClass} defaultValue="">
+          <select
+            id="cl-customer"
+            name="customerId"
+            required
+            className={fieldClass}
+            defaultValue={defaultCustomerId}
+          >
             <option value="" disabled>Select a customer</option>
             {customers.map((customer) => (
               <option key={customer.id} value={customer.id}>{customer.label}</option>
@@ -203,12 +215,14 @@ export function CustomerLocationForm({ customers }: { customers: Option[] }) {
 export function SalesOrderForm({
   customers,
   locations,
+  defaultCustomerId = "",
 }: {
   customers: Option[];
   locations: LocationOption[];
+  defaultCustomerId?: string;
 }) {
   const [state, formAction, pending] = useActionState(createSalesOrder, initialState);
-  const [customerId, setCustomerId] = useState("");
+  const [customerId, setCustomerId] = useState(defaultCustomerId);
   const locationsForCustomer = locations.filter((location) => location.customerId === customerId);
 
   return (

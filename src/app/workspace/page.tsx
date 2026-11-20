@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSupabaseConfig } from "@/shared/lib/supabase/config";
 import { getWorkspaceContext } from "@/modules/tenant/workspace-context";
@@ -386,7 +386,7 @@ export default async function WorkspacePage() {
                     <div className="flex items-center gap-3">
                       <Badge tone={item.tone}>{item.count}</Badge>
                       <span className="text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--brand)]">
-                        â†’
+                        →
                       </span>
                     </div>
                   </Link>
@@ -412,7 +412,7 @@ export default async function WorkspacePage() {
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm font-semibold text-[var(--ink)]">{module.title}</p>
                     <span className="text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--brand)]">
-                      â†’
+                      →
                     </span>
                   </div>
                   <p className="mt-1 text-xs leading-5 text-[var(--muted)]">{module.description}</p>

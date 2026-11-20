@@ -5,7 +5,7 @@ import { FormDraft } from "@/components/ui/form-draft";
 
 import { ToastOnState } from "@/components/ui/toast";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   addLoadingAllocation,
   assignTrip,
@@ -15,6 +15,7 @@ import {
   releaseAssignment,
   type DispatchActionState,
 } from "./actions";
+import { addTripExpense } from "./trips/[id]/actions";
 
 export type Option = { id: string; label: string };
 
@@ -410,6 +411,84 @@ export function LoadingAllocationForm({
       <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Saving…" : "Save allocation"}
+      </button>
+    </form>
+  );
+}
+
+const EXPENSE_LABELS: Record<string, string> = {
+  loading: "Loading",
+  other: "Other (reason required)",
+  fuel: "Fuel",
+  toll: "Toll",
+  driver_allowance: "Driver allowance",
+  maintenance: "Maintenance",
+};
+
+export function LoadingExpenseForm({ trips }: { trips: Option[] }) {
+  const [state, formAction, pending] = useActionState(addTripExpense, initialState);
+  const [expenseType, setExpenseType] = useState("loading");
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <UnsavedGuard />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div>
+          <label htmlFor="le-trip" className={labelClass}>Trip / loading cycle</label>
+          <select id="le-trip" name="tripId" required className={fieldClass} defaultValue="">
+            <option value="" disabled>Select a trip</option>
+            {trips.map((trip) => (
+              <option key={trip.id} value={trip.id}>{trip.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="le-type" className={labelClass}>Expense type</label>
+          <select
+            id="le-type"
+            name="expenseType"
+            className={fieldClass}
+            value={expenseType}
+            onChange={(event) => setExpenseType(event.target.value)}
+          >
+            {Object.entries(EXPENSE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="le-amount" className={labelClass}>Amount (₦)</label>
+          <input id="le-amount" name="amount" type="number" min="0.01" step="0.01" required className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="le-date" className={labelClass}>Date</label>
+          <input id="le-date" name="incurredOn" type="date" className={fieldClass} />
+        </div>
+        <div>
+          <label htmlFor="le-description" className={labelClass}>
+            Reason / description {expenseType === "other" ? "" : "(optional)"}
+          </label>
+          <input
+            id="le-description"
+            name="description"
+            required={expenseType === "other"}
+            maxLength={160}
+            className={fieldClass}
+          />
+        </div>
+        <div>
+          <label htmlFor="le-reference" className={labelClass}>Reference (optional)</label>
+          <input id="le-reference" name="reference" maxLength={80} className={fieldClass} />
+        </div>
+      </div>
+      <p className="text-xs text-[var(--muted)]">
+        Choose <strong>Other</strong> for an expense that does not fit the listed types; the reason is required.
+        Expenses appear on the trip statement immediately.
+      </p>
+      <Feedback state={state} />
+      <ToastOnState state={state} />
+      <button type="submit" className={buttonClass} disabled={pending}>
+        {pending ? "Recording…" : "Record expense"}
       </button>
     </form>
   );

@@ -15,12 +15,16 @@ import {
   InviteMemberForm,
   MemberStatusForm,
   RevokeForm,
+  StandardRolesForm,
 } from "./access-forms";
+import { PERMISSION_LABELS, STANDARD_ROLES } from "@/modules/tenant/standard-roles";
 
 export const dynamic = "force-dynamic";
 
 type Member = { id: string; full_name: string | null; email: string; status: string };
-type Role = { id: string; name: string; is_system_role: boolean };
+type Role = { id: string; name: string; description: string | null; is_system_role: boolean };
+type Permission = { id: string; permission_key: string };
+type RolePermission = { role_id: string; permission_id: string };
 type UserRole = { id: string; user_id: string; role_id: string };
 type Location = { id: string; location_code: string; location_name: string; status: string };
 type Grant = { id: string; user_id: string; location_id: string; access_level: string; status: string };
@@ -33,7 +37,7 @@ type AuditEvent = {
   created_at: string;
 };
 
-const TABS = ["members", "access", "activity"] as const;
+const TABS = ["members", "roles", "access", "activity"] as const;
 
 const AUDIT_ACTION_LABELS: Record<string, string> = {
   "access.role_assigned": "Role assigned",
@@ -98,20 +102,25 @@ export default async function AccessPage({
     );
   }
 
-  const [membersResult, rolesResult, userRolesResult, locationsResult, grantsResult] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, email, status").order("full_name"),
-    supabase.from("roles").select("id, name, is_system_role").order("name"),
-    supabase.from("user_roles").select("id, user_id, role_id"),
-    supabase.from("business_locations").select("id, location_code, location_name, status").order("location_name"),
-    supabase.from("user_location_access").select("id, user_id, location_id, access_level, status"),
-  ]);
+  const [membersResult, rolesResult, userRolesResult, locationsResult, grantsResult, permissionsResult, rolePermissionsResult] =
+    await Promise.all([
+      supabase.from("profiles").select("id, full_name, email, status").order("full_name"),
+      supabase.from("roles").select("id, name, description, is_system_role").order("name"),
+      supabase.from("user_roles").select("id, user_id, role_id"),
+      supabase.from("business_locations").select("id, location_code, location_name, status").order("location_name"),
+      supabase.from("user_location_access").select("id, user_id, location_id, access_level, status"),
+      supabase.from("permissions").select("id, permission_key").order("permission_key"),
+      supabase.from("role_permissions").select("role_id, permission_id"),
+    ]);
 
   const queryError =
     membersResult.error ??
     rolesResult.error ??
     userRolesResult.error ??
     locationsResult.error ??
-    grantsResult.error;
+    grantsResult.error ??
+    permissionsResult.error ??
+    rolePermissionsResult.error;
 
   let auditEvents: AuditEvent[] = [];
 
@@ -142,10 +151,34 @@ export default async function AccessPage({
   const userRoles = (userRolesResult.data ?? []) as UserRole[];
   const locations = (locationsResult.data ?? []) as Location[];
   const grants = (grantsResult.data ?? []) as Grant[];
+  const permissions = (permissionsResult.data ?? []) as Permission[];
+  const rolePermissions = (rolePermissionsResult.data ?? []) as RolePermission[];
 
   const memberById = new Map(members.map((member) => [member.id, member]));
   const roleById = new Map(roles.map((role) => [role.id, role]));
   const locationById = new Map(locations.map((location) => [location.id, location]));
+  const permissionKeyById = new Map(permissions.map((permission) => [permission.id, permission.permission_key]));
+
+  const permissionKeysByRole = new Map<string, Set<string>>();
+  for (const mapping of rolePermissions) {
+    const key = permissionKeyById.get(mapping.permission_id);
+
+    if (!key) {
+      continue;
+    }
+
+    const current = permissionKeysByRole.get(mapping.role_id) ?? new Set<string>();
+    current.add(key);
+    permissionKeysByRole.set(mapping.role_id, current);
+  }
+
+  const memberCountByRole = new Map<string, number>();
+  for (const assignment of userRoles) {
+    memberCountByRole.set(assignment.role_id, (memberCountByRole.get(assignment.role_id) ?? 0) + 1);
+  }
+
+  const roleNames = new Set(roles.map((role) => role.name));
+  const missingStandardRoles = STANDARD_ROLES.filter((template) => !roleNames.has(template.name)).length;
 
   const rolesByMember = new Map<string, UserRole[]>();
   for (const assignment of userRoles) {
@@ -177,6 +210,7 @@ export default async function AccessPage({
 
   const tabs = [
     { href: "/workspace/access?tab=members", label: "Members", count: members.length },
+    { href: "/workspace/access?tab=roles", label: "Roles", count: roles.length },
     { href: "/workspace/access?tab=access", label: "Location access", count: grants.length },
     ...(canViewAudit
       ? [{ href: "/workspace/access?tab=activity", label: "Activity", count: auditEvents.length }]
@@ -336,6 +370,150 @@ export default async function AccessPage({
               ) : (
                 <AssignRoleForm members={memberOptions} roles={roleOptions} />
               )}
+            </CardBody>
+          </Card>
+        </div>
+      ) : null}
+
+      {tab === "roles" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader
+              title="Roles and permissions"
+              description="Roles define what a member can see and do. Preview shows the sidebar and permissions without impersonating anyone."
+            />
+            <CardBody>
+              {roles.length === 0 ? (
+                <EmptyState title="No roles in this tenant" description="Create the standard roles below." />
+              ) : (
+                <TableScroll>
+                  <Table minWidth={760}>
+                    <THead>
+                      <TR>
+                        <TH>Role</TH>
+                        <TH align="right">Permissions</TH>
+                        <TH align="right">Members</TH>
+                        <TH>Preview</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {roles.map((role) => {
+                        const keys = permissionKeysByRole.get(role.id) ?? new Set<string>();
+
+                        return (
+                          <TR key={role.id}>
+                            <TD className="font-medium">
+                              {role.name}
+                              <span className="block text-xs text-[var(--muted)]">
+                                {role.description ?? "No description"}
+                              </span>
+                            </TD>
+                            <TD align="right">{keys.size}</TD>
+                            <TD align="right">{memberCountByRole.get(role.id) ?? 0}</TD>
+                            <TD>
+                              <ButtonLink
+                                href={`/workspace/access/preview?roleId=${role.id}`}
+                                size="sm"
+                                variant="ghost"
+                              >
+                                Preview
+                              </ButtonLink>
+                            </TD>
+                          </TR>
+                        );
+                      })}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+              )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Standard roles"
+              description="Director, Operations staff and Fleet manager. Provisioning is optional, creates only missing roles and never overwrites an existing one."
+            />
+            <CardBody>
+              <div className="space-y-5">
+                <TableScroll>
+                  <Table minWidth={860}>
+                    <THead>
+                      <TR>
+                        <TH>Role</TH>
+                        <TH>Scope</TH>
+                        <TH>Permissions</TH>
+                        <TH>Status</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {STANDARD_ROLES.map((template) => {
+                        const exists = roleNames.has(template.name);
+
+                        return (
+                          <TR key={template.name}>
+                            <TD className="font-medium">{template.name}</TD>
+                            <TD className="text-xs text-[var(--muted)]">{template.description}</TD>
+                            <TD className="text-xs">
+                              {template.permissions
+                                .map((key) => PERMISSION_LABELS[key] ?? key)
+                                .join(", ")}
+                            </TD>
+                            <TD>
+                              <Badge tone={exists ? "success" : "neutral"}>
+                                {exists ? "Created" : "Not created"}
+                              </Badge>
+                            </TD>
+                          </TR>
+                        );
+                      })}
+                    </TBody>
+                  </Table>
+                </TableScroll>
+                <StandardRolesForm missing={missingStandardRoles > 0} />
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Permission matrix"
+              description="Effective permissions per role. Ticks come from the role's assigned permissions, not from the template."
+            />
+            <CardBody>
+              <TableScroll>
+                <Table minWidth={Math.max(680, 260 + roles.length * 150)}>
+                  <THead>
+                    <TR>
+                      <TH>Permission</TH>
+                      {roles.map((role) => (
+                        <TH key={role.id}>{role.name}</TH>
+                      ))}
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {permissions.map((permission) => (
+                      <TR key={permission.id}>
+                        <TD className="text-xs">
+                          {PERMISSION_LABELS[permission.permission_key] ?? permission.permission_key}
+                          <span className="block text-[var(--muted)]">{permission.permission_key}</span>
+                        </TD>
+                        {roles.map((role) => {
+                          const hasPermission = permissionKeysByRole
+                            .get(role.id)
+                            ?.has(permission.permission_key);
+
+                          return (
+                            <TD key={role.id} className="text-center font-semibold">
+                              {hasPermission ? "✓" : "—"}
+                            </TD>
+                          );
+                        })}
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </TableScroll>
             </CardBody>
           </Card>
         </div>

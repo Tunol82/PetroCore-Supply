@@ -74,7 +74,7 @@ function formatQuantity(value: number) {
 export default async function SalesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; edit?: string }>;
+  searchParams: Promise<{ tab?: string; edit?: string; customer?: string }>;
 }) {
   if (!getSupabaseConfig()) {
     redirect("/workspace");
@@ -169,6 +169,8 @@ export default async function SalesPage({
   const editId = params.edit;
   const editingCustomer = editId ? customers.find((customer) => customer.id === editId) ?? null : null;
   const editMissing = Boolean(editId) && !editingCustomer;
+  const preselectedCustomerId =
+    params.customer && customers.some((customer) => customer.id === params.customer) ? params.customer : "";
 
   const locationOptions = locations.map((location) => ({
     id: location.id,
@@ -311,7 +313,11 @@ export default async function SalesPage({
                       description="Add or reactivate a customer before creating an order."
                     />
                   ) : (
-                    <SalesOrderForm customers={customerOptions} locations={locationOptions} />
+                    <SalesOrderForm
+                      customers={customerOptions}
+                      locations={locationOptions}
+                      defaultCustomerId={preselectedCustomerId}
+                    />
                   )}
                 </CardBody>
               </Card>
@@ -381,6 +387,13 @@ export default async function SalesPage({
                             {canManage ? (
                               <TD>
                                 <div className="flex flex-wrap items-center gap-2">
+                                  <ButtonLink
+                                    href={`/workspace/sales/customers/${customer.id}`}
+                                    size="sm"
+                                    variant="ghost"
+                                  >
+                                    View
+                                  </ButtonLink>
                                   <ButtonLink
                                     href={`/workspace/sales?tab=customers&edit=${customer.id}`}
                                     size="sm"
@@ -468,7 +481,10 @@ export default async function SalesPage({
                       description="Add or reactivate a customer before a location."
                     />
                   ) : (
-                    <CustomerLocationForm customers={customerOptions} />
+                    <CustomerLocationForm
+                      customers={customerOptions}
+                      defaultCustomerId={preselectedCustomerId}
+                    />
                   )}
                 </CardBody>
               </Card>

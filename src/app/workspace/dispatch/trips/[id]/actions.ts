@@ -158,6 +158,10 @@ export async function addTripExpense(
     return { error: "Litres must be above zero when entered.", success: null };
   }
 
+  if (expenseType === "other" && !description) {
+    return { error: "Give a reason for the other expense.", success: null };
+  }
+
   if (incurredOn && Number.isNaN(new Date(incurredOn).getTime())) {
     return { error: "Enter a valid expense date.", success: null };
   }
