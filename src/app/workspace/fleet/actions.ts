@@ -261,7 +261,6 @@ export async function createTruck(
     make: formData.get("make"),
     model: formData.get("model"),
     year: formData.get("year"),
-    capacity: formData.get("capacity"),
     ownershipType: formData.get("ownershipType"),
     status: formData.get("status"),
   });
@@ -292,7 +291,6 @@ export async function createTruck(
     make: textOrNull(parsed.data.make),
     model: textOrNull(parsed.data.model),
     year: parsed.data.year ?? null,
-    capacity: parsed.data.capacity,
     ownership_type: parsed.data.ownershipType,
     status: parsed.data.status,
   });
@@ -316,7 +314,6 @@ export async function updateTruck(
     make: formData.get("make"),
     model: formData.get("model"),
     year: formData.get("year"),
-    capacity: formData.get("capacity"),
     ownershipType: formData.get("ownershipType"),
     status: formData.get("status"),
   });
@@ -336,7 +333,6 @@ export async function updateTruck(
       make: textOrNull(parsed.data.make),
       model: textOrNull(parsed.data.model),
       year: parsed.data.year ?? null,
-      capacity: parsed.data.capacity,
       ownership_type: parsed.data.ownershipType,
       status: parsed.data.status,
     })

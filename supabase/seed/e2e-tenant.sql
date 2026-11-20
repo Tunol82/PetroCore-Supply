@@ -187,7 +187,7 @@ set business_name = excluded.business_name,
     status = 'active';
 
 insert into public.trucks (
-  id, organisation_id, transporter_id, registration_number, make, model, year, capacity, ownership_type, status
+  id, organisation_id, transporter_id, registration_number, make, model, year, ownership_type, status
 )
 values (
   'e2e50000-0000-4000-8000-000000000002',
@@ -197,13 +197,11 @@ values (
   'E2E Make',
   'E2E Model',
   2024,
-  40000,
   'company',
   'active'
 )
 on conflict (id) do update
 set registration_number = excluded.registration_number,
-    capacity = excluded.capacity,
     status = 'active';
 
 insert into public.truck_compartments (

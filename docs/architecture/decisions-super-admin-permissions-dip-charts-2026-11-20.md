@@ -3,7 +3,7 @@
 | Field | Detail |
 |---|---|
 | Date | 2026-11-20 |
-| Status | **Decisions captured — implementation not started** |
+| Status | **Partially implemented — permission editor, derived capacity and Locations CRUD live; charts and waivers not started** |
 | Supersedes | Authority and dip-chart sections of `setup-super-admin-and-dip-charts-2026-11-20.md` |
 | Owner answers | Before/after dips with optional discharge; unit/import not decided; chart activation Super Admin only; no-chart waiver by Super Admin; Super Admin is global and Admin is tenant-level; Super Admin sets permissions |
 
@@ -121,6 +121,21 @@ discharged = chart(dip_before) − chart(dip_after)   // when both present
 - Capacity remains fixed on the compartment; truck capacity is the sum.
 
 ## 3. Impact on what exists
+
+**Implemented 2026-11-20**
+
+- Role permissions are editable at `/workspace/access/roles/[id]` with last-admin and self-lockout guards and an audit entry.
+- Director remains at 10 default permissions and has the read-only `/workspace/audit` page; permissions can now be widened or narrowed.
+- Truck capacity is derived from compartments; migration `20261120000100_derive_truck_capacity` removed the manual column.
+- Business locations have create/edit/deactivate at `/workspace/settings/locations`, with usage counts and no hard delete.
+- The tenant home label now distinguishes **Admin access** from operational access.
+
+**Not started**
+
+- The global Super Admin interface and reserved actions (chart activation, waivers).
+- Dip-chart schema, chart editor, CSV import and loading/discharge integration.
+- Setup-area move for fleet/catalogue configuration.
+- Compartment haulage rate cards.
 
 | Item | Today | Change |
 |---|---|---|

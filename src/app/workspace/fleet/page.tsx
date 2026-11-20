@@ -32,7 +32,6 @@ type Truck = {
   registration_number: string;
   transporter_id: string | null;
   ownership_type: string;
-  capacity: number;
   status: string;
   make: string | null;
   model: string | null;
@@ -182,7 +181,7 @@ export default async function FleetPage({
       .order("business_name"),
     supabase
       .from("trucks")
-      .select("id, registration_number, transporter_id, ownership_type, capacity, status, make, model, year")
+      .select("id, registration_number, transporter_id, ownership_type, status, make, model, year")
       .order("registration_number"),
     supabase
       .from("truck_compartments")
@@ -401,7 +400,18 @@ export default async function FleetPage({
     compartmentsByTruck.set(compartment.truck_id, current);
   }
 
-  const totalTruckCapacity = trucks.reduce((sum, truck) => sum + Number(truck.capacity), 0);
+  const capacityByTruck = new Map<string, number>();
+  for (const compartment of compartments) {
+    capacityByTruck.set(
+      compartment.truck_id,
+      (capacityByTruck.get(compartment.truck_id) ?? 0) + Number(compartment.capacity),
+    );
+  }
+
+  const totalTruckCapacity = trucks.reduce(
+    (sum, truck) => sum + (capacityByTruck.get(truck.id) ?? 0),
+    0,
+  );
   const totalCompartmentCapacity = compartments.reduce((sum, compartment) => sum + Number(compartment.capacity), 0);
   const licenceAlerts = drivers.filter((driver) => licenceState(driver.licence_expiry).alert).length;
 
@@ -606,7 +616,14 @@ export default async function FleetPage({
                                 ? transporterById.get(truck.transporter_id)?.business_name ?? "transporter"
                                 : "Company"}
                             </TD>
-                            <TD align="right">{formatQuantity(Number(truck.capacity))}</TD>
+                            <TD align="right">
+                              {formatQuantity(capacityByTruck.get(truck.id) ?? 0)}
+                              {truckCompartments.length === 0 ? (
+                                <span className="block text-[11px] font-medium text-[var(--warning)]">
+                                  No compartments
+                                </span>
+                              ) : null}
+                            </TD>
                             <TD align="right">{truckCompartments.length}</TD>
                             <TD>
                               <StatusBadge status={truck.status} />
@@ -648,8 +665,8 @@ export default async function FleetPage({
                 title={editingTruck ? "Edit truck" : "Add truck"}
                 description={
                   editingTruck
-                    ? "Capacity is the whole-truck volume. Maintenance and retired status are set here, not by the quick toggle."
-                    : "Capacity is the whole-truck volume; compartments are added on the compartments tab."
+                    ? "Capacity comes from the compartments. Maintenance and retired status are set here, not by the quick toggle."
+                    : "Add the truck, then add its compartments; capacity is their sum."
                 }
               />
               <CardBody>

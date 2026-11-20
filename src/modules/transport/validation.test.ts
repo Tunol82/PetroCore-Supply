@@ -48,7 +48,6 @@ describe("transporterSchema", () => {
 describe("truckSchema", () => {
   const base = {
     registrationNumber: "LAG-123-XY",
-    capacity: "45000",
     ownershipType: "company" as const,
     status: "active" as const,
   };
@@ -64,8 +63,8 @@ describe("truckSchema", () => {
     ).toBe(true);
   });
 
-  it("rejects a non-positive capacity", () => {
-    expect(truckSchema.safeParse({ ...base, capacity: "0" }).success).toBe(false);
+  it("does not accept a manually entered capacity", () => {
+    expect(truckSchema.parse({ ...base, capacity: "45000" })).not.toHaveProperty("capacity");
   });
 });
 
@@ -118,7 +117,6 @@ describe("fleet lifecycle", () => {
     expect(
       truckUpdateSchema.safeParse({
         registrationNumber: "LAG-1",
-        capacity: "1000",
         ownershipType: "company",
         status: "active",
       }).success,
@@ -138,7 +136,6 @@ describe("fleet lifecycle", () => {
       truckUpdateSchema.safeParse({
         id: truckId,
         registrationNumber: "LAG-1",
-        capacity: "1000",
         ownershipType: "third_party",
         status: "active",
       }).success,

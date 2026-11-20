@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { PERMISSION_LABELS, STANDARD_ROLES } from "./standard-roles";
+import { PERMISSION_GROUPS, PERMISSION_LABELS, STANDARD_ROLES } from "./standard-roles";
 
 describe("standard roles", () => {
+  it("groups every permission exactly once", () => {
+    const grouped = PERMISSION_GROUPS.flatMap((group) => group.keys);
+
+    expect(new Set(grouped).size).toBe(grouped.length);
+    expect(new Set(grouped)).toEqual(new Set(Object.keys(PERMISSION_LABELS)));
+  });
   it("defines Director, Operations staff and Fleet manager once", () => {
     expect(STANDARD_ROLES.map((role) => role.name)).toEqual([
       "Director",

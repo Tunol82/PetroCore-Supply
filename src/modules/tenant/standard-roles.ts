@@ -20,6 +20,34 @@ export type StandardRole = {
   permissions: string[];
 };
 
+export type PermissionGroup = {
+  label: string;
+  keys: string[];
+};
+
+export const PERMISSION_GROUPS: PermissionGroup[] = [
+  {
+    label: "Supply",
+    keys: ["procurement.view", "procurement.manage", "inventory.view", "inventory.manage"],
+  },
+  {
+    label: "Sales",
+    keys: ["sales.view", "sales.manage"],
+  },
+  {
+    label: "Transport",
+    keys: ["transport.view", "transport.manage"],
+  },
+  {
+    label: "Locations and audit",
+    keys: ["locations.view_all", "locations.manage", "audit.view"],
+  },
+  {
+    label: "Administration",
+    keys: ["users.manage", "organisation.manage"],
+  },
+];
+
 const OPERATIONS = [
   "procurement.view",
   "procurement.manage",

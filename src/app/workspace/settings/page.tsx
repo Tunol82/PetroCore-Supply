@@ -51,6 +51,20 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader
+          title="Locations"
+          description="Depots, stations and transit points used by procurement, inventory, dispatch and access."
+        />
+        <CardBody className="space-y-4">
+          <p className="text-sm leading-6 text-[var(--muted)]">
+            Configure storage and transit locations once. Deactivate a location instead of deleting it so historical
+            batches, trips and access grants stay attached.
+          </p>
+          <ButtonLink href="/workspace/settings/locations">Manage locations</ButtonLink>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader
           title="Business rules"
           description="Approval thresholds, transporter charge categories and operating policy."
         />

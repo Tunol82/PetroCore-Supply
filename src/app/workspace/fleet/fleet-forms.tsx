@@ -142,7 +142,6 @@ export type TruckRecord = {
   make: string | null;
   model: string | null;
   year: number | null;
-  capacity: number;
   ownership_type: string;
   status: string;
 };
@@ -179,19 +178,6 @@ export function TruckForm({ transporters, truck }: { transporters: Option[]; tru
               <option key={transporter.id} value={transporter.id}>{transporter.label}</option>
             ))}
           </select>
-        </div>
-        <div>
-          <label htmlFor="tr-capacity" className={labelClass}>Capacity</label>
-          <input
-            id="tr-capacity"
-            name="capacity"
-            type="number"
-            step="0.001"
-            min="0.001"
-            required
-            className={fieldClass}
-            defaultValue={truck ? String(truck.capacity) : ""}
-          />
         </div>
         <div>
           <label htmlFor="tr-make" className={labelClass}>Make</label>
@@ -240,6 +226,9 @@ export function TruckForm({ transporters, truck }: { transporters: Option[]; tru
           </select>
         </div>
       </div>
+      <p className="text-xs text-[var(--muted)]">
+        Capacity is the sum of this truck&apos;s compartments. Add or edit compartments on the Compartments tab.
+      </p>
       <Feedback state={state} />
       <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>

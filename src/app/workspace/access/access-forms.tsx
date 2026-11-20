@@ -1,5 +1,6 @@
 "use client";
 
+import { UnsavedGuard } from "@/components/ui/unsaved-guard";
 import { ToastOnState } from "@/components/ui/toast";
 
 import { useActionState, useState } from "react";
@@ -11,6 +12,7 @@ import {
   revokeAccess,
   revokeRole,
   setMemberStatus,
+  updateRolePermissions,
   type AccessActionState,
 } from "./actions";
 import { ACCESS_LEVELS } from "@/modules/tenant/access-validation";
@@ -262,6 +264,63 @@ export function StandardRolesForm({ missing }: { missing: boolean }) {
       <ToastOnState state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Preparing roles…" : missing ? "Create standard roles" : "Add any missing permissions"}
+      </button>
+    </form>
+  );
+}
+
+export type PermissionChoice = { id: string; key: string; label: string };
+export type PermissionChoiceGroup = { label: string; permissions: PermissionChoice[] };
+
+export function RolePermissionsForm({
+  roleId,
+  groups,
+  selectedIds,
+  memberCount,
+}: {
+  roleId: string;
+  groups: PermissionChoiceGroup[];
+  selectedIds: string[];
+  memberCount: number;
+}) {
+  const [state, formAction, pending] = useActionState(updateRolePermissions, initialState);
+
+  return (
+    <form action={formAction} className="space-y-5">
+      <UnsavedGuard />
+      <input type="hidden" name="roleId" value={roleId} />
+      <div className="space-y-4">
+        {groups.map((group) => (
+          <fieldset key={group.label} className="rounded-[var(--radius-sm)] border border-[var(--line)] p-4">
+            <legend className="px-1 text-sm font-semibold">{group.label}</legend>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {group.permissions.map((permission) => (
+                <label key={permission.id} className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="permissionIds"
+                    value={permission.id}
+                    defaultChecked={selectedIds.includes(permission.id)}
+                    className="mt-1 h-4 w-4 rounded border-[var(--line)]"
+                  />
+                  <span>
+                    {permission.label}
+                    <span className="block text-xs text-[var(--muted)]">{permission.key}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ))}
+      </div>
+      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+        Changes apply immediately to {memberCount} member{memberCount === 1 ? "" : "s"} holding this role. At least one
+        active member must keep access management, and you cannot remove your own last access-management permission.
+      </p>
+      <Feedback state={state} />
+      <ToastOnState state={state} />
+      <button type="submit" className={buttonClass} disabled={pending}>
+        {pending ? "Saving…" : "Save permissions"}
       </button>
     </form>
   );

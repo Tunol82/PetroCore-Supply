@@ -393,7 +393,7 @@ export default async function AccessPage({
                         <TH>Role</TH>
                         <TH align="right">Permissions</TH>
                         <TH align="right">Members</TH>
-                        <TH>Preview</TH>
+                        <TH>Actions</TH>
                       </TR>
                     </THead>
                     <TBody>
@@ -411,13 +411,22 @@ export default async function AccessPage({
                             <TD align="right">{keys.size}</TD>
                             <TD align="right">{memberCountByRole.get(role.id) ?? 0}</TD>
                             <TD>
-                              <ButtonLink
-                                href={`/workspace/access/preview?roleId=${role.id}`}
-                                size="sm"
-                                variant="ghost"
-                              >
-                                Preview
-                              </ButtonLink>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <ButtonLink
+                                  href={`/workspace/access/roles/${role.id}`}
+                                  size="sm"
+                                  variant="ghost"
+                                >
+                                  Edit permissions
+                                </ButtonLink>
+                                <ButtonLink
+                                  href={`/workspace/access/preview?roleId=${role.id}`}
+                                  size="sm"
+                                  variant="ghost"
+                                >
+                                  Preview
+                                </ButtonLink>
+                              </div>
                             </TD>
                           </TR>
                         );

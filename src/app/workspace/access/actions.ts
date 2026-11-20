@@ -503,3 +503,192 @@ export async function createStandardRoles(
         : "Standard roles already exist. Any missing permissions were added.",
   };
 }
+
+export async function updateRolePermissions(
+  _previous: AccessActionState,
+  formData: FormData,
+): Promise<AccessActionState> {
+  const roleParsed = idSchema.safeParse({ id: formData.get("roleId") });
+
+  if (!roleParsed.success) {
+    return { error: firstIssue(roleParsed), success: null };
+  }
+
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const submitted = Array.from(
+    new Set(
+      formData
+        .getAll("permissionIds")
+        .map((value) => String(value))
+        .filter((value) => uuidPattern.test(value)),
+    ),
+  );
+
+  const { context, error } = await requireManageAccess();
+  if (!context) return { error: error ?? "Access denied.", success: null };
+
+  const organisationId = context.tenant.organisationId;
+  const roleId = roleParsed.data.id;
+
+  const { data: role } = await context.supabase
+    .from("roles")
+    .select("id, name")
+    .eq("id", roleId)
+    .eq("organisation_id", organisationId)
+    .maybeSingle();
+
+  if (!role) {
+    return { error: "That role is not part of this company.", success: null };
+  }
+
+  const { data: permissionRows } = await context.supabase.from("permissions").select("id, permission_key");
+
+  if (!permissionRows) {
+    return { error: "Permissions could not be loaded.", success: null };
+  }
+
+  const permissionById = new Map(
+    (permissionRows as { id: string; permission_key: string }[]).map((permission) => [
+      permission.id,
+      permission.permission_key,
+    ]),
+  );
+
+  if (submitted.some((permissionId) => !permissionById.has(permissionId))) {
+    return { error: "One of the selected permissions is not available.", success: null };
+  }
+
+  const { data: targetRows } = await context.supabase
+    .from("role_permissions")
+    .select("permission_id")
+    .eq("role_id", roleId);
+
+  const currentIds = new Set(
+    ((targetRows ?? []) as { permission_id: string }[]).map((row) => row.permission_id),
+  );
+  const desiredIds = new Set(submitted);
+
+  const usersManageId = Array.from(permissionById.entries()).find(
+    ([, key]) => key === "users.manage",
+  )?.[0];
+
+  if (usersManageId && currentIds.has(usersManageId) && !desiredIds.has(usersManageId)) {
+    const { data: otherHolders } = await context.supabase
+      .from("role_permissions")
+      .select("role_id")
+      .eq("organisation_id", organisationId)
+      .eq("permission_id", usersManageId)
+      .neq("role_id", roleId);
+
+    const retainingRoleIds = new Set(
+      ((otherHolders ?? []) as { role_id: string }[]).map((row) => row.role_id),
+    );
+
+    const [assignmentsResult, activeProfilesResult] = await Promise.all([
+      context.supabase
+        .from("user_roles")
+        .select("user_id, role_id")
+        .eq("organisation_id", organisationId),
+      context.supabase
+        .from("profiles")
+        .select("id")
+        .eq("organisation_id", organisationId)
+        .eq("status", "active"),
+    ]);
+
+    const activeProfiles = new Set(
+      ((activeProfilesResult.data ?? []) as { id: string }[]).map((profile) => profile.id),
+    );
+    const assignments = (assignmentsResult.data ?? []) as { user_id: string; role_id: string }[];
+
+    const retainingUsers = new Set(
+      assignments
+        .filter((assignment) => activeProfiles.has(assignment.user_id))
+        .filter((assignment) => retainingRoleIds.has(assignment.role_id))
+        .map((assignment) => assignment.user_id),
+    );
+
+    if (retainingUsers.size === 0) {
+      return {
+        error: "At least one active member must keep access management. Add it to another role first.",
+        success: null,
+      };
+    }
+
+    const actorRoles = assignments
+      .filter((assignment) => assignment.user_id === context.tenant.profileId)
+      .map((assignment) => assignment.role_id);
+    const actorRetains = actorRoles.some(
+      (assignedRole) => assignedRole !== roleId && retainingRoleIds.has(assignedRole),
+    );
+
+    if (actorRoles.includes(roleId) && !actorRetains) {
+      return {
+        error:
+          "You would remove your own access management permission. Ask another administrator to make this change.",
+        success: null,
+      };
+    }
+  }
+
+  const toRemove = Array.from(currentIds).filter((permissionId) => !desiredIds.has(permissionId));
+  const toAdd = Array.from(desiredIds).filter((permissionId) => !currentIds.has(permissionId));
+
+  if (toRemove.length > 0) {
+    const { error: removeError } = await context.supabase
+      .from("role_permissions")
+      .delete()
+      .eq("role_id", roleId)
+      .in("permission_id", toRemove);
+
+    if (removeError) {
+      return { error: "The removed permissions could not be saved.", success: null };
+    }
+  }
+
+  if (toAdd.length > 0) {
+    const { error: addError } = await context.supabase.from("role_permissions").insert(
+      toAdd.map((permissionId) => ({
+        organisation_id: organisationId,
+        role_id: roleId,
+        permission_id: permissionId,
+      })),
+    );
+
+    if (addError) {
+      return { error: "The added permissions could not be saved.", success: null };
+    }
+  }
+
+  const service = createMemberServiceClient();
+  await service.from("audit_logs").insert({
+    organisation_id: organisationId,
+    user_id: context.tenant.profileId,
+    action: "access.role_permissions_updated",
+    entity_type: "roles",
+    entity_id: roleId,
+    old_values: {
+      role: role.name,
+      permission_keys: Array.from(currentIds)
+        .map((permissionId) => permissionById.get(permissionId))
+        .filter(Boolean),
+    },
+    new_values: {
+      role: role.name,
+      permission_keys: Array.from(desiredIds)
+        .map((permissionId) => permissionById.get(permissionId))
+        .filter(Boolean),
+    },
+  });
+
+  revalidatePath("/workspace/access");
+  revalidatePath(`/workspace/access/roles/${roleId}`);
+
+  return {
+    error: null,
+    success:
+      toAdd.length === 0 && toRemove.length === 0
+        ? "No permission changes to save."
+        : `Permissions updated for ${role.name}.`,
+  };
+}

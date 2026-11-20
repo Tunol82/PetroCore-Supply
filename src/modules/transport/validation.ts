@@ -72,7 +72,6 @@ const truckBaseSchema = z.object({
     (value) => (value === "" || value === null || value === undefined ? undefined : value),
     z.coerce.number().int().min(1900).max(2100).optional(),
   ),
-  capacity: z.coerce.number().positive("Capacity must be greater than zero."),
   ownershipType: z.enum(OWNERSHIP_TYPES),
   status: z.enum(TRUCK_STATUSES),
 });
