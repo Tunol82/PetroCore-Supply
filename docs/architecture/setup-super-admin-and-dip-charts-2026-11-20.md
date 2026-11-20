@@ -3,7 +3,7 @@
 | Field | Detail |
 |---|---|
 | Date | 2026-11-20 |
-| Status | **Revised proposal — Director configuration removed; no chart schema applied yet** |
+| Status | **Revised proposal — see `docs/architecture/decisions-super-admin-permissions-dip-charts-2026-11-20.md` for the owner's latest decisions** |
 | Supersedes | `docs/architecture/configuration-and-capacity-2026-11-20.md` || Owner decisions captured | Configuration belongs to a Super Admin; Directors do not configure; trucks are one-time assets configured once and selected by Fleet managers; compartments have fixed capacity and an updatable dip chart; actual daily volumes change |
 
 ## 1. The model in one page

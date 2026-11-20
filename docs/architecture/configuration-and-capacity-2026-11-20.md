@@ -4,7 +4,7 @@
 |---|---|
 | Date | 2026-11-20 |
 | Trigger | Owner suggestion: truck capacity should equal the sum of compartments; one-time configuration should live in Settings/admin, editable and deletable, like stations in PetroCore.app |
-| Status | **Superseded by `docs/architecture/setup-super-admin-and-dip-charts-2026-11-20.md`** |
+| Status | **Superseded by `docs/architecture/setup-super-admin-and-dip-charts-2026-11-20.md` and its decision addendum** |
 | Current evidence | `DB-TRK-1` stores capacity 45,000 L, compartments total 61,200 L; `DB-TRK-2` stores 33,000 L with no compartments |
 
 ## 1. Opinion in one page
